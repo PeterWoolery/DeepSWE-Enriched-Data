@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "aliases": [
+    {
+      "canonicalId": "openai:gpt-6-sol",
+      "reportedNames": ["GPT-6 Sol"],
+      "evidence": "OpenAI Coding paragraph names GPT-6 Sol and reports its DeepSWE v1.1 score.",
+      "sourceId": "openai-gpt-6-sol-luna"
+    },
+    {
+      "canonicalId": "openai:gpt-6-luna",
+      "reportedNames": ["GPT-6 Luna"],
+      "evidence": "OpenAI Coding paragraph names GPT-6 Luna and reports its DeepSWE v1.1 score.",
+      "sourceId": "openai-gpt-6-sol-luna"
+    },
+    {
+      "canonicalId": "anthropic:claude-opus-5.5",
+      "reportedNames": ["Claude Opus 5.5", "Opus 5.5"],
+      "evidence": "The Anthropic card names Claude Opus 5.5; the Artificial Analysis comparison identifies Claude Code with representative model Opus 5.5. Their evaluation series remain separate.",
+      "sourceIds": ["anthropic-opus-5.5-system-card", "artificial-analysis-coding-agents"]
+    }
+  ],
+  "explicitNonAliases": [
+    {
+      "names": ["GPT-5.6 Sol", "GPT-6 Sol"],
+      "reason": "Different source-reported model names and generations; no alias evidence supports merging them."
+    },
+    {
+      "names": ["GPT-5.6 Luna", "GPT-6 Luna"],
+      "reason": "Different source-reported model names and generations; no alias evidence supports merging them."
+    },
+    {
+      "names": ["Qwen3.8-Flash", "Qwen3.8-Flash-Next"],
+      "reason": "The community snapshot and user-contributed article do not establish an alias."
+    },
+    {
+      "names": ["Qwen3.8 Max", "Qwen3.8-Max-0902"],
+      "reason": "Artificial Analysis does not identify a 0902 snapshot; the pending DataLearner model label is not aliased to its distinct AA model-variant result."
+    }
+  ]
+}

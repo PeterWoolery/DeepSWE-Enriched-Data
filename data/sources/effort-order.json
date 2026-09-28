@@ -1,0 +1,74 @@
+{
+  "policy": "Per exact upstream model string, only reported levels present in this allowlist receive an ordered path rank. The vendor documentation supports relative effort order within that model/provider; values do not imply equal compute across different models/providers. Unmapped, null, or adaptive settings remain standalone points.",
+  "standardOrder": ["low", "medium", "high", "xhigh", "max"],
+  "evidence": [
+    "https://platform.openai.com/docs/guides/reasoning",
+    "https://docs.anthropic.com/en/docs/build-with-claude/effort",
+    "https://docs.x.ai/developers/model-capabilities/text/reasoning",
+    "https://ai.google.dev/gemini-api/docs/thinking?hl=en"
+  ],
+  "models": {
+    "gpt-6-astra": ["low", "medium", "high", "xhigh", "max"],
+    "gpt-5-6-sol": ["low", "medium", "high", "xhigh", "max"],
+    "gpt-5-6-terra": ["low", "medium", "high", "xhigh", "max"],
+    "gpt-5-6-luna": ["low", "medium", "high", "xhigh", "max"],
+    "gpt-5-5": ["low", "medium", "high", "xhigh"],
+    "claude-opus-5": ["low", "medium", "high", "xhigh", "max"],
+    "claude-fable-5": ["low", "medium", "high", "xhigh", "max"],
+    "claude-opus-4-8": ["low", "medium", "high", "xhigh", "max"],
+    "claude-sonnet-5": ["low", "medium", "high", "xhigh", "max"],
+    "gemini-3-8-flash": ["low", "medium", "high"],
+    "gemini-3-7-flash": ["low", "medium", "high"],
+    "grok-4-6": ["low", "medium", "high", "xhigh"]
+  },
+  "modelEvidence": {
+    "gpt-6-astra": {
+      "sources": ["openai-reasoning-effort-docs"],
+      "rationale": "OpenAI lists GPT-6 Astra among its reasoning models, describes model-dependent effort values and increasing effort semantics; the exact labels/path are restricted to this source's observed Astra series."
+    },
+    "gpt-5-6-sol": {
+      "sources": ["openai-reasoning-effort-docs"],
+      "rationale": "OpenAI documents model-dependent low/medium/high/xhigh/max effort settings and higher-effort semantics; the exact labels/path are restricted to this source's observed Sol series."
+    },
+    "gpt-5-6-terra": {
+      "sources": ["openai-reasoning-effort-docs"],
+      "rationale": "OpenAI documents model-dependent low/medium/high/xhigh/max effort settings and higher-effort semantics; the exact labels/path are restricted to this source's observed Terra series."
+    },
+    "gpt-5-6-luna": {
+      "sources": ["openai-reasoning-effort-docs"],
+      "rationale": "OpenAI documents model-dependent low/medium/high/xhigh/max effort settings and higher-effort semantics; the exact labels/path are restricted to this source's observed Luna series."
+    },
+    "gpt-5-5": {
+      "sources": ["openai-reasoning-effort-docs"],
+      "rationale": "OpenAI documents lower-to-higher model-dependent reasoning effort settings; the exact labels/path are restricted to this source's observed GPT-5.5 series."
+    },
+    "claude-opus-5": {
+      "sources": ["anthropic-effort-docs"],
+      "rationale": "Anthropic describes stepping down/up across low, medium, high, xhigh, and max; the exact labels/path are restricted to this source's observed Opus series."
+    },
+    "claude-fable-5": {
+      "sources": ["anthropic-effort-docs"],
+      "rationale": "Anthropic describes stepping down/up across low, medium, high, xhigh, and max; the exact labels/path are restricted to this source's observed Fable series."
+    },
+    "claude-opus-4-8": {
+      "sources": ["anthropic-effort-docs"],
+      "rationale": "Anthropic describes stepping down/up across low, medium, high, xhigh, and max; the exact labels/path are restricted to this source's observed Opus series."
+    },
+    "claude-sonnet-5": {
+      "sources": ["anthropic-effort-docs"],
+      "rationale": "Anthropic describes stepping down/up across low, medium, high, xhigh, and max; the exact labels/path are restricted to this source's observed Sonnet series."
+    },
+    "gemini-3-8-flash": {
+      "sources": ["google-gemini-thinking-docs"],
+      "rationale": "Google lists low, medium, and high levels for Gemini 3.8 Flash; only those exact observed labels are ordered in this series."
+    },
+    "gemini-3-7-flash": {
+      "sources": ["google-gemini-thinking-docs"],
+      "rationale": "Google lists low, medium, and high levels for Gemini 3.7 Flash; only those exact observed labels are ordered in this series."
+    },
+    "grok-4-6": {
+      "sources": ["xai-reasoning-docs"],
+      "rationale": "xAI lists Grok 4.6 low, medium, high, and xhigh in increasing reasoning depth; this map does not borrow max from another provider."
+    }
+  }
+}

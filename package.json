@@ -1,0 +1,44 @@
+{
+  "name": "deepswe-explorer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "npm run validate && npm run export:data && vite --host 127.0.0.1",
+    "build": "npm run validate && npm run export:data && tsc -b && vite build",
+    "build:subpath": "npm run validate && npm run export:data && tsc -b && VITE_BASE_PATH=/deepswe-explorer/ vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -b",
+    "validate": "tsx scripts/validate-data.ts",
+    "validate:candidate": "tsx scripts/validate-candidate.ts",
+    "export:data": "tsx scripts/export-data.ts",
+    "refresh:official": "tsx scripts/refresh-official.ts",
+    "record:unchanged-check": "tsx scripts/record-unchanged-check.ts",
+    "approve:candidate": "tsx scripts/approve-candidate.ts",
+    "serve:static": "tsx scripts/serve-static.ts",
+    "test:subpath": "tsx scripts/test-subpath.ts",
+    "test:browser": "npm run build:subpath && playwright test",
+    "stage:refresh-pr": "bash scripts/stage-refresh-pr.sh"
+  },
+  "dependencies": {
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "zod": "^4.1.8"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/node": "^22.18.6",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.4",
+    "tsx": "^4.20.5",
+    "typescript": "~5.9.2",
+    "vite": "^7.1.7",
+    "vitest": "5.0.2"
+  }
+}

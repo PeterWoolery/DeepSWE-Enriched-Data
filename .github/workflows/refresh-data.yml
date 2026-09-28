@@ -1,0 +1,109 @@
+name: Refresh source and propose data review
+
+on:
+  schedule:
+    - cron: '37 17 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: data-refresh-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+    steps:
+      - name: Check out the default branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Choose or create the one open refresh branch
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          open_branch="$(gh pr list --state open --json headRefName --jq '[.[] | select(.headRefName | startswith("automation/deepswe-refresh"))] | sort_by(.headRefName) | last | .headRefName // empty')"
+          git fetch origin "$DEFAULT_BRANCH"
+          if [[ -n "$open_branch" ]] && git ls-remote --exit-code --heads origin "$open_branch" >/dev/null 2>&1; then
+            git fetch origin "$open_branch"
+            git switch --create "$open_branch" --track "origin/$open_branch"
+            git merge --no-edit "origin/$DEFAULT_BRANCH"
+            echo "REFRESH_BRANCH=$open_branch" >> "$GITHUB_ENV"
+          else
+            branch="automation/deepswe-refresh-${GITHUB_RUN_ID}"
+            git switch --create "$branch" "origin/$DEFAULT_BRANCH"
+            echo "REFRESH_BRANCH=$branch" >> "$GITHUB_ENV"
+          fi
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Fetch, normalize, and stage allowlisted source
+        run: npm run refresh:official
+      - name: Validate candidate and approved snapshot
+        run: |
+          npm run validate:candidate
+          npm run validate
+          npm run typecheck
+          npm test
+      - name: Record a metadata-only unchanged check
+        if: ${{ success() }}
+        shell: bash
+        run: |
+          status="$(node -e "const fs=require('node:fs'); console.log(JSON.parse(fs.readFileSync('data/candidates/refresh-status.json','utf8')).status)")"
+          if [[ "$status" == "checked-unchanged" ]]; then
+            npm run record:unchanged-check -- --reviewer "scheduled source check" --confirm-unchanged
+          fi
+      - name: Build and verify approved static assets
+        run: |
+          npm run build
+          npm run build:subpath
+          npm run test:subpath
+      - name: Prepare review PR
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          status="$(node -e "const fs=require('node:fs'); console.log(JSON.parse(fs.readFileSync('data/candidates/refresh-status.json','utf8')).status)")"
+          REFRESH_STATUS="$status" npm run stage:refresh-pr
+      - name: Open or update review PR
+        if: steps.changes.outputs.changed == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          status="$(node -e "const fs=require('node:fs'); console.log(JSON.parse(fs.readFileSync('data/candidates/refresh-status.json','utf8')).status)")"
+          if [[ "$status" == "checked-unchanged-recorded" ]]; then
+            title="data: record unchanged DeepSWE source check"
+            http_status="$(node -e "const fs=require('node:fs'); console.log(JSON.parse(fs.readFileSync('data/candidates/refresh-status.json','utf8')).httpStatus)")"
+            if [[ "$http_status" == "304" ]]; then
+              body="The allowlisted feed returned HTTP 304 for the approved content hash. This PR updates only last-successful-check metadata and retrieval history; numeric observations and last-data-change time are unchanged. Review and merge to publish the new check status."
+            else
+              body="The allowlisted feed returned HTTP 200 with the same approved response hash and normalized observations. This PR updates only last-successful-check metadata and retrieval history; numeric observations and last-data-change time are unchanged. Review and merge to publish the new check status."
+            fi
+          else
+            title="data: review normalized DeepSWE source candidate"
+            body="This PR contains a schema-validated normalized candidate from the allowlisted Datacurve v1.1 feed. It is not included in approved rankings. Review the source hash, changed/added/removed configuration diff, timing scope, provenance, and cost discrepancies. To approve, run the documented approval command on this branch, validate, and update this PR. No source result is auto-approved or auto-merged."
+          fi
+          existing="$(gh pr list --head "$REFRESH_BRANCH" --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh pr edit "$existing" --title "$title" --body "$body"
+            echo "Updated refresh PR #$existing" >> "$GITHUB_STEP_SUMMARY"
+          else
+            gh pr create --base "$DEFAULT_BRANCH" --head "$REFRESH_BRANCH" --title "$title" --body "$body"
+            echo "Opened a source-review PR from $REFRESH_BRANCH" >> "$GITHUB_STEP_SUMMARY"
+          fi

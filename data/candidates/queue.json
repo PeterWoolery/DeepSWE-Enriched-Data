@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "candidates": [
+    {
+      "id": "candidate-datalearner-qwen3.8-max-0902",
+      "modelReported": "Qwen3.8-Max-0902",
+      "publisher": "DataLearner (secondary; originating claim not verified)",
+      "sourceCategory": "secondary",
+      "sourceTitle": "DeepSWE benchmark table / community snapshot discovery lead",
+      "sourceUrl": "https://www.datalearner.com/benchmarks/deepswe",
+      "evidenceLocator": "Captured row; no row-level primary-source link was exposed",
+      "reportedScore": 69.3,
+      "normalizedScore": null,
+      "scoreUnit": "reported table points; percent convention not primary-source verified",
+      "rawScoreText": "69.3 (secondary discovery lead)",
+      "benchmarkVersion": "1.1",
+      "effortLabel": "极高强度思考（tool; source label translated in community snapshot as high-intensity）",
+      "harness": null,
+      "status": "pending-review",
+      "reason": "No primary result document was traced; retain as an unranked candidate only.",
+      "missing": ["primary evidence", "score definition", "denominator", "harness", "cost", "tokens", "time", "confidence interval"]
+    },
+    {
+      "id": "candidate-datalearner-step-5-preview",
+      "modelReported": "Step 5 Preview",
+      "publisher": "DataLearner (secondary; originating claim not verified)",
+      "sourceCategory": "secondary",
+      "sourceTitle": "DeepSWE benchmark table / community snapshot discovery lead",
+      "sourceUrl": "https://www.datalearner.com/benchmarks/deepswe",
+      "evidenceLocator": "Captured row; no row-level primary-source link was exposed",
+      "reportedScore": 67.7,
+      "normalizedScore": null,
+      "scoreUnit": "reported table points; percent convention not primary-source verified",
+      "rawScoreText": "67.7 (secondary discovery lead)",
+      "benchmarkVersion": "1.1",
+      "effortLabel": "思考模式 High（tool; source label translated in community snapshot as high）",
+      "harness": null,
+      "status": "pending-review",
+      "reason": "No primary result document was traced; retain as an unranked candidate only.",
+      "missing": ["primary evidence", "score definition", "denominator", "harness", "cost", "tokens", "time", "confidence interval"]
+    }
+  ]
+}

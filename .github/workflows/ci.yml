@@ -1,0 +1,37 @@
+name: Verify
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Validate, typecheck, and test
+        run: |
+          npm run validate
+          npm run validate:candidate
+          npm run typecheck
+          npm test
+      - name: Build root static site
+        run: npm run build
+      - name: Build and verify the project subpath
+        run: |
+          npm run build:subpath
+          npm run test:subpath
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run browser regression suite
+        run: npm run test:browser

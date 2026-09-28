@@ -1,0 +1,18 @@
+{
+  "description": "Synthetic-only fixture; never part of approved data or production exports.",
+  "series": [
+    { "id": "low", "effortOrder": 0, "cost": 12, "outputTokens": 30000, "time": 11, "score": 0.61 },
+    { "id": "medium", "effortOrder": 1, "cost": 8, "outputTokens": 42000, "time": 8, "score": 0.78 },
+    { "id": "high", "effortOrder": 2, "cost": 10, "outputTokens": 35000, "time": 13, "score": 0.73 }
+  ],
+  "withMissingMiddle": [
+    { "id": "low", "effortOrder": 0, "cost": 12, "score": 0.61 },
+    { "id": "medium", "effortOrder": 1, "cost": null, "score": 0.78 },
+    { "id": "high", "effortOrder": 2, "cost": 10, "score": 0.73 }
+  ],
+  "zeroAndUnordered": [
+    { "id": "zero", "effortOrder": 0, "cost": 0, "score": 0.5 },
+    { "id": "known-next", "effortOrder": 1, "cost": 4, "score": 0.6 },
+    { "id": "adaptive", "effortOrder": null, "cost": 3, "score": 0.65 }
+  ]
+}

@@ -1,0 +1,21 @@
+.benchmark-cache/
+.benchmark-tools/
+.benchmark-results/
+__pycache__/
+*.py[cod]
+.env
+.env.*
+node_modules/
+dist/
+coverage/
+/public/data/
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Local-only benchmark experiment and task-prompt material
+/deepswe_coding_agent_prompt_v2.md
+/glm_flash_benchmark.py
+/glm-flash-benchmark.md
+/tests/test_glm_flash_benchmark.py
+/docs/usage-scenario-review.md

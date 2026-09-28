@@ -1,0 +1,73 @@
+name: DeepSWE result suggestion
+description: Suggest a source-backed result for review; this does not publish or rank it.
+title: "[Result evidence]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Suggestions enter a pending review queue. Please do not paste benchmark task bodies, solutions, private logs, or credentials. Source review does not imply independent replication.
+  - type: input
+    id: model
+    attributes:
+      label: Model name exactly as the source reports it
+    validations:
+      required: true
+  - type: input
+    id: publisher
+    attributes:
+      label: Publisher / evaluator
+    validations:
+      required: true
+  - type: input
+    id: source-url
+    attributes:
+      label: Original source URL
+      placeholder: https://...
+    validations:
+      required: true
+  - type: input
+    id: evidence-locator
+    attributes:
+      label: Exact evidence locator
+      description: Page, section, paragraph, figure, table, or row.
+    validations:
+      required: true
+  - type: input
+    id: benchmark-version
+    attributes:
+      label: Benchmark version and full/subset scope
+      placeholder: v1.1, full suite (or unknown)
+    validations:
+      required: true
+  - type: input
+    id: score
+    attributes:
+      label: Result exactly as published, including metric/units
+      placeholder: pass@1 0.72 / 72% reported score / unknown
+    validations:
+      required: true
+  - type: input
+    id: denominator
+    attributes:
+      label: Score denominator and count (if reported)
+    validations:
+      required: false
+  - type: input
+    id: configuration
+    attributes:
+      label: Effort, harness/revision, provider, and evaluation policy (unknown is acceptable)
+    validations:
+      required: false
+  - type: textarea
+    id: efficiency
+    attributes:
+      label: Cost, output tokens, and time (only if the source reports them)
+      description: Include mean/median, unit, denominator/population, cost basis, timing boundaries, sample count, timeout/retry, and environment when known. Never estimate time from tokens/steps.
+    validations:
+      required: false
+  - type: textarea
+    id: uncertainty
+    attributes:
+      label: Confidence interval, missing fields, and uncertainty notes
+    validations:
+      required: false

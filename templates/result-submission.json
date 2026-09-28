@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "status": "pending-review",
+  "identity": {
+    "modelReported": "",
+    "publisher": "",
+    "sourceCategory": "developer"
+  },
+  "source": {
+    "title": "",
+    "url": "",
+    "evidenceLocator": "",
+    "retrievedAt": null,
+    "sha256": null
+  },
+  "benchmark": {
+    "name": "DeepSWE",
+    "version": null,
+    "scope": "unknown",
+    "taskCount": null,
+    "taskSetRevision": null
+  },
+  "result": {
+    "rawReportedText": "",
+    "reportedNumericValue": null,
+    "reportedUnit": null,
+    "normalizedFraction": null,
+    "metricLabel": null,
+    "denominator": null,
+    "denominatorCount": null,
+    "confidenceInterval": {
+      "low": null,
+      "high": null,
+      "confidence": null,
+      "method": null
+    },
+    "effortLabel": null,
+    "harness": null,
+    "harnessRevision": null,
+    "evaluationPolicy": null
+  },
+  "efficiency": {
+    "cost": { "value": null, "unit": "USD", "statistic": null, "scope": null, "basis": null, "missingReason": "Not reported" },
+    "outputTokens": { "value": null, "unit": "output tokens", "statistic": null, "scope": null, "includesReasoningTokens": null, "missingReason": "Not reported" },
+    "duration": {
+      "reportedValue": null,
+      "reportedUnit": null,
+      "valueSeconds": null,
+      "statistic": null,
+      "population": null,
+      "sampleCount": null,
+      "timerBoundaries": null,
+      "timeoutRetryPolicy": null,
+      "environment": null,
+      "missingReason": "Not reported"
+    }
+  },
+  "review": {
+    "sourceStatus": "pending-review",
+    "independentReplication": "not-assessed",
+    "notes": ""
+  }
+}
