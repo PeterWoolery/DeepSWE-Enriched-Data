@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import type { Dataset } from '../src/lib/schema'
 
@@ -19,6 +19,26 @@ interface ExportedDataset {
 
 async function loadDataset(page: import('@playwright/test').Page) {
   return page.evaluate(async () => await (await fetch('data/observations.json')).json() as ExportedDataset)
+}
+
+async function noDataSymbolOverlaps(page: Page) {
+  return page.locator('.no-data-point').evaluateAll((groups) => {
+    const bounds = groups.map((group) => {
+      const shape = group.querySelector(':scope > path, :scope > circle:not(.point-hit-area)') as SVGGraphicsElement
+      const box = shape.getBBox()
+      const stroke = Number.parseFloat(getComputedStyle(shape).strokeWidth) || 0
+      return { left: box.x - stroke / 2, right: box.x + box.width + stroke / 2, top: box.y - stroke / 2, bottom: box.y + box.height + stroke / 2 }
+    })
+    const overlaps: [number, number][] = []
+    for (let left = 0; left < bounds.length; left += 1) {
+      for (let right = left + 1; right < bounds.length; right += 1) {
+        const a = bounds[left]!
+        const b = bounds[right]!
+        if (a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top) overlaps.push([left, right])
+      }
+    }
+    return overlaps
+  })
 }
 
 test('official numeric effort curve is accessible and pass@4 evidence stays metric-specific', async ({ page }) => {
@@ -67,8 +87,8 @@ test('default view surfaces supplemental reports with their reported score metri
   await expect(luna.locator('td').nth(5)).toContainText('developer')
   await expect(luna.locator('.row-evidence a')).toHaveAttribute('href', 'https://openai.com/index/introducing-gpt-6-sol-and-luna/')
   await expect(page.locator('.plot-point[data-observation-id="openai-gpt-6-luna-v1.1-max"]')).toHaveCount(0)
-  const lunaReference = page.locator('.score-reference[data-observation-id="openai-gpt-6-luna-v1.1-max"]')
-  const lunaReferenceEntry = page.locator('.score-reference-entry[data-observation-id="openai-gpt-6-luna-v1.1-max"]')
+  const lunaReference = page.locator('.no-data-point[data-observation-id="openai-gpt-6-luna-v1.1-max"]')
+  const lunaReferenceEntry = page.locator('.no-data-entry[data-observation-id="openai-gpt-6-luna-v1.1-max"]')
   await expect(lunaReference).toHaveCount(1)
   await expect(lunaReference).toHaveAttribute('data-score-metric', 'reported_score_unspecified')
   await expect(lunaReferenceEntry).toHaveAttribute('aria-label', /Different metric from selected pass@1/)
@@ -84,12 +104,12 @@ test('default view surfaces supplemental reports with their reported score metri
   await expect(opus.locator('td').nth(5)).toContainText('developer')
   await expect(opus.locator('.row-evidence a')).toHaveAttribute('href', /Claude%20Opus%205\.5%20System%20Card\.pdf/)
   await expect(page.locator('.plot-point[data-observation-id="anthropic-claude-opus-5.5-v1.1"]')).toHaveCount(0)
-  const opusReference = page.locator('.score-reference[data-observation-id="anthropic-claude-opus-5.5-v1.1"]')
-  const opusReferenceEntry = page.locator('.score-reference-entry[data-observation-id="anthropic-claude-opus-5.5-v1.1"]')
+  const opusReference = page.locator('.no-data-point[data-observation-id="anthropic-claude-opus-5.5-v1.1"]')
+  const opusReferenceEntry = page.locator('.no-data-entry[data-observation-id="anthropic-claude-opus-5.5-v1.1"]')
   await expect(opusReference).toHaveCount(1)
   await expect(opusReferenceEntry).toHaveAttribute('aria-label', /average score over five trials; exact score metric not specified/)
   await expect(opusReferenceEntry).toContainText('74.2%')
-  await page.locator('.score-reference-key summary').click()
+  await page.locator('.no-data-key summary').click()
   await lunaReferenceEntry.focus()
   await expect(lunaReference).toHaveClass(/is-highlighted/)
   await lunaReferenceEntry.press('Enter')
@@ -120,16 +140,20 @@ test('default view surfaces supplemental reports with their reported score metri
   await expect(page.locator('.results-table tbody tr')).toHaveCount(approvedCount)
 })
 
-test('score-only references survive X/statistic/scale changes and do not invent an X range', async ({ page }) => {
+test('no-data marks use a separate gutter through X/statistic/scale changes', async ({ page }) => {
   await page.goto('./')
-  const lunaReference = page.locator('.score-reference[data-observation-id="openai-gpt-6-luna-v1.1-max"]')
-  const opusReference = page.locator('.score-reference[data-observation-id="anthropic-claude-opus-5.5-v1.1"]')
+  await expect(page.locator('.no-data-point')).toHaveCount(38)
+  await expect(page.locator('.no-data-lane-count')).toHaveText('38')
+  expect(await noDataSymbolOverlaps(page)).toEqual([])
+  const lunaReference = page.locator('.no-data-point[data-observation-id="openai-gpt-6-luna-v1.1-max"]')
+  const opusReference = page.locator('.no-data-point[data-observation-id="anthropic-claude-opus-5.5-v1.1"]')
   for (const metric of ['Cost per task', 'Output tokens per task', 'Time per task']) {
     await page.getByRole('button', { name: metric, exact: true }).click()
     for (const statistic of ['Mean', 'Median']) {
       await page.getByRole('button', { name: statistic, exact: true }).click()
       await expect(lunaReference).toHaveCount(1)
       await expect(opusReference).toHaveCount(1)
+      expect(await noDataSymbolOverlaps(page)).toEqual([])
     }
   }
   await page.getByRole('button', { name: 'Log', exact: true }).click()
@@ -137,22 +161,24 @@ test('score-only references survive X/statistic/scale changes and do not invent 
   await expect(opusReference).toHaveCount(1)
 
   await page.goto('?score=pass_at_4')
-  const fallback = page.locator('.score-reference-entry[data-observation-id="openai-gpt-6-luna-v1.1-max"]')
+  const fallback = page.locator('.no-data-entry[data-observation-id="openai-gpt-6-luna-v1.1-max"]')
   await expect(fallback).toHaveAttribute('data-score-metric', 'reported_score_unspecified')
   await expect(fallback).toHaveAttribute('aria-label', /Different metric from selected pass@4/)
 
   await page.goto('?q=luna&publisher=OpenAI')
   await expect(page.locator('.results-table tbody tr')).toHaveCount(1)
   await expect(page.locator('.plot-point')).toHaveCount(0)
-  await expect(page.locator('.score-reference')).toHaveCount(1)
+  await expect(page.locator('.no-data-point')).toHaveCount(1)
   await expect(page.locator('.x-tick-label')).toHaveCount(0)
-  await expect(page.locator('.effort-chart')).toHaveAttribute('aria-label', /no measured Cost per task extent/)
+  await expect(page.locator('.effort-chart')).toHaveAttribute('aria-label', /no usable numeric Cost per task values/)
   await expect(page.locator('.effort-chart .x-axis-title')).toHaveCount(1)
-  await expect(page.locator('.effort-chart .x-axis-title')).toContainText('NO MEASURED X EXTENT')
-  await expect(page.locator('.effort-chart')).toContainText('NO MEASURED X EXTENT')
+  await expect(page.locator('.effort-chart .x-axis-title')).toContainText('NO NUMERIC X DATA')
+  await expect(page.locator('.effort-chart')).toContainText('NO DATA')
+  await expect(page.locator('.effort-chart')).toContainText('outside numeric X scale')
+  await expect(page.locator('.no-data-point[data-observation-id="deepseek-v4.1-flash-mini-swe-v1.1"]')).toHaveCount(0)
 })
 
-test('a missing middle X breaks the measured path while retaining its score reference; log zero stays a known omission', async ({ page }) => {
+test('a missing middle X breaks the measured path while retaining a no-data mark; log zero stays a known omission', async ({ page }) => {
   const source = JSON.parse(await readFile(new URL('../data/approved/dataset.json', import.meta.url), 'utf8')) as Dataset
   const fixture: Dataset = structuredClone(source)
   const medium = fixture.observations.find((row) => row.upstreamConfigurationId === 'mini_swe_agent_gpt_6_astra_medium')!
@@ -162,7 +188,7 @@ test('a missing middle X breaks the measured path while retaining its score refe
   await page.route('**/data/observations.json', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture) }))
   await page.goto('?view=official&q=astra')
 
-  const reference = page.locator('.score-reference[data-observation-id="datacurve-v1.1:mini_swe_agent_gpt_6_astra_medium"]')
+  const reference = page.locator('.no-data-point[data-observation-id="datacurve-v1.1:mini_swe_agent_gpt_6_astra_medium"]')
   await expect(reference).toHaveCount(1)
   const sameSeriesPaths = page.locator(`.curve-path[data-series-id="${medium.series.id}"]`)
   await expect(sameSeriesPaths).toHaveCount(1)
@@ -178,7 +204,7 @@ test('a missing middle X breaks the measured path while retaining its score refe
   await page.unroute('**/data/observations.json')
   await page.route('**/data/observations.json', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(zeroFixture) }))
   await page.goto('?q=luna&publisher=OpenAI&scale=log')
-  await expect(page.locator('.score-reference[data-observation-id="openai-gpt-6-luna-v1.1-max"]')).toHaveCount(0)
+  await expect(page.locator('.no-data-point[data-observation-id="openai-gpt-6-luna-v1.1-max"]')).toHaveCount(0)
   await expect(page.locator('.chart-footnote')).toContainText('zero omitted on log scale')
   await expect(page.locator('.chart-footnote')).not.toContainText('missing X')
 })
@@ -192,7 +218,7 @@ test('all three X metrics, statistic, scale, and connections survive a shared-UR
 
   await page.getByRole('button', { name: 'Time per task' }).click()
   await expect(page).toHaveURL(/x=time/)
-  await expect(page.locator('.timing-scope-note')).toContainText('timer boundaries are unspecified')
+  await expect(page.locator('.timing-scope-note')).toContainText('timer boundaries and duration-specific sample counts are not reported')
   await expect(page.locator('.coverage-row')).toContainText('70 / 70')
 
   await page.getByRole('button', { name: 'Median', exact: true }).click()
@@ -328,7 +354,7 @@ test('score-only reports, reviewed evidence and all/filtered downloads keep attr
   await expect(rawTableRow.locator('td').nth(2)).toContainText('unit unspecified')
   await expect(rawTableRow.locator('td').nth(2)).not.toContainText('74.2%')
   expect(rawObservationId).not.toBeNull()
-  await expect(page.locator(`.score-reference[data-observation-id="${rawObservationId}"]`)).toHaveCount(0)
+  await expect(page.locator(`.no-data-point[data-observation-id="${rawObservationId}"]`)).toHaveCount(0)
   await expect(page.locator('.chart-footnote')).toContainText('source score unit not established for the percentage axis')
   await expect(explicitPercentRow.locator('td').nth(2)).toHaveText('74.2%')
   await rawTableRow.getByRole('button', { name: 'Details' }).click()
@@ -375,7 +401,8 @@ test('SVG export, submission draft, methodology/source pages, and mobile layout 
   const svg = await readFile(svgPath!, 'utf8')
   expect(svg).toContain('<svg')
   expect(svg).toContain('curve-path')
-  expect(svg).toContain('score-reference-line')
+  expect(svg).toContain('no-data-lane')
+  expect(svg).toContain('.point-hit-area{fill:transparent;stroke:transparent}')
   expect(svg).toContain('66.6%')
 
   await page.getByRole('tab', { name: /Review queue/ }).click()
@@ -413,7 +440,7 @@ test('usage scenarios stay separate from measurements, are mean-only, and export
   await page.goto('?view=combined')
   const scenarioToggle = page.getByRole('checkbox', { name: /Include usage scenarios/ })
   await expect(scenarioToggle).toBeChecked()
-  await expect(page.locator('.estimated-point')).toHaveCount(2)
+  await expect(page.locator('.estimated-point')).toHaveCount(7)
 
   const lunaId = 'aa-codex-gpt-6-luna-max-v1.1'
   const opusId = 'artificial-analysis-claude-code-opus-5.5-max-v1.1'
@@ -426,8 +453,8 @@ test('usage scenarios stay separate from measurements, are mean-only, and export
   await expect(opusEstimate).toHaveAttribute('aria-label', /Very low|very low/)
   await expect(opusEstimate).toHaveAttribute('aria-label', /No defensible sensitivity range/)
   await expect(page.locator('.usage-scenario-note')).toContainText('not DeepSWE measurements')
-  await expect(page.locator('.usage-scenario-note')).toContainText('Cost scenarios transfer AA pooled suite cost')
-  await expect(page.locator(`.score-reference[data-observation-id="${lunaId}"]`)).toHaveCount(0)
+  await expect(page.locator('.usage-scenario-note')).toContainText('Cost scenarios use separate source-reported DeepSWE rows')
+  await expect(page.locator(`.no-data-point[data-observation-id="${lunaId}"]`)).toHaveCount(0)
 
   const lunaRow = page.locator(`.results-table tr[data-observation-id="${lunaId}"]`)
   await expect(lunaRow.locator('td').nth(3)).toContainText('Mean task cost is not inferred')
@@ -445,27 +472,32 @@ test('usage scenarios stay separate from measurements, are mean-only, and export
   await scenarioToggle.uncheck()
   await expect(page).toHaveURL(/scenarios=0/)
   await expect(page.locator('.estimated-point')).toHaveCount(0)
-  await expect(page.locator(`.score-reference[data-observation-id="${lunaId}"]`)).toHaveCount(1)
+  await expect(page.locator(`.no-data-point[data-observation-id="${lunaId}"]`)).toHaveCount(1)
+  await expect(page.locator('.no-data-lane-count')).toHaveText('45')
+  expect(await noDataSymbolOverlaps(page)).toEqual([])
   await page.reload()
   await expect(scenarioToggle).not.toBeChecked()
 
   await page.goto('?view=combined&x=outputTokens')
-  await expect(page.locator('.estimated-point')).toHaveCount(2)
-  await expect(page.locator('.estimated-point[data-x-metric="outputTokens"]')).toHaveCount(2)
+  await expect(page.locator('.estimated-point')).toHaveCount(7)
+  await expect(page.locator('.estimated-point[data-x-metric="outputTokens"]')).toHaveCount(7)
   await expect(page.locator('.x-tick-label')).not.toHaveCount(0)
-  await expect(page.locator('.usage-scenario-note')).toContainText('10.2M Luna; 15.6M Opus 5.5')
+  await expect(page.locator('.usage-scenario-note')).toContainText('Coding Agent suite totals mix input, cache, cache-write, reasoning, and output')
   await expect(lunaEstimate).toHaveAttribute('aria-label', /98,422 output tokens per scored attempt/)
   await expect(lunaEstimate).toHaveAttribute('aria-label', /AA Coding Agent suite total 10,200,000 tokens\/task mixes categories/)
   await expect(opusEstimate).toHaveAttribute('aria-label', /No defensible sensitivity range or prediction interval/)
 
   await page.getByRole('button', { name: 'Time per task', exact: true }).click()
+  await expect(page.locator('.estimated-point')).toHaveCount(7)
+  await expect(page.locator('.usage-scenario-note')).toContainText('Time scenarios use measured per-task wall-clock pairs')
+  await page.getByRole('button', { name: 'Median', exact: true }).click()
   await expect(page.locator('.estimated-point')).toHaveCount(0)
-  await expect(page.locator('.usage-scenario-note')).toContainText('Median usage and time remain unestimated')
-  await expect(page.locator(`.score-reference[data-observation-id="${lunaId}"]`)).toHaveCount(1)
+  await expect(page.locator('.usage-scenario-note')).toContainText('Scenarios are mean-only')
+  await expect(page.locator(`.no-data-point[data-observation-id="${lunaId}"]`)).toHaveCount(1)
   await page.getByRole('button', { name: 'Cost per task', exact: true }).click()
   await page.getByRole('button', { name: 'Median', exact: true }).click()
   await expect(page.locator('.estimated-point')).toHaveCount(0)
-  await expect(page.locator(`.score-reference[data-observation-id="${opusId}"]`)).toHaveCount(1)
+  await expect(page.locator(`.no-data-point[data-observation-id="${opusId}"]`)).toHaveCount(1)
 
   await page.goto('?view=combined&strict=1')
   await expect(page.locator('.estimated-point')).toHaveCount(0)
@@ -478,6 +510,6 @@ test('usage scenarios stay separate from measurements, are mean-only, and export
   const scenarioPath = await (await scenarioDownload).path()
   const scenarioExport = JSON.parse(await readFile(scenarioPath!, 'utf8'))
   expect(scenarioExport.exportMetadata.exportType).toBe('estimated-usage-scenarios-only')
-  expect(scenarioExport.scenarios).toHaveLength(2)
+  expect(scenarioExport.scenarios).toHaveLength(7)
   expect(scenarioExport.scenarios.every((item: { recordType: string; measurement: { meanCostUsd: number | null }; scenario: { meanCostUsdPerScoredAttempt: number } }) => item.recordType === 'estimated_usage_scenario' && item.measurement.meanCostUsd === null && item.scenario.meanCostUsdPerScoredAttempt > 0)).toBe(true)
 })

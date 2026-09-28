@@ -41,7 +41,7 @@ export function EvidencePanel({ observation, xMetric, statistic, scoreMetric, us
   const sourceCostText = sourceCost === null ? null : `$${new Intl.NumberFormat('en', { minimumFractionDigits: 2, maximumFractionDigits: 3 }).format(sourceCost)} per task (source-reported; aggregation basis unspecified)`
   const tokens = observation.metrics[statistic === 'mean' ? 'outputTokens' : 'medianOutputTokens']
   const time = observation.metrics[statistic === 'mean' ? 'time' : 'medianTime']
-  const displayedUsageScenario = statistic === 'mean' && xMetric !== 'time' ? usageScenario : null
+  const displayedUsageScenario = statistic === 'mean' ? usageScenario : null
   const missing = [
     observation.series.harnessRevision ? null : 'Harness revision is unreported.',
     observation.series.evaluationPolicy ? null : 'Evaluation / timeout policy is unreported.',
@@ -80,11 +80,13 @@ export function EvidencePanel({ observation, xMetric, statistic, scoreMetric, us
         <dl>
           <div><dt>Mean cost / scored attempt</dt><dd>${displayedUsageScenario.costUsdPerScoredAttempt.toFixed(2)}</dd></div>
           <div><dt>Mean output tokens / scored attempt</dt><dd>{new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(displayedUsageScenario.outputTokensPerScoredAttempt)}</dd></div>
+          <div><dt>Mean reported time / scored attempt</dt><dd>{valueText(displayedUsageScenario.timeSecondsPerScoredAttempt, 'seconds')}</dd></div>
         </dl>
         <p><strong>{displayedUsageScenario.confidence === 'low' ? 'Low' : 'Very low'} evidence quality, not a probability.</strong> {displayedUsageScenario.confidenceNote}</p>
         <p><strong>Cost method:</strong> {displayedUsageScenario.costCalibrationDescription} {displayedUsageScenario.costSensitivityRange ? `Sensitivity envelope: $${displayedUsageScenario.costSensitivityRange[0].toFixed(2)}–$${displayedUsageScenario.costSensitivityRange[1].toFixed(2)}; not a confidence interval.` : 'No defensible cost range is available.'}</p>
         <p><strong>Output-token method:</strong> {displayedUsageScenario.outputCalibrationDescription} The Coding Agent suite total ({new Intl.NumberFormat('en').format(displayedUsageScenario.aaCodingSuiteMixedTokensPerTask)} tokens/task) mixes token categories and is not used as an output count; cost is not converted into tokens. {displayedUsageScenario.outputTokenSensitivityRange ? `Sensitivity envelope: ${new Intl.NumberFormat('en').format(displayedUsageScenario.outputTokenSensitivityRange[0])}–${new Intl.NumberFormat('en').format(displayedUsageScenario.outputTokenSensitivityRange[1])}; not a confidence interval.` : 'No defensible output-token range is available.'}</p>
-        <p>Cross-harness transfer. This estimate belongs to the Artificial Analysis {displayedUsageScenario.targetHarness} row; a separate developer report has unknown harness details.</p>
+        <p><strong>Time method:</strong> {displayedUsageScenario.timeCalibrationDescription} AA pooled time/task reference: {valueText(displayedUsageScenario.aaCodingSuiteTimeSecondsPerTask, 'seconds')}. {displayedUsageScenario.timeSensitivityRange ? `Sensitivity envelope: ${valueText(displayedUsageScenario.timeSensitivityRange[0], 'seconds')}–${valueText(displayedUsageScenario.timeSensitivityRange[1], 'seconds')}; not a confidence interval.` : 'No defensible time range is available.'} Timer boundaries are unspecified; this is not a verified end-to-end duration.</p>
+        <p>This scenario belongs only to the Artificial Analysis {displayedUsageScenario.targetHarness} observation and does not modify its reported score or measurement fields.</p>
         <ul>{displayedUsageScenario.sources.map((source) => <li key={source.id}><a href={source.url} target="_blank" rel="noreferrer">{source.publisher} · {source.id}</a> · accessed {source.accessedOn} · {source.evidenceLocator}</li>)}</ul>
       </section>}
       <div className="evidence-detail-grid">

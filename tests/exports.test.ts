@@ -10,6 +10,18 @@ const filters = {
   effortMode: 'all', xMetric: 'time' as const, statistic: 'mean' as const, scoreMetric: 'pass_at_4' as const,
 }
 
+function csvFieldCount(line: string): number {
+  let count = 1
+  let quoted = false
+  for (let index = 0; index < line.length; index += 1) {
+    if (line[index] === '"') {
+      if (quoted && line[index + 1] === '"') index += 1
+      else quoted = !quoted
+    } else if (line[index] === ',' && !quoted) count += 1
+  }
+  return count
+}
+
 describe('approved-data exports', () => {
   it('exports selected pass@4 with its task denominator and snapshot/filter metadata', () => {
     const csv = filteredCsvExport(dataset, [observation], filters, '2026-09-26T17:00:00Z')
@@ -68,14 +80,16 @@ describe('approved-data exports', () => {
     const allJson = usageScenarioJsonExport(dataset, dataset.observations, filters, 'all', '2026-09-26T17:00:00Z')
     expect(allJson.exportMetadata.exportType).toBe('estimated-usage-scenarios-only')
     expect(allJson.exportMetadata.observationsAreNotModified).toBe(true)
-    expect(allJson.scenarios).toHaveLength(2)
+    expect(allJson.scenarios).toHaveLength(7)
     const lunaRecord = allJson.scenarios.find((record) => record.targetObservationId === luna.id)!
     expect(lunaRecord.recordType).toBe('estimated_usage_scenario')
     expect(lunaRecord.measurement.meanCostUsd).toBeNull()
     expect(lunaRecord.measurement.meanOutputTokens).toBeNull()
     expect(lunaRecord.scenario.meanCostUsdPerScoredAttempt).toBeCloseTo(0.20668317244049378, 12)
     expect(lunaRecord.scenario.meanOutputTokensPerScoredAttempt).toBeCloseTo(98_421.65603779937, 7)
+    expect(lunaRecord.scenario.meanReportedSecondsPerScoredAttempt).toBeCloseTo(1097.5267854181109, 7)
     expect(lunaRecord.scenario.aaCodingSuiteMixedTokensPerTask).toBe(10_200_000)
+    expect(lunaRecord.scenario.timeCalibrationMethod).toBe('openai-max-arithmetic-mean-ratio')
     expect(lunaRecord.scenario.sources).toHaveLength(3)
 
     const filteredJson = usageScenarioJsonExport(dataset, [luna], filters, 'filtered', '2026-09-26T17:00:00Z')
@@ -89,8 +103,12 @@ describe('approved-data exports', () => {
     expect(csv).toContain('measurement_mean_cost_usd')
     expect(csv).toContain('scenario_mean_cost_usd_per_attempt')
     expect(csv).toContain('scenario_mean_output_tokens_per_attempt')
+    expect(csv).toContain('scenario_mean_reported_seconds_per_attempt')
     expect(csv).toContain('scenario_confidence_quality')
+    expect(csv).toContain('time_calibration_rows_json')
     expect(csv).toContain('sensitivity_note')
     expect(csv).toContain('aa-codex-vs-kimi-code-cli')
+    const csvRows = csv.trimEnd().split('\n').filter((line) => !line.startsWith('#'))
+    expect(new Set(csvRows.map(csvFieldCount)).size).toBe(1)
   })
 })

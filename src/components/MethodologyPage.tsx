@@ -3,12 +3,21 @@ import { usageScenarios } from '../lib/usage-scenarios'
 
 interface MethodologyPageProps { dataset: Dataset }
 
+function formatDuration(seconds: number) {
+  if (seconds >= 3600) return `${(seconds / 3600).toFixed(1)} h`
+  if (seconds >= 60) return `${(seconds / 60).toFixed(1)} min`
+  return `${new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(seconds)} s`
+}
+
 export function MethodologyPage({ dataset }: MethodologyPageProps) {
   const official = dataset.observations.filter((observation) => observation.provenance.sourceId === dataset.sourceRetrieval.sourceId)
   const meanTime = official.filter((observation) => observation.metrics.time.value !== null).length
   const medianTime = official.filter((observation) => observation.metrics.medianTime.value !== null).length
-  const lunaScenario = usageScenarios.find((scenario) => scenario.model === 'GPT-6 Luna')!
-  const opusScenario = usageScenarios.find((scenario) => scenario.model === 'Opus 5.5')!
+  const scenarioObservationIds = new Set(usageScenarios.map((scenario) => scenario.targetObservationId))
+  const missingUsageRows = dataset.observations.filter((observation) => observation.metrics.cost.value === null && observation.metrics.outputTokens.value === null && observation.metrics.time.value === null)
+  const noDataCount = missingUsageRows.filter((observation) => !scenarioObservationIds.has(observation.id)).length
+  const unscaledNoDataCount = missingUsageRows.filter((observation) => !scenarioObservationIds.has(observation.id) && observation.result.reportedUnit !== '%' && observation.result.reportedUnit !== 'fraction').length
+  const chartNoDataCount = noDataCount - unscaledNoDataCount
   return (
     <main className="page-wrap content-page">
       <header className="page-heading">
@@ -34,19 +43,19 @@ export function MethodologyPage({ dataset }: MethodologyPageProps) {
           <span className="section-kicker">03 · COST</span>
           <h2>Feed costs stay historical.</h2>
           <p>For official Datacurve rows, cost is the source-reported mean USD per scored rollout attempt, not per unique task. The feed's pricing basis is retained when available; current-price repricing is not performed. Other reports need a cost measured for their own experiment and scope.</p>
-          <p>Artificial Analysis publishes suite-pooled cost, token, and time metrics across DeepSWE, Terminal-Bench 4.0, and SWE-Atlas-QnA, without benchmark-specific allocation. These suite values are references, not DeepSWE usage measurements. Two optional, explicitly separate scenarios transfer cost/output usage with observed same-effort calibration ratios; Fireworks' source-scoped Cost/Task values are not used. No rate-card repricing or cost-to-token conversion is performed.</p>
+          <p>Artificial Analysis publishes suite-pooled cost, token, and time metrics across DeepSWE, Terminal-Bench 4.0, and SWE-Atlas-QnA, without benchmark-specific allocation. These suite values are not DeepSWE usage measurements. Optional scenarios are separate cross-harness estimates or exact-model/effort DeepSWE reference transfers; they do not replace source measurements. Fireworks' unscoped Cost/Task values are not normalized, and no rate-card repricing or cost-to-token conversion is performed.</p>
           <p>The GPT-5.6 Sol max row is unresolved: the JSON feed reports ${official.find((row) => row.upstreamConfigurationId === 'mini_swe_agent_gpt_5_6_sol_max')?.pricing.asReportedCost?.toFixed(2) ?? '—'} mean cost while the rendered leaderboard displayed $6.46. Both observations retain attribution; the chart uses the selected feed metric.</p>
         </article>
         <article className="method-card">
           <span className="section-kicker">04 · TOKENS</span>
           <h2>Output tokens, not total tokens.</h2>
-          <p>The X metric uses the feed's mean or median output-token count per scored attempt. Input tokens and agent steps are not substituted. Whether reasoning tokens are included is not established consistently, so token equivalence is excluded from strict matching. Optional usage scenarios are mean-only and do not infer time or median values.</p>
+          <p>The X metric uses the feed's mean or median output-token count per scored attempt. Input tokens and agent steps are not substituted. Whether reasoning tokens are included is not established consistently, so token equivalence is excluded from strict matching. Optional usage scenarios are mean-only; they do not infer median values, and strict comparisons exclude every scenario.</p>
         </article>
         <article className="method-card method-card-accent">
           <span className="section-kicker">05 · TIME</span>
           <h2>Reported duration, timer boundary unknown.</h2>
           <p>Datacurve reports both mean and median duration on {meanTime} of {official.length} current configurations ({medianTime} median values). The field is seconds over scored rollout attempts, but timer start/end, tool/retry/queue/setup/verification inclusion, timeout handling, environment, and a duration-specific sample count are not stated.</p>
-          <p>It is therefore labeled <strong>reported seconds per scored attempt</strong>, not verified end-to-end wall-clock time, and strict timing matching excludes it. Mean and median are never silently substituted.</p>
+          <p>It is therefore labeled <strong>reported seconds per scored attempt</strong>, not verified end-to-end wall-clock time, and strict timing matching excludes it. Time scenarios use measured wall-clock ratios but retain this scope caveat; mean and median are never silently substituted.</p>
         </article>
         <article className="method-card">
           <span className="section-kicker">06 · UNCERTAINTY</span>
@@ -61,13 +70,14 @@ export function MethodologyPage({ dataset }: MethodologyPageProps) {
         <article className="method-card method-card-wide">
           <span className="section-kicker">08 · USAGE SCENARIOS</span>
           <h2>Transfer scenarios stay distinct from measurements.</h2>
-          <p>The default-enabled <strong>Include usage scenarios</strong> switch adds standalone hollow diamonds only for these exact Artificial Analysis max rows. Each diamond uses that source row's actual DeepSWE score; it does not change the score or missing cost/output fields. The developer reports remain separate and do not inherit the scenarios because their harness details are unknown. Strict comparisons exclude scenarios; median and time views remain unestimated.</p>
-          <ul>
-            <li><strong>GPT-6 Luna / Codex, max:</strong> AA suite cost $0.18/task and about 10.2M mixed-category tokens/task; separate AA Intelligence Index output is about 51k. Transfer scenarios: ${lunaScenario.costUsdPerScoredAttempt.toFixed(2)} per scored attempt and {new Intl.NumberFormat('en').format(lunaScenario.outputTokensPerScoredAttempt)} output tokens per scored attempt. Low evidence quality; displayed sensitivity envelopes are small-sample calibration ranges, not confidence intervals.</li>
-            <li><strong>Opus 5.5 / Claude Code, max:</strong> AA suite cost $13.04/task and about 15.6M mixed-category tokens/task; separate AA Intelligence Index output is about 119k. Transfer scenarios: ${opusScenario.costUsdPerScoredAttempt.toFixed(2)} per scored attempt and {new Intl.NumberFormat('en').format(opusScenario.outputTokensPerScoredAttempt)} output tokens per scored attempt. Very low evidence quality; one Opus 5 predecessor pair and no defensible range.</li>
-          </ul>
-          <p>Output scenarios use output-only Intelligence Index figures transferred by same-effort DeepSWE/AA output-token ratios. The Coding Agent suite token totals mix input, cache, cache-write, reasoning, and output and are never treated as output counts. Cost uses an independent cost calibration. Evidence quality is qualitative, not probabilistic.</p>
-          <p>{[...new Map([...lunaScenario.sources, ...opusScenario.sources].map((source) => [source.id, source])).values()].map((source, index) => <span key={source.id}>{index ? ' · ' : ''}<a href={source.url} target="_blank" rel="noreferrer">{source.publisher} {source.id}</a> (accessed {source.accessedOn})</span>)}</p>
+          <p>The default-enabled <strong>Include usage scenarios</strong> switch adds standalone hollow diamonds for {usageScenarios.length} exact Artificial Analysis observation rows. Four use separate Datacurve DeepSWE rows with exact model/max matches; GPT-6 Sol/Luna use calibrated suite references; Opus 5.5 uses one adjacent-version Opus 5 max pair. Each marker keeps the AA score and does not populate approved measurement fields. Separate developer reports do not inherit estimates when their experiment identity or harness is unknown.</p>
+          <p>The current snapshot has {missingUsageRows.length} observations missing all three usage metrics. {noDataCount} remain without a defensible estimate for cost, output tokens, or time; {chartNoDataCount} percentage-scale scores appear in the no-data gutter. {unscaledNoDataCount} raw-unit-unspecified scores remain unscaled outside the percentage plot. Scenarios are mean-only; median views and strict comparisons exclude them.</p>
+          <ul className="scenario-method-list">{usageScenarios.map((scenario) => {
+            const target = dataset.observations.find((observation) => observation.id === scenario.targetObservationId)
+            return <li key={scenario.id}><strong>{scenario.targetReportedName} · {scenario.targetHarness}:</strong> ${scenario.costUsdPerScoredAttempt.toFixed(2)}, {new Intl.NumberFormat('en').format(scenario.outputTokensPerScoredAttempt)} output tokens, {formatDuration(scenario.timeSecondsPerScoredAttempt)} per scored attempt. {scenario.confidence === 'low' ? 'Low' : 'Very low'} qualitative evidence; timing boundaries are incomplete and this is not an end-to-end duration. <small>{scenario.directUsageReference ? `Direct reference: ${scenario.directUsageReference.configurationId}.` : `${scenario.costCalibrationDescription} ${scenario.outputCalibrationDescription}`}</small>{target && <> Source score: {target.result.reportedText}.</>}</li>
+          })}</ul>
+          <p>Output scenarios use output-only Intelligence Index figures or exact-model/effort DeepSWE output counts. Coding Agent suite token totals mix input, cache, cache-write, reasoning, and output and are never treated as output counts. Cost uses independent evidence. Evidence quality is qualitative, not probabilistic; observed sensitivity envelopes are not confidence or prediction intervals.</p>
+          <p>{[...new Map(usageScenarios.flatMap((scenario) => scenario.sources).map((source) => [source.id, source])).values()].map((source, index) => <span key={source.id}>{index ? ' · ' : ''}<a href={source.url} target="_blank" rel="noreferrer">{source.publisher} {source.id}</a> (accessed {source.accessedOn})</span>)}</p>
         </article>
         <article className="method-card method-card-wide">
           <span className="section-kicker">09 · SOURCES &amp; REUSE</span>

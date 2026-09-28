@@ -240,10 +240,10 @@ function App() {
     if (!svgRef.current) return
     const clone = svgRef.current.cloneNode(true) as SVGSVGElement
     clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
-    clone.setAttribute('width', '1080')
-    clone.setAttribute('height', '470')
+    clone.setAttribute('width', String(svgRef.current.viewBox.baseVal.width))
+    clone.setAttribute('height', String(svgRef.current.viewBox.baseVal.height))
     const styles = document.createElementNS('http://www.w3.org/2000/svg', 'style')
-    styles.textContent = ':root{--paper-strong:#fbf9f2;--ink:#1d2624;--ink-soft:#4d5b57;--ink-faint:#78817b;--line:#cfc8b9;--line-strong:#aaa493;--teal-soft:#dce9e4}.grid-line{stroke:#cfc8b9;stroke-width:1;stroke-dasharray:2 5}.axis-line{stroke:#aaa493;stroke-width:1.2}.tick-label{fill:#78817b;font:10px monospace}.axis-title{fill:#4d5b57;font:9px monospace;letter-spacing:.11em}.curve-path{fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}.score-reference-line{fill:none;stroke-width:2;stroke-dasharray:6 5}.confidence-mark line{stroke:#1d2624;stroke-width:1.25}.point-label{fill:#1d2624;font:10px monospace;paint-order:stroke;stroke:#fbf9f2;stroke-width:3px}.chart-callout rect{fill:#dce9e4;stroke:#cfc8b9}.chart-callout text{fill:#006d68;font:14px monospace}.chart-callout .callout-caption{font-size:7px;letter-spacing:.07em}'
+    styles.textContent = ':root{--paper-strong:#fbf9f2;--ink:#1d2624;--ink-soft:#4d5b57;--ink-faint:#78817b;--line:#cfc8b9;--line-strong:#aaa493;--teal-soft:#dce9e4}.grid-line{stroke:#cfc8b9;stroke-width:1;stroke-dasharray:2 5}.axis-line{stroke:#aaa493;stroke-width:1.2}.tick-label{fill:#78817b;font:10px monospace}.axis-title{fill:#4d5b57;font:9px monospace;letter-spacing:.11em}.curve-path{fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}.point-hit-area{fill:transparent;stroke:transparent}.no-data-lane{fill:#f4f0e5;stroke:#cfc8b9;stroke-dasharray:3 4}.no-data-lane-divider{stroke:#aaa493;stroke-width:1.2;stroke-dasharray:3 4}.no-data-lane-title,.no-data-lane-count{fill:#9a551d;font:10px monospace;letter-spacing:.08em}.no-data-lane-note{fill:#78817b;font:8px monospace}.confidence-mark line{stroke:#1d2624;stroke-width:1.25}.point-label{fill:#1d2624;font:10px monospace;paint-order:stroke;stroke:#fbf9f2;stroke-width:3px}'
     styles.textContent += '.estimated-diamond{fill:#fbf9f2;stroke:#bd661d;stroke-width:2.4;stroke-dasharray:2 2}.estimated-label{fill:#bd661d;font:9px monospace;paint-order:stroke;stroke:#fbf9f2;stroke-width:3px}'
     clone.insertBefore(styles, clone.firstChild)
     const svg = new XMLSerializer().serializeToString(clone)
@@ -415,17 +415,27 @@ function App() {
               </div>
             </div>
 
-            {state.xMetric === 'time' && <div className="timing-scope-note"><strong>Reported time, scope incomplete.</strong> Values are source-reported seconds per scored rollout attempt; timer boundaries are unspecified and a duration-specific sample count is not reported. Strict timing comparison therefore excludes these rows.</div>}
+            {state.xMetric === 'time' && <div className="timing-scope-note"><strong>Reported time, scope incomplete.</strong> Measured values are source-reported seconds per scored rollout attempt; timer boundaries and duration-specific sample counts are not reported. Strict timing comparison excludes these rows. Optional scenarios are separate and are not verified end-to-end durations.</div>}
             {state.xMetric === 'outputTokens' && <div className="timing-scope-note token-scope-note"><strong>Output-token semantics are not fully matched.</strong> Reasoning-token inclusion is unknown for most configurations; strict comparisons require it to be known.</div>}
             {state.includeUsageScenarios && state.strict && <div className="usage-scenario-note" role="note"><strong>Strict comparison excludes usage scenarios.</strong> Only source-reported measurements are considered in strict groups.</div>}
-            {state.includeUsageScenarios && !state.strict && (state.statistic === 'median' || state.xMetric === 'time') && <div className="usage-scenario-note" role="note"><strong>No usage scenario for this axis/statistic.</strong> Estimates are mean-only for cost and output tokens. Median usage and time remain unestimated; source values stay missing or score-only.</div>}
-            {state.includeUsageScenarios && !state.strict && state.statistic === 'mean' && state.xMetric !== 'time' && visibleUsageScenarios.length > 0 && <div className="usage-scenario-note" role="note">
-              <strong>Estimated usage scenarios · not DeepSWE measurements.</strong> Hollow diamonds use the matching Artificial Analysis source score and an inferred mean X value. They are cross-harness transfers for the exact AA rows only; the separate developer reports have unknown harness details and do not inherit these estimates.
-              <ul>{visibleUsageScenarios.map(({ observation, scenario }) => <li key={scenario.id}>{observation.model.reportedName}: {scenario.confidence === 'low' ? 'low' : 'very low'} evidence quality; {state.xMetric === 'cost' ? `$${scenario.costUsdPerScoredAttempt.toFixed(2)}/attempt` : `${new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(scenario.outputTokensPerScoredAttempt)} output tokens/attempt`}{(state.xMetric === 'cost' ? scenario.costSensitivityRange : scenario.outputTokenSensitivityRange) ? ` · small-sample sensitivity only, not a confidence interval` : ' · no defensible range or prediction interval'}.</li>)}</ul>
+            {state.includeUsageScenarios && !state.strict && state.statistic === 'median' && <div className="usage-scenario-note" role="note"><strong>Scenarios are mean-only.</strong> Median remains limited to source-reported measurements; scenario targets without median values are listed in the no-data gutter.</div>}
+            {state.includeUsageScenarios && !state.strict && state.statistic === 'mean' && visibleUsageScenarios.length > 0 && <div className="usage-scenario-note" role="note">
+              <strong>Estimated usage scenarios · not DeepSWE measurements.</strong> Hollow diamonds are standalone, mean-only scenarios for exact Artificial Analysis model/effort observations. The separate developer reports do not inherit them when their evaluation harness/protocol is unknown.
+              <ul>{visibleUsageScenarios.map(({ observation, scenario }) => {
+                const value = state.xMetric === 'cost'
+                  ? `$${scenario.costUsdPerScoredAttempt.toFixed(2)}/attempt`
+                  : state.xMetric === 'outputTokens'
+                    ? `${new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(scenario.outputTokensPerScoredAttempt)} output tokens/attempt`
+                    : `${new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(scenario.timeSecondsPerScoredAttempt / 60)} min/attempt`
+                const range = state.xMetric === 'cost' ? scenario.costSensitivityRange : state.xMetric === 'outputTokens' ? scenario.outputTokenSensitivityRange : scenario.timeSensitivityRange
+                return <li key={scenario.id}>{observation.model.reportedName}: {scenario.confidence === 'low' ? 'low' : 'very low'} qualitative evidence; {value}{range ? ' · observed small-sample sensitivity only, not a confidence interval' : ' · no defensible range or prediction interval'}.</li>
+              })}</ul>
               {state.xMetric === 'outputTokens'
-                ? <p>Output-token scenarios transfer from AA Intelligence Index output-only tokens/task via exact-effort DeepSWE/AA output ratios. AA Coding Agent suite totals (10.2M Luna; 15.6M Opus 5.5) mix input, cache, cache-write, reasoning, and output; they are not output counts. Cost is calibrated independently and is never converted into tokens.</p>
-                : <p>Cost scenarios transfer AA pooled suite cost through same-provider calibration; they are not repriced token counts. Reported suite aggregates are not DeepSWE-specific.</p>}
-              <p>Evidence quality is not probabilistic. Any displayed sensitivity envelope is an observed calibration sample range, not a confidence or prediction interval; Opus 5.5 has no defensible range.</p>
+                ? <p>Only output-only Intelligence Index counts or exact-model/effort DeepSWE measurements support output scenarios. Coding Agent suite totals mix input, cache, cache-write, reasoning, and output; they are never displayed as output tokens.</p>
+                : state.xMetric === 'cost'
+                  ? <p>Cost scenarios use separate source-reported DeepSWE rows or calibrated suite-cost transfer. Cost is not derived from scores, output counts, or current rate cards; source price-basis gaps make the sensitivity envelope especially wide.</p>
+                  : <p>Time scenarios use measured per-task wall-clock pairs or an exact-model/effort DeepSWE reference. AA pools multiple benchmarks and Datacurve timer boundaries are unspecified; these are reported-time scenarios, not verified end-to-end durations.</p>}
+              <p>Evidence grades are qualitative, not probabilities. Sensitivity envelopes are observed sample ranges, not confidence or prediction intervals. Strict comparisons exclude scenarios.</p>
             </div>}
             {(state.scoreMetric === 'reported_score_unspecified' || chartHasMixedDefinitions || chartHasUnscaledScores) && <div className="metric-chart-warning" role="note"><strong>Source scores retain their own definitions.</strong> Only explicit percentage/fraction values use the score axis; raw values with unspecified units are omitted. Each mark keeps its source metric and protocol—percent values alone do not make different evaluations comparable.</div>}
               {state.strict && <div className="strict-note" role="status">
@@ -434,7 +444,7 @@ function App() {
                 <p>{strictGroups.length === 0 ? 'No complete groups match the current filters. Unknown protocol fields fail closed.' : !selectedStrictGroupAvailable ? `${strictGroups.length} compatible group${strictGroups.length === 1 ? '' : 's'} available. Select a group to compare; no group is selected automatically.` : `${filteredObservations.length} observations in the selected protocol group; ${strictExcluded - strictIncomplete} selected rows belong to another incompatible group.`}</p>
                 {Object.entries(strictReasons).length > 0 && <small>{Object.entries(strictReasons).slice(0, 3).map(([reason, count]) => `${count} excluded: ${reason}`).join(' · ')}</small>}
               </div>}
-            <div className="coverage-row" role="status"><span className="coverage-big">{coverage.available}<i> / {coverage.total}</i></span><span>{state.statistic} {xMetricLabels[state.xMetric].axis} available among observations reporting {scoreMetricLabels[state.scoreMetric]}.</span><span className="omission-count">{coverage.missing} missing X metric</span></div>
+            <div className="coverage-row" role="status"><span className="coverage-big">{coverage.available}<i> / {coverage.total}</i></span><span>Source-reported {state.statistic} {xMetricLabels[state.xMetric].axis} values among observations reporting {scoreMetricLabels[state.scoreMetric]}.</span><span className="omission-count">{coverage.missing} without source value{visibleUsageScenarios.length ? ` · ${visibleUsageScenarios.length} scenario${visibleUsageScenarios.length === 1 ? '' : 's'} active` : ''}</span></div>
 
             <div className="analysis-grid">
               <div className="chart-card">
@@ -444,6 +454,8 @@ function App() {
                   usageScenarios={visibleUsageScenarios}
                   xMetric={state.xMetric}
                   statistic={state.statistic}
+                  strict={state.strict}
+                  includeUsageScenarios={state.includeUsageScenarios}
                   scoreMetric={state.scoreMetric}
                   scale={state.scale}
                   connections={connections}
@@ -458,7 +470,7 @@ function App() {
               <aside className="chart-side-rail">
                 <section className="legend-card" aria-labelledby="legend-title">
                   <div className="side-card-head"><div><span className="section-kicker">SERIES INDEX</span><h3 id="legend-title">Models &amp; sources</h3></div><span className="count-stamp">{legendSeries.length}</span></div>
-                  <p className="legend-note">Filled markers and paths are measured source rows; a hollow amber diamond is an unconnected usage scenario. Dashed horizontal marks have no X value. Select a name to isolate its source series.</p>
+                  <p className="legend-note">Filled markers and paths are measured source rows; hollow amber diamonds are unconnected usage scenarios. No-data marks sit in a separate gutter outside the numeric X scale. Select a name to isolate its source series.</p>
                   <ul className="legend-list">
                     {legendSeries.map(({ id, first, count }) => <li key={id}>
                       <button type="button" className="legend-item" onClick={() => isolateModel(modelKey(first))} onMouseEnter={() => setActiveSeriesId(id)} onMouseLeave={() => setActiveSeriesId(null)} onFocus={() => setActiveSeriesId(id)} onBlur={() => setActiveSeriesId(null)}>

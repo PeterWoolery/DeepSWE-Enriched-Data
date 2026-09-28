@@ -189,18 +189,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .chart-card-head strong { font: 600 12px var(--sans); }
 .chart-card-head span { color: var(--ink-faint); font: 9px var(--mono); }
 .icon-action { border: 1px solid var(--line); padding: 6px 9px; background: transparent; color: var(--teal); cursor: pointer; font: 10px var(--mono); }
-.chart-frame { padding: 8px 12px 0; }
-.effort-chart { display: block; width: 100%; height: auto; overflow: visible; }
+.chart-frame { overflow-x: auto; padding: 8px 12px 0; }
+.effort-chart { display: block; width: 100%; min-width: 720px; height: auto; overflow: visible; }
 .effort-chart .grid-line { stroke: var(--line); stroke-width: 1; stroke-dasharray: 2 5; }
 .effort-chart .grid-line.vertical { opacity: .55; }
 .effort-chart .axis-line { stroke: var(--line-strong); stroke-width: 1.2; }
 .effort-chart .tick-label { fill: var(--ink-faint); font: 10px var(--mono); }
 .effort-chart .axis-title { fill: var(--ink-soft); font: 9px var(--mono); letter-spacing: .11em; }
 .effort-chart .curve-path { fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; transition: opacity .15s ease; }
-.effort-chart .score-reference { pointer-events: none; transition: opacity .15s ease; }
-.effort-chart .score-reference.is-dimmed { opacity: .16; }
-.effort-chart .score-reference-line { fill: none; stroke-width: 2; stroke-dasharray: 6 5; transition: stroke-width .15s ease; }
-.effort-chart .score-reference.is-highlighted .score-reference-line { stroke-width: 3; }
+.effort-chart .no-data-lane { fill: var(--paper); stroke: var(--line); stroke-dasharray: 3 4; }
+.effort-chart .no-data-lane-divider { stroke: var(--line-strong); stroke-width: 1.2; stroke-dasharray: 3 4; }
+.effort-chart .no-data-lane-title, .effort-chart .no-data-lane-count { fill: var(--amber); font: 10px var(--mono); letter-spacing: .08em; }
+.effort-chart .no-data-lane-note { fill: var(--ink-faint); font: 8px var(--mono); }
 .effort-chart .point-hit-area { fill: transparent; stroke: transparent; }
 .effort-chart .plot-point { cursor: pointer; outline: none; transition: opacity .15s ease; }
 .effort-chart .plot-point:hover, .effort-chart .plot-point:focus-visible, .effort-chart .plot-point.is-highlighted { opacity: 1; }
@@ -209,6 +209,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .effort-chart .estimated-point { cursor: pointer; outline: none; transition: opacity .15s ease; }
 .effort-chart .estimated-point.is-dimmed { opacity: .16; }
 .effort-chart .estimated-point:focus-visible > .point-hit-area { fill: rgba(189, 102, 29, .12); stroke: var(--amber); stroke-width: 1.5; }
+.effort-chart .no-data-point { cursor: pointer; outline: none; transition: opacity .15s ease; }
+.effort-chart .no-data-point.is-dimmed { opacity: .2; }
+.effort-chart .no-data-point:focus-visible > .point-hit-area { fill: rgba(189, 102, 29, .12); stroke: var(--amber); stroke-width: 1.5; }
+.effort-chart .no-data-point.is-highlighted { opacity: 1; }
 .effort-chart .estimated-diamond { fill: var(--paper-strong); stroke: var(--amber); stroke-width: 2.4; stroke-dasharray: 2 2; }
 .effort-chart .estimated-point.is-highlighted .estimated-diamond { stroke-width: 3.2; }
 .effort-chart .estimated-label { fill: var(--amber); font: 9px var(--mono); paint-order: stroke; stroke: var(--paper-strong); stroke-width: 3px; pointer-events: none; }
@@ -217,17 +221,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .effort-chart .chart-callout rect { fill: var(--teal-soft); stroke: var(--line); }
 .effort-chart .chart-callout text { fill: var(--teal); font: 14px var(--mono); }
 .effort-chart .chart-callout .callout-caption { font-size: 7px; letter-spacing: .07em; }
-.score-reference-key { border-top: 1px solid var(--line); }
-.score-reference-key summary { display: flex; justify-content: space-between; gap: 12px; padding: 9px 5px; color: var(--ink-soft); font-size: 10px; cursor: pointer; }
-.score-reference-key summary span { color: var(--ink-faint); font: 9px var(--mono); text-align: right; }
-.score-reference-list { display: grid; max-height: 280px; overflow: auto; margin: 0; padding: 0; border-top: 1px solid var(--line); list-style: none; }
-.score-reference-list li { border-bottom: 1px solid var(--line); }
-.score-reference-entry { display: flex; align-items: flex-start; width: 100%; gap: 10px; border: 0; padding: 8px 5px; background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
-.score-reference-entry:hover, .score-reference-entry:focus-visible, .score-reference-entry.is-selected { background: var(--teal-soft); }
-.score-reference-swatch { flex: 0 0 25px; margin-top: 6px; border-top: 2px dashed; }
-.score-reference-copy { display: grid; gap: 3px; min-width: 0; }
-.score-reference-copy strong { font-size: 10px; }
-.score-reference-copy small { color: var(--ink-faint); font-size: 9px; line-height: 1.4; }
+.no-data-key { border-top: 1px solid var(--line); }
+.no-data-key summary { display: flex; justify-content: space-between; gap: 12px; padding: 9px 5px; color: var(--ink-soft); font-size: 10px; cursor: pointer; }
+.no-data-key summary span { color: var(--ink-faint); font: 9px var(--mono); text-align: right; }
+.no-data-list { display: grid; max-height: 320px; overflow: auto; margin: 0; padding: 0; border-top: 1px solid var(--line); list-style: none; }
+.no-data-list li { border-bottom: 1px solid var(--line); }
+.no-data-entry { display: flex; align-items: flex-start; width: 100%; gap: 10px; border: 0; padding: 8px 5px; background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
+.no-data-entry:hover, .no-data-entry:focus-visible, .no-data-entry.is-selected { background: var(--teal-soft); }
+.no-data-entry-swatch { flex: 0 0 9px; height: 9px; margin: 4px 8px 0; border: 2px solid; border-radius: 50%; }
+.no-data-entry-copy { display: grid; gap: 3px; min-width: 0; }
+.no-data-entry-copy strong { font-size: 10px; }
+.no-data-entry-copy small { color: var(--ink-faint); font-size: 9px; line-height: 1.4; }
 .chart-empty { min-height: 390px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 50px 9%; border: 1px dashed var(--line-strong); background: repeating-linear-gradient(135deg, var(--paper-strong), var(--paper-strong) 16px, var(--paper) 16px, var(--paper) 17px); }
 .chart-empty h3 { max-width: 440px; margin: 15px 0 8px; font: 400 34px/1.08 var(--serif); letter-spacing: -.04em; }
 .chart-empty p { max-width: 510px; color: var(--ink-soft); font-size: 12px; line-height: 1.6; }
@@ -403,6 +407,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .method-card h2 { margin: 9px 0; font: 400 27px/1.05 var(--serif); letter-spacing: -.045em; }
 .method-card p { color: var(--ink-soft); font: 11px/1.65 var(--sans); }
 .method-card p:last-child { margin-bottom: 0; }
+.method-card .scenario-method-list { display: grid; gap: 8px; margin: 12px 0; padding-left: 18px; color: var(--ink-soft); font-size: 10px; line-height: 1.5; }
+.scenario-method-list small { display: block; margin-top: 3px; color: var(--ink-faint); font: 9px/1.45 var(--mono); }
 .method-card-accent { border-top: 3px solid var(--amber); }
 .method-footnote { margin: 20px 0 60px; color: var(--ink-faint); font-size: 10px; line-height: 1.6; }
 .source-summary { display: grid; grid-template-columns: auto auto 1fr; gap: 25px; align-items: center; padding: 18px 0; border-bottom: 1px solid var(--line); }

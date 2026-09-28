@@ -3,11 +3,13 @@ import type { RefObject } from 'react'
 import { displayModelName, displayScoreResult, displayScoreValue, hasPercentageScoreScale, metricObservation, modelKey, scoreMetricLabels, xMetricLabels, type ScoreMetric, type Statistic, type XMetric } from '../lib/comparison'
 import { segmentXY, type AxisScale, type XYObservation } from '../lib/xy'
 import type { Observation } from '../lib/schema'
-import { scenarioXValue, type UsageScenario } from '../lib/usage-scenarios'
+import { scenarioXValue, usageScenarioForObservation, type UsageScenario } from '../lib/usage-scenarios'
 
-const WIDTH = 1080
+const WIDTH = 1160
 const HEIGHT = 470
-const PLOT = { left: 82, right: 1008, top: 34, bottom: 398 }
+const PLOT = { left: 82, right: 840, top: 44, bottom: 398 }
+const NO_DATA_COLUMNS = 17
+const NO_DATA_COLUMN_STEP = 18
 function stableColor(identity: string): string {
   let hash = 2166136261
   for (const character of identity) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619)
@@ -25,6 +27,12 @@ function xValue(observation: Observation, metric: XMetric, statistic: Statistic)
 
 function formatNumber(value: number): string {
   return new Intl.NumberFormat('en', { maximumFractionDigits: 2 }).format(value)
+}
+
+function formatDuration(seconds: number): string {
+  if (seconds >= 3600) return `${(seconds / 3600).toFixed(1)} h`
+  if (seconds >= 60) return `${(seconds / 60).toFixed(1)} min`
+  return `${formatNumber(seconds)} s`
 }
 
 function formatAxis(value: number, metric: XMetric): string {
@@ -55,13 +63,35 @@ function makeTicks(scale: AxisScale, min: number, max: number): number[] {
   return [0, 0.25, 0.5, 0.75, 1].map((fraction) => min + (max - min) * fraction)
 }
 
-function sourceShape(category: Observation['sourceCategory'], x: number, y: number, color: string, selected: boolean) {
+function sourceShape(category: Observation['sourceCategory'], x: number, y: number, color: string, selected: boolean, size = 1) {
   const stroke = selected ? '#171b1a' : '#f3f0e7'
   const strokeWidth = selected ? 3 : 1.8
-  if (category === 'developer') return <path d={`M ${x} ${y - 7} L ${x + 7} ${y} L ${x} ${y + 7} L ${x - 7} ${y} Z`} fill={color} stroke={stroke} strokeWidth={strokeWidth} />
-  if (category === 'independent') return <path d={`M ${x} ${y - 8} L ${x + 7} ${y + 6} L ${x - 7} ${y + 6} Z`} fill={color} stroke={stroke} strokeWidth={strokeWidth} />
-  if (category === 'local') return <path d={`M ${x - 6} ${y - 6} h 12 v 12 h -12 Z`} fill={color} stroke={stroke} strokeWidth={strokeWidth} />
-  return <circle cx={x} cy={y} r={selected ? 7.5 : 6} fill={color} stroke={stroke} strokeWidth={strokeWidth} />
+  if (category === 'developer') return <path d={`M ${x} ${y - 7 * size} L ${x + 7 * size} ${y} L ${x} ${y + 7 * size} L ${x - 7 * size} ${y} Z`} fill={color} stroke={stroke} strokeWidth={strokeWidth} />
+  if (category === 'independent') return <path d={`M ${x} ${y - 8 * size} L ${x + 7 * size} ${y + 6 * size} L ${x - 7 * size} ${y + 6 * size} Z`} fill={color} stroke={stroke} strokeWidth={strokeWidth} />
+  if (category === 'local') return <path d={`M ${x - 6 * size} ${y - 6 * size} h ${12 * size} v ${12 * size} h ${-12 * size} Z`} fill={color} stroke={stroke} strokeWidth={strokeWidth} />
+  return <circle cx={x} cy={y} r={(selected ? 7.5 : 6) * size} fill={color} stroke={stroke} strokeWidth={strokeWidth} />
+}
+
+interface NoDataMark {
+  series: { id: string; color: string }
+  observation: Observation
+  score: ReturnType<typeof displayScoreResult>
+  missingReason: string
+  scenarioNote: string | null
+  x: number
+  y: number
+}
+
+function arrangeNoDataMarks(items: Omit<NoDataMark, 'x' | 'y'>[]): NoDataMark[] {
+  const columns = Array.from({ length: NO_DATA_COLUMNS }, () => [] as number[])
+  const ordered = [...items].sort((left, right) => scaleY(left.score.value) - scaleY(right.score.value) || left.observation.id.localeCompare(right.observation.id))
+  return ordered.map((item) => {
+    const y = scaleY(item.score.value)
+    const freeColumn = columns.findIndex((occupied) => occupied.every((occupiedY) => Math.abs(occupiedY - y) >= 17))
+    const column = freeColumn >= 0 ? freeColumn : columns.reduce((best, occupied, index) => occupied.length < columns[best]!.length ? index : best, 0)
+    columns[column]!.push(y)
+    return { ...item, x: PLOT.right + 11 + column * NO_DATA_COLUMN_STEP, y }
+  })
 }
 
 export interface ExplorerChartProps {
@@ -69,6 +99,8 @@ export interface ExplorerChartProps {
   usageScenarios: { observation: Observation; scenario: UsageScenario }[]
   xMetric: XMetric
   statistic: Statistic
+  strict: boolean
+  includeUsageScenarios: boolean
   scoreMetric: ScoreMetric
   scale: AxisScale
   connections: boolean
@@ -85,6 +117,8 @@ export function ExplorerChart({
   usageScenarios,
   xMetric,
   statistic,
+  strict,
+  includeUsageScenarios,
   scoreMetric,
   scale,
   connections,
@@ -128,15 +162,14 @@ export function ExplorerChart({
   }, [observations, xMetric, statistic, scoreMetric, scale])
 
   const accepted = plotSeries.flatMap((series) => series.segments.points)
-  const estimatedPlotPoints = usageScenarios.flatMap(({ observation, scenario }) => {
-    if (xMetric === 'time') return []
+  const scenarioCandidates = usageScenarios.flatMap(({ observation, scenario }) => {
     const score = displayScoreResult(observation, scoreMetric)
     if (!hasPercentageScoreScale(score)) return []
     const x = scenarioXValue(scenario, xMetric)
-    if (!Number.isFinite(x) || x < 0 || scale === 'log' && x === 0) return []
     return [{ observation, scenario, score, x }]
   })
-  const estimatedObservationIds = new Set(estimatedPlotPoints.map(({ observation }) => observation.id))
+  const estimatedPlotPoints = scenarioCandidates.filter(({ x }) => Number.isFinite(x) && x >= 0 && (scale === 'linear' || x > 0))
+  const scenarioCandidateIds = new Set(scenarioCandidates.map(({ observation }) => observation.id))
   const xValues = [
     ...accepted.map((point) => point.x),
     ...estimatedPlotPoints.map((point) => point.x),
@@ -149,13 +182,29 @@ export function ExplorerChart({
   const hasXAxisExtent = linearValues.length > 0
   const ticks = hasXAxisExtent ? makeTicks(scale, xMin, xMax) : []
   const plottedRows = plotSeries.flatMap((series) => series.segments.points.map((point) => ({ series, point, observation: series.byId.get(point.id)! })))
-  const references = plotSeries.flatMap((series) => series.rows.flatMap((observation) => {
+  const noDataMarks = arrangeNoDataMarks(plotSeries.flatMap((series) => series.rows.flatMap((observation) => {
     const score = displayScoreResult(observation, scoreMetric)
     const metric = metricObservation(observation, xMetric, statistic)
-    return metric.value === null && hasPercentageScoreScale(score) && !estimatedObservationIds.has(observation.id)
-      ? [{ series, observation, score, missingReason: metric.missingReason ?? `${statistic} ${xMetricLabels[xMetric].label} is not reported.` }]
-      : []
-  }))
+    if (metric.value !== null || !hasPercentageScoreScale(score) || scenarioCandidateIds.has(observation.id)) return []
+    const scenario = usageScenarioForObservation(observation)
+    const scenarioNote = !scenario
+      ? null
+      : !includeUsageScenarios
+        ? 'A mean-only estimate exists, but the usage-scenario toggle is off.'
+        : strict
+          ? 'A mean-only estimate exists, but strict comparisons exclude scenarios.'
+          : statistic === 'median'
+            ? 'A mean-only estimate exists; no median scenario is available.'
+            : 'A scenario estimate is not active for this view.'
+    return [{
+      series: { id: series.id, color: series.color },
+      observation,
+      score,
+      missingReason: metric.missingReason ?? `${statistic} ${xMetricLabels[xMetric].label} is not reported.`,
+      scenarioNote,
+    }]
+  })))
+  const scenarioOmitted = scenarioCandidates.filter(({ x }) => !Number.isFinite(x) || x < 0 || scale === 'log' && x === 0)
   const omitted = plotSeries.flatMap((series) => series.segments.omitted
     .filter((item) => item.reason !== 'missing-x')
     .map((item) => ({ ...item, observation: series.byId.get(item.id)! })))
@@ -169,7 +218,7 @@ export function ExplorerChart({
     : plottedMetricIds.size === 1 && plottedMetricIds.has('pass_at_4')
       ? 'PASS@4 (%)'
       : 'SCORE (%)'
-  const hasChartMarks = plottedRows.length > 0 || estimatedPlotPoints.length > 0 || references.length > 0
+  const hasChartMarks = plottedRows.length > 0 || estimatedPlotPoints.length > 0 || noDataMarks.length > 0
 
   return (
     <div className="chart-frame">
@@ -185,8 +234,8 @@ export function ExplorerChart({
           ref={svgRef}
           className="effort-chart"
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-          role="img"
-          aria-label={`Score chart. Horizontal axis: ${hasXAxisExtent ? `${statistic} ${xMetricLabels[xMetric].label}` : `no measured ${xMetricLabels[xMetric].label} extent`}; vertical axis: ${scoreAxisLabel}. Connected segments use only measured configurations from one evaluation series. Hollow diamonds are standalone estimated usage scenarios and are never connected. Dashed references show source scores without a selected X value; their horizontal span has no X meaning.`}
+          role="group"
+           aria-label={`Score chart. Horizontal axis: ${hasXAxisExtent ? `${statistic} ${xMetricLabels[xMetric].label}` : `no usable numeric ${xMetricLabels[xMetric].label} values`}; vertical axis: ${scoreAxisLabel}. Connected segments use only measured configurations from one evaluation series. Hollow diamonds are standalone estimated usage scenarios and are never connected. The far-right no-data lane is outside the numeric X axis; horizontal position in that lane encodes no X value.`}
         >
           <defs>
             <pattern id="chart-hatch" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
@@ -194,6 +243,13 @@ export function ExplorerChart({
             </pattern>
           </defs>
           <rect x={PLOT.left} y={PLOT.top} width={PLOT.right - PLOT.left} height={PLOT.bottom - PLOT.top} fill="var(--paper-strong)" />
+          {noDataMarks.length > 0 && <>
+            <rect x={PLOT.right + 2} y={PLOT.top} width={WIDTH - PLOT.right - 14} height={PLOT.bottom - PLOT.top} className="no-data-lane" />
+            <line x1={PLOT.right + 1} x2={PLOT.right + 1} y1={PLOT.top} y2={PLOT.bottom} className="no-data-lane-divider" />
+            <text x={PLOT.right + 13} y={PLOT.top - 25} className="no-data-lane-title">NO DATA</text>
+            <text x={WIDTH - 17} y={PLOT.top - 25} className="no-data-lane-count" textAnchor="end">{noDataMarks.length}</text>
+            <text x={PLOT.right + 13} y={PLOT.top - 13} className="no-data-lane-note">outside numeric X scale</text>
+          </>}
           {Array.from({ length: 5 }, (_, index) => {
             const value = index / 4
             const y = scaleY(value)
@@ -216,7 +272,7 @@ export function ExplorerChart({
           <line x1={PLOT.left} x2={PLOT.right} y1={PLOT.bottom} y2={PLOT.bottom} className="axis-line" />
           <line x1={PLOT.left} x2={PLOT.left} y1={PLOT.top} y2={PLOT.bottom} className="axis-line" />
           <text x={(PLOT.left + PLOT.right) / 2} y={HEIGHT - 10} className="axis-title x-axis-title" textAnchor="middle">
-            {hasXAxisExtent ? `${statistic === 'mean' ? 'MEAN' : 'MEDIAN'} ${xMetricLabels[xMetric].axis.toUpperCase()}` : 'SCORE-ONLY REFERENCES · NO MEASURED X EXTENT'}
+            {hasXAxisExtent ? `${statistic === 'mean' ? 'MEAN' : 'MEDIAN'} ${xMetricLabels[xMetric].axis.toUpperCase()}` : 'SCORE-ONLY · NO NUMERIC X DATA'}
           </text>
           <text x="21" y={(PLOT.top + PLOT.bottom) / 2} className="axis-title y-title" textAnchor="middle" transform={`rotate(-90 21 ${(PLOT.top + PLOT.bottom) / 2})`}>
             {scoreAxisLabel}
@@ -227,26 +283,42 @@ export function ExplorerChart({
             const dash = series.first.sourceCategory === 'developer' ? '8 6' : series.first.sourceCategory === 'independent' ? '2 6' : undefined
             return <path key={`${series.id}-${index}`} d={`M ${points}`} className="curve-path" data-series-id={series.id} data-observation-ids={segment.map((point) => point.id).join(' ')} style={{ stroke: series.color, opacity }} strokeDasharray={dash} />
           }))}
-          {references.map(({ series, observation, score, missingReason }) => {
-            const y = scaleY(score.value)
+          {noDataMarks.map(({ series, observation, score, missingReason, scenarioNote, x, y }) => {
             const highlight = activeSeriesId === series.id || selectedObservationId === observation.id
             const seriesDimmed = Boolean(activeSeriesId && activeSeriesId !== series.id)
             const protocol = `${observation.publisher}; ${observation.benchmark.version ? `DeepSWE v${observation.benchmark.version}` : 'DeepSWE version unspecified'}; protocol ${observation.series.harness ?? 'not reported'}; evaluation policy ${observation.series.evaluationPolicy ?? 'not reported'}`
             const selectedMetricNote = score.metric === scoreMetric ? '' : `Different metric from selected ${scoreMetricLabels[scoreMetric]}. `
-            const detail = `${observation.model.reportedName}; ${score.reportedText}; source metric: ${score.metricLabel}. ${selectedMetricNote}Source/protocol: ${protocol}. The selected X measurement is not reported: ${missingReason}. The horizontal span is visual only and does not encode X values.`
+            const scenarioText = scenarioNote ? ` ${scenarioNote}` : ''
+            const detail = `${observation.model.reportedName}; ${score.reportedText}; source metric: ${score.metricLabel}. ${selectedMetricNote}Source/protocol: ${protocol}. The selected ${statistic} ${xMetricLabels[xMetric].label} measurement is not reported: ${missingReason}.${scenarioText} This mark is in the separate no-data lane; its horizontal position encodes no X value.`
+            const onKeyDown = (event: React.KeyboardEvent<SVGGElement>) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                onSelect(observation.id)
+              }
+            }
             return (
               <g
                 key={observation.id}
-                className={`score-reference ${highlight ? 'is-highlighted' : ''} ${seriesDimmed ? 'is-dimmed' : ''}`}
-                aria-hidden="true"
-                pointerEvents="none"
+                className={`no-data-point ${highlight ? 'is-highlighted' : ''} ${seriesDimmed ? 'is-dimmed' : ''}`}
+                role="button"
+                tabIndex={0}
+                data-no-data-observation-id={observation.id}
                 data-series-id={series.id}
                 data-observation-id={observation.id}
                 data-score-metric={score.metric}
+                aria-label={`${detail} Activate to open evidence details.`}
+                aria-pressed={selectedObservationId === observation.id}
+                onMouseEnter={() => onActiveSeries(series.id)}
+                onMouseLeave={() => onActiveSeries(null)}
+                onFocus={() => onActiveSeries(series.id)}
+                onBlur={() => onActiveSeries(null)}
+                onClick={() => onSelect(observation.id)}
+                onDoubleClick={() => onIsolate(modelKey(observation))}
+                onKeyDown={onKeyDown}
               >
                 <title>{detail}</title>
-                <line x1={PLOT.left} x2={PLOT.right} y1={y} y2={y} className="score-reference-line" style={{ stroke: series.color, opacity: 0.88, strokeWidth: highlight ? 3 : 2, strokeDasharray: '6 5' }} />
-                {sourceShape(observation.sourceCategory, PLOT.left, y, series.color, selectedObservationId === observation.id)}
+                <circle cx={x} cy={y} r="8" className="point-hit-area" />
+                {sourceShape(observation.sourceCategory, x, y, series.color, selectedObservationId === observation.id, 0.9)}
               </g>
             )
           })}
@@ -304,17 +376,25 @@ export function ExplorerChart({
             const seriesId = observation.series.id
             const highlight = activeSeriesId === seriesId || selectedObservationId === observation.id
             const seriesDimmed = Boolean(activeSeriesId && activeSeriesId !== seriesId)
-            const estimate = xMetric === 'cost' ? `$${x.toFixed(2)} per scored attempt` : `${new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(x)} output tokens per scored attempt`
-            const range = xMetric === 'cost' ? scenario.costSensitivityRange : scenario.outputTokenSensitivityRange
+            const estimate = xMetric === 'cost'
+              ? `$${x.toFixed(2)} per scored attempt`
+              : xMetric === 'outputTokens'
+                ? `${new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(x)} output tokens per scored attempt`
+                : `${formatDuration(x)} reported time per scored attempt`
+            const range = xMetric === 'cost' ? scenario.costSensitivityRange : xMetric === 'outputTokens' ? scenario.outputTokenSensitivityRange : scenario.timeSensitivityRange
             const sensitivity = range
-              ? ` Observed sensitivity envelope: ${xMetric === 'cost' ? `$${range[0].toFixed(2)}–$${range[1].toFixed(2)}` : `${new Intl.NumberFormat('en').format(range[0])}–${new Intl.NumberFormat('en').format(range[1])} tokens`}; not a confidence interval.`
+              ? ` Observed sensitivity envelope: ${xMetric === 'cost' ? `$${range[0].toFixed(2)}–$${range[1].toFixed(2)}` : xMetric === 'outputTokens' ? `${new Intl.NumberFormat('en').format(range[0])}–${new Intl.NumberFormat('en').format(range[1])} tokens` : `${formatDuration(range[0])}–${formatDuration(range[1])}`}; not a confidence interval.`
               : ' No defensible sensitivity range or prediction interval is available.'
-            const method = xMetric === 'cost' ? scenario.costCalibrationDescription : scenario.outputCalibrationDescription
+            const method = xMetric === 'cost' ? scenario.costCalibrationDescription : xMetric === 'outputTokens' ? scenario.outputCalibrationDescription : scenario.timeCalibrationDescription
             const sourceNotes = scenario.sources.map((source) => `${source.publisher} ${source.id}, accessed ${source.accessedOn}`).join('; ')
             const tokenNote = xMetric === 'outputTokens'
               ? ` AA Coding Agent suite total ${new Intl.NumberFormat('en').format(scenario.aaCodingSuiteMixedTokensPerTask)} tokens/task mixes categories and is not used as output; cost is not converted into tokens.`
               : ''
-            const detail = `Estimated usage scenario — not a DeepSWE measurement. ${observation.model.reportedName}, ${observation.effort.reportedLabel ?? 'effort unreported'}, ${observation.series.harness ?? 'harness unknown'}; source score ${score.reportedText} (${score.metricLabel}); ${estimate}. Evidence quality: ${scenario.confidence === 'low' ? 'low' : 'very low'}, qualitative and not probabilistic. Method: ${method}.${sensitivity}${tokenNote} Cross-harness transfer; the developer-report harness is unknown. Evidence: ${sourceNotes}.`
+            const directNote = scenario.directUsageReference
+              ? ` The scenario uses a separate exact-model/effort Datacurve DeepSWE row (${scenario.directUsageReference.configurationId}, ${scenario.directUsageReference.scoredAttempts} scored attempts, ${scenario.directUsageReference.runs} runs); it is not the target AA run.`
+              : ' The AA source metric is pooled across DeepSWE, Terminal-Bench 4.0, and SWE-Atlas-QnA, with no DeepSWE-only allocation.'
+            const timeNote = xMetric === 'time' ? ' Timer boundaries are unspecified for the Datacurve mean; this is not a verified end-to-end duration.' : ''
+            const detail = `Estimated usage scenario — not a DeepSWE measurement. ${observation.model.reportedName}, ${observation.effort.reportedLabel ?? 'effort unreported'}, ${observation.series.harness ?? 'harness unknown'}; source score ${score.reportedText} (${score.metricLabel}); ${estimate}. Evidence quality: ${scenario.confidence === 'low' ? 'low' : 'very low'}, qualitative and not probabilistic. Method: ${method}.${sensitivity}${tokenNote}${directNote}${timeNote} Evidence: ${sourceNotes}.`
             const onKeyDown = (event: React.KeyboardEvent<SVGGElement>) => {
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault()
@@ -348,35 +428,21 @@ export function ExplorerChart({
               </g>
             )
           })}
-          <g className="chart-callout" transform={`translate(${PLOT.right + 12} ${PLOT.top + 4})`}>
-            <rect width="52" height="42" rx="2" />
-            <text x="26" y="17" textAnchor="middle">{plottedRows.length}</text>
-            <text x="26" y="32" textAnchor="middle" className="callout-caption">MEASURED</text>
-          </g>
-          {estimatedPlotPoints.length > 0 && <g className="chart-callout scenario-count-callout" transform={`translate(${PLOT.right + 12} ${PLOT.top + 52})`}>
-            <rect width="52" height="42" rx="2" />
-            <text x="26" y="17" textAnchor="middle">{estimatedPlotPoints.length}</text>
-            <text x="26" y="32" textAnchor="middle" className="callout-caption">EST.</text>
-          </g>}
-          {references.length > 0 && <g className="chart-callout" transform={`translate(${PLOT.right + 12} ${PLOT.top + (estimatedPlotPoints.length ? 100 : 52)})`}>
-            <rect width="52" height="42" rx="2" />
-            <text x="26" y="17" textAnchor="middle">{references.length}</text>
-            <text x="26" y="32" textAnchor="middle" className="callout-caption">REFS</text>
-          </g>}
         </svg>
       )}
-      {references.length > 0 && <details className="score-reference-key">
-        <summary>Score-only references <span>{references.length} · dashed lines have no X value</span></summary>
-        <ul className="score-reference-list">
-          {references.map(({ series, observation, score, missingReason }) => {
+      {noDataMarks.length > 0 && <details className="no-data-key">
+        <summary>No data for selected X <span>{noDataMarks.length} · gutter is outside the numeric axis</span></summary>
+        <ul className="no-data-list">
+          {noDataMarks.map(({ series, observation, score, missingReason, scenarioNote }) => {
             const protocol = `${observation.publisher}; ${observation.benchmark.version ? `DeepSWE v${observation.benchmark.version}` : 'DeepSWE version unspecified'}; protocol ${observation.series.harness ?? 'not reported'}; evaluation policy ${observation.series.evaluationPolicy ?? 'not reported'}`
             const selectedMetricNote = score.metric === scoreMetric ? '' : ` Different metric from selected ${scoreMetricLabels[scoreMetric]}.`
-            const detail = `${observation.model.reportedName}; ${score.reportedText}; source metric: ${score.metricLabel}.${selectedMetricNote} Source/protocol: ${protocol}. The selected ${statistic} ${xMetricLabels[xMetric].label} value is not reported: ${missingReason}. The horizontal span is visual only and encodes no X values.`
+            const scenarioText = scenarioNote ? ` ${scenarioNote}` : ''
+            const detail = `${observation.model.reportedName}; ${score.reportedText}; source metric: ${score.metricLabel}.${selectedMetricNote} Source/protocol: ${protocol}. The selected ${statistic} ${xMetricLabels[xMetric].label} value is not reported: ${missingReason}.${scenarioText} The far-right lane has no X value.`
             const selected = selectedObservationId === observation.id
             return <li key={observation.id}>
               <button
                 type="button"
-                className={`score-reference-entry ${selected ? 'is-selected' : ''}`}
+                className={`no-data-entry ${selected ? 'is-selected' : ''}`}
                 data-observation-id={observation.id}
                 data-series-id={series.id}
                 data-score-metric={score.metric}
@@ -388,8 +454,8 @@ export function ExplorerChart({
                 onBlur={() => onActiveSeries(null)}
                 onClick={() => onSelect(observation.id)}
               >
-                <span className="score-reference-swatch" style={{ borderColor: series.color }} aria-hidden="true" />
-                <span className="score-reference-copy"><strong>{displayModelName(observation.model.reportedName)} · {displayScoreValue(score)}</strong><small>{score.metricLabel} · {protocol} · {statistic} {xMetricLabels[xMetric].label}: {missingReason}</small></span>
+                <span className="no-data-entry-swatch" style={{ borderColor: series.color }} aria-hidden="true" />
+                <span className="no-data-entry-copy"><strong>{displayModelName(observation.model.reportedName)} · {displayScoreValue(score)}</strong><small>{score.metricLabel} · {protocol} · {statistic} {xMetricLabels[xMetric].label}: {missingReason}.{scenarioText}</small></span>
               </button>
             </li>
           })}
@@ -400,9 +466,14 @@ export function ExplorerChart({
           {omitted.length} selected configuration{omitted.length === 1 ? '' : 's'} omitted from this percentage plot: {countReasons(omitted.map((entry) => entry.reason))}. The source records remain available below.
         </p>
       )}
+      {scenarioOmitted.length > 0 && (
+        <p className="chart-footnote" role="status">
+          {scenarioOmitted.length} estimated configuration{scenarioOmitted.length === 1 ? '' : 's'} omitted from this axis: {countReasons(scenarioOmitted.map(({ x }) => x === 0 && scale === 'log' ? 'non-positive-log-x' : x < 0 ? 'negative-x' : 'non-finite-x'))}. Known zero estimates remain distinct from missing data.
+        </p>
+      )}
       <div className="chart-caption-row">
-        <span>Filled points are measured configurations. Hollow amber diamonds are standalone, estimated scenarios and never join effort paths. Dashed references have no X value and encode no cost, token, or time range.</span>
-        <span>Source marks: ● organizer · ◆ developer · ▲ independent · ■ local evaluation · expand the score-only reference key for metric and protocol labels.</span>
+        <span>{plottedRows.length} measured · {estimatedPlotPoints.length} estimated · {noDataMarks.length} no-data. Hollow amber diamonds are standalone, mean-only scenarios and never join effort paths. The far-right no-data lane is outside the numeric X axis.</span>
+        <span>Source marks: ● organizer · ◆ developer · ▲ independent · ■ local evaluation · expand the no-data key for source, metric and omission notes.</span>
       </div>
     </div>
   )
@@ -415,6 +486,7 @@ function countReasons(reasons: string[]): string {
     'unknown-score-scale': 'source score unit not established for the percentage axis',
     'non-positive-log-x': 'zero omitted on log scale',
     'negative-x': 'invalid negative value',
+    'non-finite-x': 'non-finite estimate omitted',
   }
   const counts = new Map<string, number>()
   for (const reason of reasons) counts.set(reason, (counts.get(reason) ?? 0) + 1)

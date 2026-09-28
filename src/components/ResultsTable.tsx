@@ -1,6 +1,6 @@
 import { displayModelName, displayScoreResult, displayScoreValue, hasPercentageScoreScale, metricObservation, modelKey, scoreMetricLabels, scoreResult, type ScoreMetric, type Statistic, type XMetric } from '../lib/comparison'
 import type { Observation } from '../lib/schema'
-import type { UsageScenario } from '../lib/usage-scenarios'
+import { scenarioXValue, type UsageScenario } from '../lib/usage-scenarios'
 
 export interface ResultsTableProps {
   observations: Observation[]
@@ -20,6 +20,12 @@ function display(value: number | null, unit: string) {
   if (unit === 'seconds') return `${new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(value)} s`
   if (unit === 'output tokens') return new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(value)
   return String(value)
+}
+
+function displayDuration(seconds: number) {
+  if (seconds >= 3600) return `${(seconds / 3600).toFixed(1)} h`
+  if (seconds >= 60) return `${(seconds / 60).toFixed(1)} min`
+  return `${new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(seconds)} s`
 }
 
 function categoryClass(category: Observation['sourceCategory']) {
@@ -57,14 +63,20 @@ export function ResultsTable({ observations, xMetric, statistic, scoreMetric, se
               ? null
               : `$${new Intl.NumberFormat('en', { minimumFractionDigits: 2, maximumFractionDigits: 3 }).format(sourceReportedCost)} per task`
             const scenario = usageScenarios.get(observation.id)
-            const scenarioValue = !scenario || xMetric === 'time'
+            const scenarioMetricValue = scenario ? scenarioXValue(scenario, xMetric) : null
+            const scenarioValue = scenarioMetricValue === null
               ? null
               : xMetric === 'cost'
-                ? `$${scenario.costUsdPerScoredAttempt.toFixed(2)} / scored attempt`
-                : `${new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(scenario.outputTokensPerScoredAttempt)} output tokens / scored attempt`
-            const scenarioRange = !scenario || xMetric === 'time'
+                ? `$${scenarioMetricValue.toFixed(2)} / scored attempt`
+                : xMetric === 'outputTokens'
+                  ? `${new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(scenarioMetricValue)} output tokens / scored attempt`
+                  : `${displayDuration(scenarioMetricValue)} reported time / scored attempt`
+            const scenarioRange = !scenario
               ? null
-              : xMetric === 'cost' ? scenario.costSensitivityRange : scenario.outputTokenSensitivityRange
+              : xMetric === 'cost' ? scenario.costSensitivityRange : xMetric === 'outputTokens' ? scenario.outputTokenSensitivityRange : scenario.timeSensitivityRange
+            const calibrationDescription = !scenario
+              ? ''
+              : xMetric === 'cost' ? scenario.costCalibrationDescription : xMetric === 'outputTokens' ? scenario.outputCalibrationDescription : scenario.timeCalibrationDescription
             const isSelected = selectedId === observation.id
             return (
               <tr key={observation.id} className={isSelected ? 'selected-row' : ''} data-observation-id={observation.id}>
@@ -91,10 +103,11 @@ export function ResultsTable({ observations, xMetric, statistic, scoreMetric, se
                     <small>Qualitative evidence grade, not a probability.</small>
                     <span>{scenarioValue}</span>
                     {scenarioRange
-                      ? <small>Sensitivity envelope {xMetric === 'cost' ? `$${scenarioRange[0].toFixed(2)}–$${scenarioRange[1].toFixed(2)}` : `${new Intl.NumberFormat('en').format(scenarioRange[0])}–${new Intl.NumberFormat('en').format(scenarioRange[1])} tokens`}; not a confidence interval.</small>
+                      ? <small>Sensitivity envelope {xMetric === 'cost' ? `$${scenarioRange[0].toFixed(2)}–$${scenarioRange[1].toFixed(2)}` : xMetric === 'outputTokens' ? `${new Intl.NumberFormat('en').format(scenarioRange[0])}–${new Intl.NumberFormat('en').format(scenarioRange[1])} tokens` : `${displayDuration(scenarioRange[0])}–${displayDuration(scenarioRange[1])}`}; not a confidence interval.</small>
                       : <small>No defensible range or prediction interval is available.</small>}
-                    <small>{xMetric === 'cost' ? scenario.costCalibrationDescription : scenario.outputCalibrationDescription}</small>
+                    <small>{calibrationDescription}</small>
                     {xMetric === 'outputTokens' && <small>{new Intl.NumberFormat('en').format(scenario.aaCodingSuiteMixedTokensPerTask)} AA suite total tokens/task mixes categories and is not used as output; cost is not converted into tokens.</small>}
+                    {xMetric === 'time' && <small>{displayDuration(scenario.aaCodingSuiteTimeSecondsPerTask)} AA pooled suite time/task is contextual only; timer boundaries are not fully matched, so this is not an end-to-end duration.</small>}
                     <small>Evidence: {scenario.sources.map((source, index) => <span key={source.id}>{index ? ' · ' : ''}<a href={source.url} target="_blank" rel="noreferrer">{source.publisher} ({source.accessedOn})</a></span>)}</small>
                   </span>}
                 </td>

@@ -92,15 +92,60 @@ describe('cross-platform mean usage scenarios', () => {
     expect(usageScenarioForObservation(wrongHarness)).toBeNull()
   })
 
-  it('excludes strict, median, and time scenarios and keeps scenario X values numeric', () => {
+  it('excludes strict and median scenarios while supporting calibrated mean time', () => {
     expect(usageScenarioForComparison(luna, 'cost', 'mean', false)?.costUsdPerScoredAttempt).toBeCloseTo(0.20668317244049378, 12)
     expect(usageScenarioForComparison(luna, 'outputTokens', 'mean', false)?.outputTokensPerScoredAttempt).toBeCloseTo(98_421.65603779937, 7)
+    expect(usageScenarioForComparison(luna, 'time', 'mean', false)?.timeSecondsPerScoredAttempt).toBeCloseTo(1097.5267854181109, 7)
     expect(usageScenarioForComparison(luna, 'cost', 'median', false)).toBeNull()
     expect(usageScenarioForComparison(opus, 'outputTokens', 'median', false)).toBeNull()
-    expect(usageScenarioForComparison(opus, 'time', 'mean', false)).toBeNull()
+    expect(usageScenarioForComparison(opus, 'time', 'mean', false)?.timeSecondsPerScoredAttempt).toBeCloseTo(3011.458500508611, 7)
+    expect(usageScenarioForComparison(opus, 'time', 'median', false)).toBeNull()
     expect(usageScenarioForComparison(opus, 'cost', 'mean', true)).toBeNull()
     expect(scenarioXValue(usageScenarioForObservation(luna)!, 'cost')).toBeCloseTo(0.20668317244049378, 12)
     expect(scenarioXValue(usageScenarioForObservation(opus)!, 'outputTokens')).toBeCloseTo(191_648.18561026783, 7)
-    expect(usageScenarios.map((scenario) => scenario.model)).toEqual(['GPT-6 Luna', 'Opus 5.5'])
+    expect(scenarioXValue(usageScenarioForObservation(luna)!, 'time')).toBeCloseTo(1097.5267854181109, 7)
+    expect(usageScenarios.map((scenario) => scenario.model)).toEqual(['GPT-6 Luna', 'Opus 5.5', 'GPT-6 Astra', 'GPT-6 Sol', 'Opus 5', 'GPT-5.6 Sol', 'GPT-5.6 Luna'])
+  })
+
+  it('uses exact-model/max DeepSWE rows for the additional AA scenarios', () => {
+    const targets = [
+      ['aa-codex-gpt-6-astra-max-v1.1', 'mini_swe_agent_gpt_6_astra_max'],
+      ['aa-claude-code-opus-5-max-v1.1', 'mini_swe_agent_claude_opus_5_max'],
+      ['aa-codex-gpt-5.6-sol-max-v1.1', 'mini_swe_agent_gpt_5_6_sol_max'],
+      ['aa-codex-gpt-5.6-luna-max-v1.1', 'mini_swe_agent_gpt_5_6_luna_max'],
+    ] as const
+    for (const [targetId, configurationId] of targets) {
+      const scenario = usageScenarioForObservation(dataset.observations.find((row) => row.id === targetId)!)!
+      const direct = research.datacurveDirectMatches.find((row: { configurationId: string }) => row.configurationId === configurationId)!
+      expect(scenario.directUsageReference?.configurationId).toBe(configurationId)
+      expect(scenario.costUsdPerScoredAttempt).toBe(direct.meanCostUsdPerScoredAttempt)
+      expect(scenario.outputTokensPerScoredAttempt).toBe(direct.meanOutputTokensPerScoredAttempt)
+      expect(scenario.timeSecondsPerScoredAttempt).toBe(direct.meanDurationSecondsPerScoredAttempt)
+      expect(scenario.costSensitivityRange).toBeNull()
+      expect(scenario.timeSensitivityRange).toBeNull()
+    }
+
+    const sol = usageScenarioForObservation(dataset.observations.find((row) => row.id === 'aa-codex-gpt-6-sol-max-v1.1')!)!
+    expect(sol.timeSecondsPerScoredAttempt).toBeCloseTo(1143.6844539637325, 7)
+    expect(sol.timeSensitivityRange).toEqual([1065.6050486855338, 1221.763859241931])
+  })
+
+  it('accounts for every baseline observation missing all three usage metrics', () => {
+    const audit = research.coverageAudit
+    const missing = dataset.observations.filter((row) => row.metrics.cost.value === null && row.metrics.outputTokens.value === null && row.metrics.time.value === null)
+    const scenarioIds = new Set(audit.scenarioObservationIds as string[])
+    const noDataIds = new Set(audit.noDataObservationIds as string[])
+    const chartNoDataIds = new Set(audit.chartNoDataLaneObservationIds as string[])
+    const unscaledIds = new Set(audit.unscaledNoDataScoreObservationIds as string[])
+    expect(missing).toHaveLength(57)
+    expect(scenarioIds.size).toBe(usageScenarios.length)
+    expect(noDataIds.size).toBe(50)
+    expect(chartNoDataIds.size).toBe(38)
+    expect(unscaledIds.size).toBe(12)
+    expect(new Set([...scenarioIds, ...noDataIds]).size).toBe(missing.length)
+    expect(missing.every((row) => scenarioIds.has(row.id) || noDataIds.has(row.id))).toBe(true)
+    expect([...chartNoDataIds].every((id) => noDataIds.has(id) && ['%', 'fraction'].includes(dataset.observations.find((row) => row.id === id)!.result.reportedUnit))).toBe(true)
+    expect([...unscaledIds].every((id) => noDataIds.has(id) && !chartNoDataIds.has(id))).toBe(true)
+    expect(usageScenarios.every((scenario) => scenario.timeSecondsPerScoredAttempt > 0)).toBe(true)
   })
 })

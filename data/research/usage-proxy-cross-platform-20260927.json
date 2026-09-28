@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
   "researchDate": "2026-09-27",
+  "scenarioResearchUpdatedAt": "2026-09-28",
   "purpose": "Research-only cross-platform usage calibration. Not approved benchmark measurements and not imported into the application dataset.",
   "explicitExclusions": [
     "The incomplete local GLM run was excluded; no local GLM result or usage data is included."
@@ -79,6 +80,14 @@
       "evidenceLocator": "Intelligence Index output tokens per task; Opus 5.5 vs Opus 5"
     },
     {
+      "id": "aa-gpt-6-astra-article",
+      "publisher": "Artificial Analysis",
+      "url": "https://artificialanalysis.ai/articles/benchmarking-gpt-6-astra",
+      "publicationDate": "2026-09-09",
+      "retrievedOn": "2026-09-28",
+      "evidenceLocator": "Intelligence Index output tokens per task for GPT-6 Astra max; 27k"
+    },
+    {
       "id": "fireworks-deepswe-comparison",
       "publisher": "Fireworks AI",
       "url": "https://fireworks.ai/blog/DeepSeek-V4.1-Flash-Astra",
@@ -98,6 +107,11 @@
       "categories": ["input", "cached input", "cache write", "reasoning", "output"],
       "denominator": "Pooled across the same public suite; no per-benchmark output-token split or variant-specific token sample count is published."
     },
+    "executionTime": {
+      "unit": "wall-clock seconds per task attempt, as displayed",
+      "denominator": "Pooled across the public Coding Agent suite; no per-benchmark allocation or variant-specific timing sample count is published.",
+      "scope": "AA describes execution time as average wall-clock runtime per task, including full task wall time and the agent wall-time subset where available."
+    },
     "deepSWEScore": {
       "unit": "percent",
       "denominator": "113 DeepSWE v1.1 tasks; pass@1 averaged across three attempts per task."
@@ -111,7 +125,18 @@
       "codingAgentIndex": 62,
       "deepSWEv1_1Score": "68%",
       "pooledCostPerTask": { "reportedText": "$7.47", "usd": 7.47, "displayPrecision": "cents" },
+      "pooledExecutionTimePerTask": { "reportedText": "29.4m", "seconds": 1764, "displayPrecision": "0.1 minute" },
       "pooledTokenUsagePerTask": { "reportedText": "3.3M", "tokens": 3300000, "displayPrecision": "one decimal million", "outputOnly": false }
+    },
+    {
+      "model": "GPT-6 Sol",
+      "effort": "max",
+      "harness": "Codex",
+      "codingAgentIndex": 57,
+      "deepSWEv1_1Score": "69%",
+      "pooledCostPerTask": { "reportedText": "$2.99", "usd": 2.99, "displayPrecision": "cents" },
+      "pooledExecutionTimePerTask": { "reportedText": "22.3m", "seconds": 1338, "displayPrecision": "0.1 minute" },
+      "pooledTokenUsagePerTask": { "reportedText": "9.8M", "tokens": 9800000, "displayPrecision": "one decimal million", "outputOnly": false }
     },
     {
       "model": "GPT-5.6 Sol",
@@ -120,6 +145,7 @@
       "codingAgentIndex": 55,
       "deepSWEv1_1Score": "72%",
       "pooledCostPerTask": { "reportedText": "$6.35", "usd": 6.35, "displayPrecision": "cents" },
+      "pooledExecutionTimePerTask": { "reportedText": "20.6m", "seconds": 1236, "displayPrecision": "0.1 minute" },
       "pooledTokenUsagePerTask": { "reportedText": "10.2M", "tokens": 10200000, "displayPrecision": "one decimal million", "outputOnly": false }
     },
     {
@@ -129,6 +155,7 @@
       "codingAgentIndex": 43,
       "deepSWEv1_1Score": "66%",
       "pooledCostPerTask": { "reportedText": "$0.44", "usd": 0.44, "displayPrecision": "cents" },
+      "pooledExecutionTimePerTask": { "reportedText": "23.5m", "seconds": 1410, "displayPrecision": "0.1 minute" },
       "pooledTokenUsagePerTask": { "reportedText": "14.9M", "tokens": 14900000, "displayPrecision": "one decimal million", "outputOnly": false }
     },
     {
@@ -138,6 +165,7 @@
       "codingAgentIndex": 60,
       "deepSWEv1_1Score": "63%",
       "pooledCostPerTask": { "reportedText": "$10.79", "usd": 10.79, "displayPrecision": "cents" },
+      "pooledExecutionTimePerTask": { "reportedText": "41.9m", "seconds": 2514, "displayPrecision": "0.1 minute" },
       "pooledTokenUsagePerTask": { "reportedText": "11.4M", "tokens": 11400000, "displayPrecision": "one decimal million", "outputOnly": false }
     },
     {
@@ -147,6 +175,7 @@
       "codingAgentIndex": 41,
       "deepSWEv1_1Score": "64%",
       "pooledCostPerTask": { "reportedText": "$0.18", "usd": 0.18, "displayPrecision": "cents" },
+      "pooledExecutionTimePerTask": { "reportedText": "21.4m", "seconds": 1284, "displayPrecision": "0.1 minute" },
       "pooledTokenUsagePerTask": { "reportedText": "10.2M", "tokens": 10200000, "displayPrecision": "one decimal million", "outputOnly": false }
     },
     {
@@ -156,12 +185,14 @@
       "codingAgentIndex": 66,
       "deepSWEv1_1Score": "68%",
       "pooledCostPerTask": { "reportedText": "$13.04", "usd": 13.04, "displayPrecision": "cents" },
+      "pooledExecutionTimePerTask": { "reportedText": "1.1h", "seconds": 3960, "displayPrecision": "0.1 hour" },
       "pooledTokenUsagePerTask": { "reportedText": "15.6M", "tokens": 15600000, "displayPrecision": "one decimal million", "outputOnly": false }
     }
   ],
   "datacurveDirectMatches": [
     {
       "model": "gpt-6-astra",
+      "scenarioModelLabel": "GPT-6 Astra",
       "effort": "max",
       "harness": "mini-swe-agent",
       "configurationId": "mini_swe_agent_gpt_6_astra_max",
@@ -171,10 +202,13 @@
       "costBasis": "Current pricing at all context lengths: $10/M uncached input, $12.50/M cache writes, $1/M cache reads, $50/M output; no separate compute-unit fee.",
       "meanOutputTokensPerScoredAttempt": 61148.50663716814,
       "costSourceField": "mean_cost_usd",
-      "outputTokenSourceField": "mean_output_tokens"
+      "outputTokenSourceField": "mean_output_tokens",
+      "meanDurationSecondsPerScoredAttempt": 1982.966814159292,
+      "durationSourceField": "mean_duration_seconds"
     },
     {
       "model": "gpt-5-6-sol",
+      "scenarioModelLabel": "GPT-5.6 Sol",
       "effort": "max",
       "harness": "mini-swe-agent",
       "configurationId": "mini_swe_agent_gpt_5_6_sol_max",
@@ -184,10 +218,13 @@
       "costBasis": null,
       "meanOutputTokensPerScoredAttempt": 60013.64444444444,
       "costSourceField": "mean_cost_usd",
-      "outputTokenSourceField": "mean_output_tokens"
+      "outputTokenSourceField": "mean_output_tokens",
+      "meanDurationSecondsPerScoredAttempt": 1128.624910331111,
+      "durationSourceField": "mean_duration_seconds"
     },
     {
       "model": "gpt-5-6-luna",
+      "scenarioModelLabel": "GPT-5.6 Luna",
       "effort": "max",
       "harness": "mini-swe-agent",
       "configurationId": "mini_swe_agent_gpt_5_6_luna_max",
@@ -197,10 +234,13 @@
       "costBasis": null,
       "meanOutputTokensPerScoredAttempt": 73399.70758928571,
       "costSourceField": "mean_cost_usd",
-      "outputTokenSourceField": "mean_output_tokens"
+      "outputTokenSourceField": "mean_output_tokens",
+      "meanDurationSecondsPerScoredAttempt": 1122.9470243995536,
+      "durationSourceField": "mean_duration_seconds"
     },
     {
       "model": "claude-opus-5",
+      "scenarioModelLabel": "Opus 5",
       "effort": "max",
       "harness": "mini-swe-agent",
       "configurationId": "mini_swe_agent_claude_opus_5_max",
@@ -210,7 +250,9 @@
       "costBasis": null,
       "meanOutputTokensPerScoredAttempt": 117565.6936936937,
       "costSourceField": "mean_cost_usd",
-      "outputTokenSourceField": "mean_output_tokens"
+      "outputTokenSourceField": "mean_output_tokens",
+      "meanDurationSecondsPerScoredAttempt": 1911.819866231982,
+      "durationSourceField": "mean_duration_seconds"
     }
   ],
   "outputTokenCalibration": {
@@ -288,6 +330,47 @@
       "leaveOneOutValidation": null
     }
   },
+  "timeCalibration": {
+    "metricConversion": "Datacurve reported mean_duration_seconds per scored rollout attempt divided by Artificial Analysis pooled Time per Task seconds for the exact same model and max effort. This is a measured wall-clock transfer; Datacurve timer boundaries remain unspecified and AA does not allocate time to DeepSWE.",
+    "openaiMaxPairs": [
+      {
+        "model": "GPT-5.6 Sol",
+        "effort": "max",
+        "aaTimePerTask": { "reportedText": "20.6m", "seconds": 1236 },
+        "deepSWEMeanDurationSecondsPerScoredAttempt": 1128.624910331111,
+        "datacurveConfigurationId": "mini_swe_agent_gpt_5_6_sol_max",
+        "datacurveScoredAttempts": 450,
+        "transferRatio": 0.9131269501060769
+      },
+      {
+        "model": "GPT-5.6 Luna",
+        "effort": "max",
+        "aaTimePerTask": { "reportedText": "23.5m", "seconds": 1410 },
+        "deepSWEMeanDurationSecondsPerScoredAttempt": 1122.9470243995536,
+        "datacurveConfigurationId": "mini_swe_agent_gpt_5_6_luna_max",
+        "datacurveScoredAttempts": 448,
+        "transferRatio": 0.7964163293613855
+      }
+    ],
+    "openaiMaxSummary": {
+      "n": 2,
+      "centerFactorArithmeticMean": 0.8547716397337313,
+      "observedFactorEnvelope": [0.7964163293613855, 0.9131269501060769],
+      "leaveOneOutMeanAbsolutePercentageError": 13.717948449967151,
+      "intervalType": "Observed two-point transfer-factor envelope, not a confidence or prediction interval."
+    },
+    "anthropicOpusFamilyPair": {
+      "calibrationModel": "Opus 5",
+      "effort": "max",
+      "aaTimePerTask": { "reportedText": "41.9m", "seconds": 2514 },
+      "deepSWEMeanDurationSecondsPerScoredAttempt": 1911.819866231982,
+      "datacurveConfigurationId": "mini_swe_agent_claude_opus_5_max",
+      "datacurveScoredAttempts": 444,
+      "transferRatio": 0.7604693183102553,
+      "n": 1,
+      "leaveOneOutValidation": null
+    }
+  },
   "scenarios": [
     {
       "model": "GPT-6 Luna",
@@ -308,14 +391,19 @@
       "aaDeepSWEv1_1Score": "64%",
       "aaCodingSuiteCostUsdPerTask": 0.18,
       "aaCodingSuiteTotalTokensPerTaskApprox": 10200000,
+      "aaCodingAgentTimePerTaskSeconds": 1284,
       "aaIntelligenceIndexOutputTokensPerTaskApprox": 51000,
       "outputCalibrationMethod": "openai-max-arithmetic-mean-ratio",
       "costCalibrationMethod": "openai-max-through-origin-proportional-fit",
+      "timeCalibrationMethod": "openai-max-arithmetic-mean-ratio",
+      "directUsageReferenceConfigurationId": null,
       "statistic": "mean-only",
       "deepSWEOutputTokensPerScoredAttemptScenario": 98421.65603779937,
       "outputTokenScenarioEnvelope": [91302.07529398955, 105541.2367816092],
       "deepSWECostUsdPerScoredAttemptScenario": 0.20668317244049378,
       "costScenarioEnvelope": [0.18067055413690158, 1.2387750587459414],
+      "deepSWETimeSecondsPerScoredAttemptScenario": 1097.5267854181109,
+      "timeScenarioEnvelopeSeconds": [1022.598566900019, 1172.4550039362027],
       "status": "low-confidence cross-benchmark scenario; no exact GPT-6 Luna DeepSWE usage row",
       "costLeaveOneOutMAPEPercent": 46.724032053043665,
       "outputLeaveOneOutMAPEPercent": 14.543611181332372,
@@ -340,15 +428,198 @@
       "aaDeepSWEv1_1Score": "68%",
       "aaCodingSuiteCostUsdPerTask": 13.04,
       "aaCodingSuiteTotalTokensPerTaskApprox": 15600000,
+      "aaCodingAgentTimePerTaskSeconds": 3960,
       "aaIntelligenceIndexOutputTokensPerTaskApprox": 119000,
       "outputCalibrationMethod": "opus-5-max-single-pair-ratio",
       "costCalibrationMethod": "opus-5-max-single-pair-ratio",
+      "timeCalibrationMethod": "opus-5-max-single-pair-ratio",
+      "directUsageReferenceConfigurationId": null,
       "statistic": "mean-only",
       "deepSWEOutputTokensPerScoredAttemptScenario": 191648.18561026783,
       "deepSWEOutputScenarioRange": null,
       "deepSWECostUsdPerScoredAttemptScenario": 14.306032053661632,
       "deepSWECostScenarioRange": null,
+      "deepSWETimeSecondsPerScoredAttemptScenario": 3011.458500508611,
+      "timeScenarioEnvelopeSeconds": null,
       "status": "very-low-confidence adjacent-version scenario; calibrated only on Opus 5 max, not Opus 5.5",
+      "intervalsAreConfidenceIntervals": false
+    },
+    {
+      "model": "GPT-6 Astra",
+      "effort": "max",
+      "aaAgent": "Codex",
+      "targetObservation": {
+        "observationId": "aa-codex-gpt-6-astra-max-v1.1",
+        "reportedName": "GPT-6 Astra (max)",
+        "publisher": "Artificial Analysis",
+        "harness": "Codex",
+        "scoreMetric": "pass_at_1"
+      },
+      "targetBenchmarkVersion": "1.1",
+      "targetSourceCategory": "independent",
+      "codingAgentComparisonSourceId": "aa-codex-vs-kimi-code-cli",
+      "intelligenceIndexOutputSourceId": "aa-gpt-6-astra-article",
+      "evidenceQuality": "low",
+      "aaDeepSWEv1_1Score": "68%",
+      "aaCodingSuiteCostUsdPerTask": 7.47,
+      "aaCodingSuiteTotalTokensPerTaskApprox": 3300000,
+      "aaCodingAgentTimePerTaskSeconds": 1764,
+      "aaIntelligenceIndexOutputTokensPerTaskApprox": 27000,
+      "outputCalibrationMethod": "exact-model-effort-deepswe-reference",
+      "costCalibrationMethod": "exact-model-effort-deepswe-reference",
+      "timeCalibrationMethod": "exact-model-effort-deepswe-reference",
+      "directUsageReferenceConfigurationId": "mini_swe_agent_gpt_6_astra_max",
+      "statistic": "mean-only",
+      "deepSWEOutputTokensPerScoredAttemptScenario": 61148.50663716814,
+      "outputTokenScenarioEnvelope": null,
+      "deepSWECostUsdPerScoredAttemptScenario": 7.497827996681416,
+      "costScenarioEnvelope": null,
+      "deepSWETimeSecondsPerScoredAttemptScenario": 1982.966814159292,
+      "timeScenarioEnvelopeSeconds": null,
+      "status": "low-confidence exact-model/max cross-harness scenario from a separate Datacurve DeepSWE row; not measured for the AA Codex run",
+      "intervalsAreConfidenceIntervals": false
+    },
+    {
+      "model": "GPT-6 Sol",
+      "effort": "max",
+      "aaAgent": "Codex",
+      "targetObservation": {
+        "observationId": "aa-codex-gpt-6-sol-max-v1.1",
+        "reportedName": "GPT-6 Sol (max)",
+        "publisher": "Artificial Analysis",
+        "harness": "Codex",
+        "scoreMetric": "pass_at_1"
+      },
+      "targetBenchmarkVersion": "1.1",
+      "targetSourceCategory": "independent",
+      "codingAgentComparisonSourceId": "aa-codex-vs-kimi-code-cli",
+      "intelligenceIndexOutputSourceId": "aa-gpt-6-sol-luna-article",
+      "evidenceQuality": "low",
+      "aaDeepSWEv1_1Score": "69%",
+      "aaCodingSuiteCostUsdPerTask": 2.99,
+      "aaCodingSuiteTotalTokensPerTaskApprox": 9800000,
+      "aaCodingAgentTimePerTaskSeconds": 1338,
+      "aaIntelligenceIndexOutputTokensPerTaskApprox": 31000,
+      "outputCalibrationMethod": "openai-max-arithmetic-mean-ratio",
+      "costCalibrationMethod": "openai-max-through-origin-proportional-fit",
+      "timeCalibrationMethod": "openai-max-arithmetic-mean-ratio",
+      "directUsageReferenceConfigurationId": null,
+      "statistic": "mean-only",
+      "deepSWEOutputTokensPerScoredAttemptScenario": 59824.92817983883,
+      "outputTokenScenarioEnvelope": [55497.33988458188, 64152.516475095785],
+      "deepSWECostUsdPerScoredAttemptScenario": 3.4332371422059804,
+      "costScenarioEnvelope": [3.001138649274088, 20.57743014250203],
+      "deepSWETimeSecondsPerScoredAttemptScenario": 1143.6844539637325,
+      "timeScenarioEnvelopeSeconds": [1065.6050486855338, 1221.763859241931],
+      "status": "low-confidence cross-benchmark scenario from two OpenAI max output/time pairs and three cost pairs; no exact GPT-6 Sol DeepSWE usage row",
+      "costLeaveOneOutMAPEPercent": 46.724032053043665,
+      "outputLeaveOneOutMAPEPercent": 14.543611181332372,
+      "timeLeaveOneOutMAPEPercent": 13.717948449967151,
+      "intervalsAreConfidenceIntervals": false
+    },
+    {
+      "model": "Opus 5",
+      "effort": "max",
+      "aaAgent": "Claude Code",
+      "targetObservation": {
+        "observationId": "aa-claude-code-opus-5-max-v1.1",
+        "reportedName": "Opus 5",
+        "publisher": "Artificial Analysis",
+        "harness": "Claude Code",
+        "scoreMetric": "pass_at_1"
+      },
+      "targetBenchmarkVersion": "1.1",
+      "targetSourceCategory": "independent",
+      "codingAgentComparisonSourceId": "aa-claude-code-vs-codex",
+      "intelligenceIndexOutputSourceId": "aa-claude-opus-5-5-article",
+      "evidenceQuality": "low",
+      "aaDeepSWEv1_1Score": "63%",
+      "aaCodingSuiteCostUsdPerTask": 10.79,
+      "aaCodingSuiteTotalTokensPerTaskApprox": 11400000,
+      "aaCodingAgentTimePerTaskSeconds": 2514,
+      "aaIntelligenceIndexOutputTokensPerTaskApprox": 73000,
+      "outputCalibrationMethod": "exact-model-effort-deepswe-reference",
+      "costCalibrationMethod": "exact-model-effort-deepswe-reference",
+      "timeCalibrationMethod": "exact-model-effort-deepswe-reference",
+      "directUsageReferenceConfigurationId": "mini_swe_agent_claude_opus_5_max",
+      "statistic": "mean-only",
+      "deepSWEOutputTokensPerScoredAttemptScenario": 117565.6936936937,
+      "outputTokenScenarioEnvelope": null,
+      "deepSWECostUsdPerScoredAttemptScenario": 11.837583271396396,
+      "costScenarioEnvelope": null,
+      "deepSWETimeSecondsPerScoredAttemptScenario": 1911.819866231982,
+      "timeScenarioEnvelopeSeconds": null,
+      "status": "low-confidence exact-model/max cross-harness scenario from a separate Datacurve DeepSWE row; cost basis is unspecified and timer boundaries differ or are unknown",
+      "intervalsAreConfidenceIntervals": false
+    },
+    {
+      "model": "GPT-5.6 Sol",
+      "effort": "max",
+      "aaAgent": "Codex",
+      "targetObservation": {
+        "observationId": "aa-codex-gpt-5.6-sol-max-v1.1",
+        "reportedName": "GPT-5.6 Sol (max)",
+        "publisher": "Artificial Analysis",
+        "harness": "Codex",
+        "scoreMetric": "pass_at_1"
+      },
+      "targetBenchmarkVersion": "1.1",
+      "targetSourceCategory": "independent",
+      "codingAgentComparisonSourceId": "aa-codex-vs-kimi-code-cli",
+      "intelligenceIndexOutputSourceId": "aa-gpt-6-sol-luna-article",
+      "evidenceQuality": "low",
+      "aaDeepSWEv1_1Score": "72%",
+      "aaCodingSuiteCostUsdPerTask": 6.35,
+      "aaCodingSuiteTotalTokensPerTaskApprox": 10200000,
+      "aaCodingAgentTimePerTaskSeconds": 1236,
+      "aaIntelligenceIndexOutputTokensPerTaskApprox": 29000,
+      "outputCalibrationMethod": "exact-model-effort-deepswe-reference",
+      "costCalibrationMethod": "exact-model-effort-deepswe-reference",
+      "timeCalibrationMethod": "exact-model-effort-deepswe-reference",
+      "directUsageReferenceConfigurationId": "mini_swe_agent_gpt_5_6_sol_max",
+      "statistic": "mean-only",
+      "deepSWEOutputTokensPerScoredAttemptScenario": 60013.64444444444,
+      "outputTokenScenarioEnvelope": null,
+      "deepSWECostUsdPerScoredAttemptScenario": 8.386436346666667,
+      "costScenarioEnvelope": null,
+      "deepSWETimeSecondsPerScoredAttemptScenario": 1128.624910331111,
+      "timeScenarioEnvelopeSeconds": null,
+      "status": "low-confidence exact-model/max cross-harness scenario from a separate Datacurve DeepSWE row; cost basis is unspecified and timer boundaries differ or are unknown",
+      "intervalsAreConfidenceIntervals": false
+    },
+    {
+      "model": "GPT-5.6 Luna",
+      "effort": "max",
+      "aaAgent": "Codex",
+      "targetObservation": {
+        "observationId": "aa-codex-gpt-5.6-luna-max-v1.1",
+        "reportedName": "GPT-5.6 Luna (max)",
+        "publisher": "Artificial Analysis",
+        "harness": "Codex",
+        "scoreMetric": "pass_at_1"
+      },
+      "targetBenchmarkVersion": "1.1",
+      "targetSourceCategory": "independent",
+      "codingAgentComparisonSourceId": "aa-codex-vs-kimi-code-cli",
+      "intelligenceIndexOutputSourceId": "aa-gpt-6-sol-luna-article",
+      "evidenceQuality": "low",
+      "aaDeepSWEv1_1Score": "66%",
+      "aaCodingSuiteCostUsdPerTask": 0.44,
+      "aaCodingSuiteTotalTokensPerTaskApprox": 14900000,
+      "aaCodingAgentTimePerTaskSeconds": 1410,
+      "aaIntelligenceIndexOutputTokensPerTaskApprox": 41000,
+      "outputCalibrationMethod": "exact-model-effort-deepswe-reference",
+      "costCalibrationMethod": "exact-model-effort-deepswe-reference",
+      "timeCalibrationMethod": "exact-model-effort-deepswe-reference",
+      "directUsageReferenceConfigurationId": "mini_swe_agent_gpt_5_6_luna_max",
+      "statistic": "mean-only",
+      "deepSWEOutputTokensPerScoredAttemptScenario": 73399.70758928571,
+      "outputTokenScenarioEnvelope": null,
+      "deepSWECostUsdPerScoredAttemptScenario": 3.028116810267857,
+      "costScenarioEnvelope": null,
+      "deepSWETimeSecondsPerScoredAttemptScenario": 1122.9470243995536,
+      "timeScenarioEnvelopeSeconds": null,
+      "status": "low-confidence exact-model/max cross-harness scenario from a separate Datacurve DeepSWE row; cost basis is unspecified and timer boundaries differ or are unknown",
       "intervalsAreConfidenceIntervals": false
     }
   ],
@@ -357,6 +628,163 @@
     "Fireworks' DeepSWE-labeled cost figures were excluded from calibration because harness, denominator, run identity, and billing basis are unspecified; they provide no output-token usage.",
     "No DeepSWE output-token projection from AA Coding Agent total-token counts: those totals combine input, cache, cache-write, reasoning, and output and have no per-benchmark split.",
     "No cost derived from output tokens or score; exact input/cache/output mix and per-target price basis are not available for the target benchmark.",
-    "No cross-family cost or output estimate for remaining score-only sources (for example Fable 5.1, Qwen3.8-Max, Gemini 3.8 Flash, DeepSeek V4.1-Flash, Xiaomi MiMo V2.6, and Grok 4.7). Keep those usage fields missing/horizontal until matched usage evidence exists."
-  ]
+    "The remaining score-only targets have no matched source/evaluation row with compatible model, effort, benchmark, and usage evidence. Suite averages, unknown effort labels, unknown harnesses, older benchmark versions, and other model variants are not silently transferred."
+  ],
+  "coverageAudit": {
+    "researchDate": "2026-09-28",
+    "baselineObservationCount": 127,
+    "baselineMissingAllThreeMetricsCount": 57,
+    "baselineDistinctReportedModelLabelCount": 42,
+    "baselineMissingMetrics": ["cost", "outputTokens", "time"],
+    "outcomeRule": "Every listed target had null source-reported mean cost, mean output tokens, and mean time. Only exact targetObservationId entries in scenarioObservationIds receive separate mean scenarios, and only when scenarios are enabled outside strict mode. Their approved measurement fields remain null. Every remaining ID is a no-data outcome for all three metrics. Only percentage-scale score rows can be placed in the chart's no-data lane; raw scores with unspecified units remain outside the percentage plot and in the score-only list.",
+    "chartNoDataLaneCount": 38,
+    "unscaledNoDataScoreCount": 12,
+    "scenarioObservationIds": [
+      "aa-codex-gpt-6-luna-max-v1.1",
+      "artificial-analysis-claude-code-opus-5.5-max-v1.1",
+      "aa-codex-gpt-6-astra-max-v1.1",
+      "aa-codex-gpt-6-sol-max-v1.1",
+      "aa-claude-code-opus-5-max-v1.1",
+      "aa-codex-gpt-5.6-sol-max-v1.1",
+      "aa-codex-gpt-5.6-luna-max-v1.1"
+    ],
+    "noDataObservationIds": [
+      "openai-gpt-6-sol-v1.1-max",
+      "openai-gpt-6-luna-v1.1-max",
+      "anthropic-claude-opus-5.5-v1.1",
+      "anthropic-claude-opus-5-low-v1.1",
+      "anthropic-claude-opus-5-medium-v1.1",
+      "anthropic-claude-opus-5-high-v1.1",
+      "anthropic-claude-opus-5-xhigh-v1.1",
+      "anthropic-claude-opus-5-max-v1.1",
+      "anthropic-claude-fable-5.1-v1.1",
+      "deepseek-v4.1-flash-mini-swe-v1.1",
+      "deepseek-v4.1-flash-claude-code-v1.1",
+      "deepseek-v4.1-flash-codex-v1.1",
+      "deepseek-v4.1-flash-opencode-v1.1",
+      "deepseek-v4.1-flash-pi-v1.1",
+      "deepseek-v4.1-flash-dsh-minimal-v1.1",
+      "deepseek-v4.1-flash-dsh-standard-v1.1",
+      "deepseek-v4.1-flash-dsh-ptc-v1.1",
+      "xiaomi-mimo-v2.6-pro-table3-v1.1",
+      "xiaomi-mimo-v2.6-flash-table3-v1.1",
+      "xiaomi-mimo-v2.6-pro-average-at-3-endpoint-v1.1",
+      "xiaomi-mimo-v2.6-flash-average-at-3-endpoint-v1.1",
+      "qwen-qwen3.8-flash-next-v1.1",
+      "google-gemini-3.8-flash-high-v1.1",
+      "xai-grok-4.7-high-v1.1",
+      "badtheorylabs-tinfield-1-v1.1",
+      "aa-claude-code-fable-5.1-max-v1.1",
+      "aa-claude-code-qwen3.8-max-v1.1",
+      "aa-codex-deepseek-v4-pro-0813-max-v1.1",
+      "aa-codex-deepseek-v4-flash-0731-max-v1.1",
+      "aa-kimi-code-cli-kimi-k3-v1.1",
+      "datacurve-paper-gpt-5.5-xhigh-version-unknown",
+      "datacurve-paper-gemini-3.5-flash-medium-version-unknown",
+      "datacurve-paper-claude-opus-4.6-max-version-unknown",
+      "datacurve-paper-gpt-5.4-mini-xhigh-version-unknown",
+      "datacurve-paper-kimi-k2.6-default-version-unknown",
+      "datacurve-paper-gemini-3-flash-default-version-unknown",
+      "datacurve-paper-qwen3.6-plus-default-version-unknown",
+      "datacurve-paper-claude-haiku-4.5-default-version-unknown",
+      "datacurve-paper-minimax-m2.7-default-version-unknown",
+      "datacurve-paper-gpt-5.4-xhigh-version-unknown",
+      "datacurve-paper-claude-opus-4.7-max-version-unknown",
+      "datacurve-paper-claude-sonnet-4.6-high-version-unknown",
+      "datacurve-paper-mimo-v2.5-pro-default-version-unknown",
+      "datacurve-paper-glm-5.1-default-version-unknown",
+      "datacurve-paper-gemini-3.1-pro-default-version-unknown",
+      "datacurve-paper-deepseek-v4-pro-default-version-unknown",
+      "fireworks-deepswe-deepseek-v4.1-flash-max",
+      "fireworks-deepswe-gpt-6-astra-xhigh",
+      "fireworks-deepswe-gemini-3.8-flash-high",
+      "fireworks-deepswe-claude-opus-5-max"
+    ],
+    "chartNoDataLaneObservationIds": [
+      "openai-gpt-6-sol-v1.1-max",
+      "openai-gpt-6-luna-v1.1-max",
+      "anthropic-claude-opus-5.5-v1.1",
+      "anthropic-claude-opus-5-low-v1.1",
+      "anthropic-claude-opus-5-medium-v1.1",
+      "anthropic-claude-opus-5-high-v1.1",
+      "anthropic-claude-opus-5-xhigh-v1.1",
+      "anthropic-claude-opus-5-max-v1.1",
+      "anthropic-claude-fable-5.1-v1.1",
+      "xiaomi-mimo-v2.6-pro-average-at-3-endpoint-v1.1",
+      "xiaomi-mimo-v2.6-flash-average-at-3-endpoint-v1.1",
+      "google-gemini-3.8-flash-high-v1.1",
+      "xai-grok-4.7-high-v1.1",
+      "aa-claude-code-fable-5.1-max-v1.1",
+      "aa-claude-code-qwen3.8-max-v1.1",
+      "aa-codex-deepseek-v4-pro-0813-max-v1.1",
+      "aa-codex-deepseek-v4-flash-0731-max-v1.1",
+      "aa-kimi-code-cli-kimi-k3-v1.1",
+      "datacurve-paper-gpt-5.5-xhigh-version-unknown",
+      "datacurve-paper-gemini-3.5-flash-medium-version-unknown",
+      "datacurve-paper-claude-opus-4.6-max-version-unknown",
+      "datacurve-paper-gpt-5.4-mini-xhigh-version-unknown",
+      "datacurve-paper-kimi-k2.6-default-version-unknown",
+      "datacurve-paper-gemini-3-flash-default-version-unknown",
+      "datacurve-paper-qwen3.6-plus-default-version-unknown",
+      "datacurve-paper-claude-haiku-4.5-default-version-unknown",
+      "datacurve-paper-minimax-m2.7-default-version-unknown",
+      "datacurve-paper-gpt-5.4-xhigh-version-unknown",
+      "datacurve-paper-claude-opus-4.7-max-version-unknown",
+      "datacurve-paper-claude-sonnet-4.6-high-version-unknown",
+      "datacurve-paper-mimo-v2.5-pro-default-version-unknown",
+      "datacurve-paper-glm-5.1-default-version-unknown",
+      "datacurve-paper-gemini-3.1-pro-default-version-unknown",
+      "datacurve-paper-deepseek-v4-pro-default-version-unknown",
+      "fireworks-deepswe-deepseek-v4.1-flash-max",
+      "fireworks-deepswe-gpt-6-astra-xhigh",
+      "fireworks-deepswe-gemini-3.8-flash-high",
+      "fireworks-deepswe-claude-opus-5-max"
+    ],
+    "unscaledNoDataScoreObservationIds": [
+      "deepseek-v4.1-flash-mini-swe-v1.1",
+      "deepseek-v4.1-flash-claude-code-v1.1",
+      "deepseek-v4.1-flash-codex-v1.1",
+      "deepseek-v4.1-flash-opencode-v1.1",
+      "deepseek-v4.1-flash-pi-v1.1",
+      "deepseek-v4.1-flash-dsh-minimal-v1.1",
+      "deepseek-v4.1-flash-dsh-standard-v1.1",
+      "deepseek-v4.1-flash-dsh-ptc-v1.1",
+      "xiaomi-mimo-v2.6-pro-table3-v1.1",
+      "xiaomi-mimo-v2.6-flash-table3-v1.1",
+      "qwen-qwen3.8-flash-next-v1.1",
+      "badtheorylabs-tinfield-1-v1.1"
+    ],
+    "sourceSearchGroups": [
+      {
+        "sourceIds": ["aa-coding-agent-methodology-v1.5", "aa-claude-code-vs-codex", "aa-codex-vs-kimi-code-cli", "aa-gpt-6-sol-luna-article", "aa-opus-5-5-article", "aa-gpt-6-astra-article"],
+        "urls": [
+          "https://artificialanalysis.ai/methodology/coding-agents-benchmarking",
+          "https://artificialanalysis.ai/agents/coding-agents/comparisons/claude-code-vs-codex",
+          "https://artificialanalysis.ai/agents/coding-agents/comparisons/codex-vs-kimi-code-cli",
+          "https://artificialanalysis.ai/articles/gpt-6-sol-and-luna-push-the-cost-efficiency-frontier",
+          "https://artificialanalysis.ai/articles/claude-opus-5-5",
+          "https://artificialanalysis.ai/articles/benchmarking-gpt-6-astra"
+        ],
+        "finding": "The 12 variant rows provide suite-pooled cost, time, and mixed-category tokens, without DeepSWE efficiency allocation. Exact-model/max rows with direct Datacurve matches or output-only calibration support seven separate scenarios. Remaining variants lack matching calibration rows; Qwen3.8 Max and Kimi K3 have unspecified effort."
+      },
+      {
+        "sourceIds": ["datacurve-v1.1-json"],
+        "urls": ["https://deepswe.datacurve.ai/artifacts/v1.1/leaderboard-live.json"],
+        "finding": "Checked all 70 official configurations and the exact-model/effort usage rows. Direct DeepSWE references support the AA Astra max, Opus 5 max, GPT-5.6 Sol max, and GPT-5.6 Luna max scenarios; exact-model/effort pairs support the OpenAI max and Opus 5 time calibrations. Other targets have no compatible exact configuration in this feed."
+      },
+      {
+        "sourceIds": ["openai-gpt-6-sol-luna", "anthropic-opus-5.5-system-card", "anthropic-opus-5-system-card", "anthropic-fable-5-1-system-card", "deepseek-v4-1-flash-technical-report", "mimo-v2-6-technical-report", "qwen-3-8-flash-next-card", "google-gemini-3-8-evaluation", "xai-grok-4-7-release", "tinfield-1-card"],
+        "finding": "Reviewed the existing primary-source captures and row-specific metric missing reasons. These sources report scores/configuration results but no aligned per-task cost, output-only usage, and comparable time tuple. Unknown effort, harness, or score protocol remains unknown."
+      },
+      {
+        "sourceIds": ["fireworks-deepswe-comparison", "datacurve-paper-arxiv-pdf"],
+        "finding": "Fireworks Cost/Task is retained outside normalized mean cost because its aggregation and billing basis are unspecified and it supplies no output/time values. Older Datacurve paper rows are version-unknown and have no matching efficiency data; no current feed usage is joined to them."
+      }
+    ],
+    "noDataReasonsByMetric": {
+      "cost": "No attributable DeepSWE mean cost or defensible same-model/effort transfer is available for these target observations. Fireworks' unscoped Cost/Task remains separate.",
+      "outputTokens": "No output-only DeepSWE count or exact-compatible output calibration is available. Mixed Coding Agent totals are not output tokens; score and rate-card conversion are not used.",
+      "time": "No compatible measured per-task wall-clock pair supports transfer for these target identities. Advertised tokens/second, agent-step counts, and total job elapsed time are not converted into task duration."
+    }
+  }
 }

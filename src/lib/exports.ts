@@ -80,7 +80,10 @@ function scenarioExportRecord(observation: Observation, scenario: NonNullable<Re
       costSensitivityUsdPerScoredAttempt: scenario.costSensitivityRange,
       meanOutputTokensPerScoredAttempt: scenario.outputTokensPerScoredAttempt,
       outputTokenSensitivityPerScoredAttempt: scenario.outputTokenSensitivityRange,
+      meanReportedSecondsPerScoredAttempt: scenario.timeSecondsPerScoredAttempt,
+      timeSensitivitySecondsPerScoredAttempt: scenario.timeSensitivityRange,
       aaCodingSuiteCostUsdPerTask: scenario.aaCodingSuiteCostUsdPerTask,
+      aaCodingSuiteTimeSecondsPerTask: scenario.aaCodingSuiteTimeSecondsPerTask,
       aaCodingSuiteMixedTokensPerTask: scenario.aaCodingSuiteMixedTokensPerTask,
       sensitivityNote: scenario.sensitivityNote,
       confidence: scenario.confidence,
@@ -93,6 +96,11 @@ function scenarioExportRecord(observation: Observation, scenario: NonNullable<Re
       costCalibrationDescription: scenario.costCalibrationDescription,
       costCalibrationRows: scenario.costCalibrationRows,
       costLeaveOneOutMapePercent: scenario.costLeaveOneOutMapePercent,
+      timeCalibrationMethod: scenario.timeCalibrationMethod,
+      timeCalibrationDescription: scenario.timeCalibrationDescription,
+      timeCalibrationRows: scenario.timeCalibrationRows,
+      timeLeaveOneOutMapePercent: scenario.timeLeaveOneOutMapePercent,
+      directUsageReference: scenario.directUsageReference,
       sources: scenario.sources,
     },
     scoreSourceEvidence: {
@@ -139,13 +147,17 @@ export function usageScenarioCsvExport(dataset: Dataset, observations: Observati
     'measurement_mean_cost_usd', 'measurement_median_cost_usd', 'measurement_mean_output_tokens', 'measurement_median_output_tokens', 'measurement_mean_reported_seconds', 'measurement_median_reported_seconds', 'source_reported_cost_usd',
     'scenario_mean_cost_usd_per_attempt', 'scenario_cost_sensitivity_low_usd', 'scenario_cost_sensitivity_high_usd',
     'scenario_mean_output_tokens_per_attempt', 'scenario_output_sensitivity_low_tokens', 'scenario_output_sensitivity_high_tokens',
-    'aa_coding_suite_cost_usd_per_task', 'aa_coding_suite_mixed_tokens_per_task', 'scenario_statistic', 'scenario_confidence_quality', 'scenario_confidence_note',
+    'scenario_mean_reported_seconds_per_attempt', 'scenario_time_sensitivity_low_seconds', 'scenario_time_sensitivity_high_seconds',
+    'aa_coding_suite_cost_usd_per_task', 'aa_coding_suite_time_seconds_per_task', 'aa_coding_suite_mixed_tokens_per_task', 'scenario_statistic', 'scenario_confidence_quality', 'scenario_confidence_note',
     'cost_calibration_method', 'cost_calibration_description', 'cost_leave_one_out_mape_percent', 'output_calibration_method', 'output_calibration_description', 'output_leave_one_out_mape_percent',
+    'time_calibration_method', 'time_calibration_description', 'time_leave_one_out_mape_percent',
+    'output_calibration_rows_json', 'cost_calibration_rows_json', 'time_calibration_rows_json', 'direct_usage_reference_json',
     'sensitivity_note', 'score_source_title', 'score_source_url', 'score_source_retrieved_at', 'score_source_sha256', 'score_evidence_locator', 'scenario_sources_json',
   ]
   const rows = scenarioExportRows(observations).map(({ observation, scenario }) => {
     const costRange = scenario.costSensitivityRange
     const outputRange = scenario.outputTokenSensitivityRange
+    const timeRange = scenario.timeSensitivityRange
     return [
       'estimated_usage_scenario', scenario.id, scenario.model, observation.id, observation.model.reportedName, observation.publisher, observation.sourceCategory, observation.benchmark.version,
       observation.effort.reportedLabel, observation.series.harness, observation.result.metric, observation.result.metricLabel, observation.result.reportedText,
@@ -153,9 +165,12 @@ export function usageScenarioCsvExport(dataset: Dataset, observations: Observati
       observation.metrics.time.value, observation.metrics.medianTime.value, observation.pricing.asReportedCost,
       scenario.costUsdPerScoredAttempt, costRange?.[0] ?? null, costRange?.[1] ?? null,
       scenario.outputTokensPerScoredAttempt, outputRange?.[0] ?? null, outputRange?.[1] ?? null,
-      scenario.aaCodingSuiteCostUsdPerTask, scenario.aaCodingSuiteMixedTokensPerTask, 'mean-only', scenario.confidence, scenario.confidenceNote,
+      scenario.timeSecondsPerScoredAttempt, timeRange?.[0] ?? null, timeRange?.[1] ?? null,
+      scenario.aaCodingSuiteCostUsdPerTask, scenario.aaCodingSuiteTimeSecondsPerTask, scenario.aaCodingSuiteMixedTokensPerTask, 'mean-only', scenario.confidence, scenario.confidenceNote,
       scenario.costCalibrationMethod, scenario.costCalibrationDescription, scenario.costLeaveOneOutMapePercent,
       scenario.outputCalibrationMethod, scenario.outputCalibrationDescription, scenario.outputLeaveOneOutMapePercent,
+      scenario.timeCalibrationMethod, scenario.timeCalibrationDescription, scenario.timeLeaveOneOutMapePercent,
+      JSON.stringify(scenario.outputCalibrationRows), JSON.stringify(scenario.costCalibrationRows), JSON.stringify(scenario.timeCalibrationRows), JSON.stringify(scenario.directUsageReference),
       scenario.sensitivityNote, observation.provenance.title, observation.provenance.url, observation.provenance.retrievedAt,
       observation.provenance.contentSha256, observation.provenance.evidenceLocator, JSON.stringify(scenario.sources),
     ]
