@@ -71,6 +71,63 @@ test('official numeric effort curve is accessible and pass@4 evidence stays metr
   await expect(evidence).toContainText('Datacurve does not report a pass@4 confidence interval.')
 })
 
+test('selected measured and estimated results show axis guides for the active X metric', async ({ page }) => {
+  await page.goto('?view=official&q=astra')
+  const point = page.locator('.plot-point').first()
+  const observationId = await point.getAttribute('data-observation-id')
+  expect(observationId).not.toBeNull()
+  await point.focus()
+  await point.press('Enter')
+
+  const guide = page.locator(`.selected-guide[data-selected-guide-for="${observationId}"]`)
+  await expect(guide).toHaveAttribute('data-selected-guide-type', 'measured')
+  await expect(guide.locator('.selected-guide-y')).toHaveCount(1)
+  await expect(guide.locator('.selected-guide-x')).toHaveCount(1)
+  await expect(guide.locator('[data-guide-axis="y"]')).toContainText('%')
+  await expect(guide.locator('[data-guide-axis="x"]')).toContainText('$')
+
+  for (const [metric, label] of [['outputTokens', 'Output tokens per task'], ['time', 'Time per task']] as const) {
+    await page.getByRole('button', { name: label, exact: true }).click()
+    await expect(guide).toHaveAttribute('data-x-metric', metric)
+    await expect(guide.locator('.selected-guide-x')).toHaveCount(1)
+    await expect(guide.locator('[data-guide-axis="x"]')).not.toBeEmpty()
+  }
+
+  await page.goto('?view=combined')
+  const estimate = page.locator('.estimated-point[data-observation-id="aa-codex-gpt-6-luna-max-v1.1"]')
+  await expect(estimate).toHaveCount(1)
+  await estimate.click()
+  const estimatedGuide = page.locator('.selected-guide[data-selected-guide-type="estimated"]')
+  await expect(estimatedGuide).toHaveClass(/is-estimated/)
+  await expect(estimatedGuide.locator('.selected-guide-x, .selected-guide-y')).toHaveCount(2)
+  await expect(estimatedGuide.locator('[data-guide-axis="x"]')).toContainText('EST ·')
+})
+
+test('selected Muse Spark source score has no fabricated cost, token, or time guide', async ({ page }) => {
+  await page.goto('?q=Muse%20Spark%201.3&publisher=Meta&score=task_pass_rate')
+  const row = page.locator('.results-table tbody tr[data-observation-id="meta-muse-spark-1.3-v1.1-max"]')
+  await expect(row).toHaveCount(1)
+  await expect(row.locator('td').nth(2)).toContainText('75.4%')
+  await row.locator('.table-model-button').click()
+
+  const guide = page.locator('.selected-guide[data-selected-guide-type="no-data"]')
+  await expect(guide).toHaveAttribute('data-x-metric', 'cost')
+  await expect(guide).toHaveAttribute('aria-label', /75\.4%.*no cost per task value is reported.*No numeric X guide is shown/)
+  await expect(guide.locator('.selected-guide-y')).toHaveCount(1)
+  await expect(guide.locator('.selected-guide-x')).toHaveCount(0)
+  await expect(guide.locator('[data-guide-axis="x-missing"]')).toHaveText('NO COST DATA')
+
+  for (const [metric, label, missing] of [
+    ['outputTokens', 'Output tokens per task', 'NO OUTPUT-TOKEN DATA'],
+    ['time', 'Time per task', 'NO TIME DATA'],
+  ] as const) {
+    await page.getByRole('button', { name: label, exact: true }).click()
+    await expect(guide).toHaveAttribute('data-x-metric', metric)
+    await expect(guide.locator('.selected-guide-x')).toHaveCount(0)
+    await expect(guide.locator('[data-guide-axis="x-missing"]')).toHaveText(missing)
+  }
+})
+
 test('default view surfaces supplemental reports with their reported score metric', async ({ page }) => {
   await page.goto('./')
   const table = page.locator('.results-table tbody')
@@ -142,8 +199,8 @@ test('default view surfaces supplemental reports with their reported score metri
 
 test('no-data marks use a separate gutter through X/statistic/scale changes', async ({ page }) => {
   await page.goto('./')
-  await expect(page.locator('.no-data-point')).toHaveCount(38)
-  await expect(page.locator('.no-data-lane-count')).toHaveText('38')
+  await expect(page.locator('.no-data-point')).toHaveCount(39)
+  await expect(page.locator('.no-data-lane-count')).toHaveText('39')
   expect(await noDataSymbolOverlaps(page)).toEqual([])
   const lunaReference = page.locator('.no-data-point[data-observation-id="openai-gpt-6-luna-v1.1-max"]')
   const opusReference = page.locator('.no-data-point[data-observation-id="anthropic-claude-opus-5.5-v1.1"]')
@@ -246,15 +303,15 @@ test('publisher/model filters and strict mode do not combine unknown protocol gr
 
   await page.getByLabel('Benchmark version').selectOption('1.1')
   await expect(page).toHaveURL(/version=1.1/)
-  await expect(page.locator('.results-table tbody tr')).toHaveCount(107)
+  await expect(page.locator('.results-table tbody tr')).toHaveCount(108)
   await page.getByLabel('Harness / protocol').selectOption('mini-swe-agent')
-  await expect(page.locator('.results-table tbody tr')).toHaveCount(71)
+  await expect(page.locator('.results-table tbody tr')).toHaveCount(72)
   await page.getByLabel('Harness / protocol').selectOption('all')
 
   const sourceToggles = page.locator('.source-filter input[type="checkbox"]')
   await sourceToggles.nth(0).uncheck()
   await expect(page).toHaveURL(/sources=/)
-  await expect(page.locator('.results-table tbody tr')).toHaveCount(37)
+  await expect(page.locator('.results-table tbody tr')).toHaveCount(38)
   await sourceToggles.nth(0).check()
 
   await page.getByRole('searchbox', { name: 'Search models / publishers' }).fill('Astra')
@@ -344,7 +401,7 @@ test('score-only reports, reviewed evidence and all/filtered downloads keep attr
   await expect(page.locator('.score-only-list li')).toHaveCount(scoreOnlyCount)
   await expect(page.locator('.metric-warning')).toContainText('unspecified units')
   await expect(page.locator('.metric-chart-warning')).toContainText('raw values with unspecified units are omitted')
-  await expect(page.locator('.legend-symbol.source-developer')).toHaveCount(9)
+  await expect(page.locator('.legend-symbol.source-developer')).toHaveCount(10)
   await expect(page.locator('.legend-symbol.source-independent')).toHaveCount(16)
 
   const rawTableRow = page.locator('.results-table tbody tr').filter({ hasText: 'DeepSeek-V4.1-Flash' }).filter({ hasText: '74.2' })
@@ -395,6 +452,7 @@ test('score-only reports, reviewed evidence and all/filtered downloads keep attr
 
 test('SVG export, submission draft, methodology/source pages, and mobile layout work', async ({ page }) => {
   await page.goto('./')
+  await page.locator('.plot-point').first().click()
   const svgDownload = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Download current chart as SVG' }).click()
   const svgPath = await (await svgDownload).path()
@@ -403,6 +461,8 @@ test('SVG export, submission draft, methodology/source pages, and mobile layout 
   expect(svg).toContain('curve-path')
   expect(svg).toContain('no-data-lane')
   expect(svg).toContain('.point-hit-area{fill:transparent;stroke:transparent}')
+  expect(svg).toContain('.selected-guide-line{fill:none;stroke:#006d68')
+  expect(svg).toContain('selected-guide-x')
   expect(svg).toContain('66.6%')
 
   await page.getByRole('tab', { name: /Review queue/ }).click()
@@ -473,7 +533,7 @@ test('usage scenarios stay separate from measurements, are mean-only, and export
   await expect(page).toHaveURL(/scenarios=0/)
   await expect(page.locator('.estimated-point')).toHaveCount(0)
   await expect(page.locator(`.no-data-point[data-observation-id="${lunaId}"]`)).toHaveCount(1)
-  await expect(page.locator('.no-data-lane-count')).toHaveText('45')
+  await expect(page.locator('.no-data-lane-count')).toHaveText('46')
   expect(await noDataSymbolOverlaps(page)).toEqual([])
   await page.reload()
   await expect(scenarioToggle).not.toBeChecked()

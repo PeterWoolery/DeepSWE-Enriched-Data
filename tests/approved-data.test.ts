@@ -27,6 +27,35 @@ describe('approved observation boundaries', () => {
     expect(aliasMap.explicitNonAliases.some((pair) => pair.names.includes('GPT-5.6 Sol') && pair.names.includes('GPT-6 Sol'))).toBe(true)
   })
 
+  it('records Meta Muse Spark 1.3 with its task-pass metric and unreported usage/denominator fields', () => {
+    const museRows = dataset.observations.filter((row) => row.model.reportedName === 'Muse Spark 1.3')
+    expect(museRows).toHaveLength(1)
+    const muse = museRows[0]!
+    expect(muse.model.snapshot).toBe('muse-spark-1.3')
+    expect(muse.benchmark).toMatchObject({ version: '1.1', scope: 'unknown', taskCount: 113, tasksAttempted: null, runs: null })
+    expect(muse.result).toMatchObject({
+      metric: 'task_pass_rate',
+      metricLabel: 'Task pass rate — tasks whose functional and regression tests pass / tasks evaluated',
+      value: 0.754,
+      reportedValue: 75.4,
+      reportedUnit: '%',
+      reportedText: '75.4%',
+      denominatorCount: null,
+    })
+    expect(muse.result.confidenceInterval.low).toBeNull()
+    expect(muse.result.confidenceInterval.missingReason).toMatch(/does not report an uncertainty interval/i)
+    expect(muse.effort.reportedLabel).toBe('max')
+    expect(muse.series).toMatchObject({ harness: 'mini-swe-agent', provider: 'Meta Model API', connectable: false })
+    expect(Object.values(muse.metrics).every((metric) => metric.value === null)).toBe(true)
+    expect(muse.provenance).toMatchObject({
+      sourceId: 'meta-muse-spark-1.3-model-page',
+      reviewStatus: 'source-reviewed',
+      contentSha256: 'ab71ea482b2034c2962a54e86ec8b2e980655009420eee74d704780f2db83bf5',
+      publicationDate: '2026-09-02',
+    })
+    expect(dataset.observations.filter((row) => /muse-spark-1-[12]/i.test(row.model.reportedName))).toHaveLength(2)
+  })
+
   it('does not attach composite costs to score-only reports and keeps the known site/feed mismatch', () => {
     const independent = dataset.observations.find((row) => row.id === 'artificial-analysis-claude-code-opus-5.5-max-v1.1')!
     expect(independent.metrics.cost.value).toBeNull()
@@ -125,6 +154,7 @@ describe('approved observation boundaries', () => {
       'mimo-v2-6-technical-report', 'qwen-3-8-flash-next-card', 'google-gemini-3-8-evaluation',
       'xai-grok-4-7-release', 'tinfield-1-card', 'artificial-analysis-coding-agents',
       'artificial-analysis-codex-kimi-cli', 'datacurve-paper-arxiv-pdf', 'fireworks-deepswe-comparison',
+      'meta-muse-spark-1.3-model-page',
     ]
     const rows = dataset.observations.filter((row) => sourceOnlyIds.includes(row.provenance.sourceId))
     expect(rows.length).toBeGreaterThan(0)

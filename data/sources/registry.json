@@ -339,6 +339,42 @@
       "sha256": "c94d19c5313f1a1609ef595533ee6cce0b8a5aa10741e501c2bfc6883d54cccc",
       "accessAndReuse": "Attributed source-reported score and Cost/Task facts only; no article content or assets copied.",
       "notes": ["The post says Fireworks evaluated DeepSWE and reports run-to-run variation, so its four rows are retained as separate Fireworks source observations; benchmark version, harness, task count, and run identity remain unknown.", "GPT-6 Astra, Gemini 3.8 Flash, and Claude Opus 5 scores round to current v1.1 feed observations but are not merged; Fireworks Cost/Task values remain scoped only to the Fireworks report.", "Cost aggregation and billing basis are unspecified. Direct costs are retained as reported, not normalized as a mean/median cost metric; no token or time values are derived."]
+    },
+    {
+      "id": "meta-muse-spark-1.3-model-page",
+      "publisher": "Meta",
+      "title": "Muse Spark 1.3 model and benchmarks",
+      "url": "https://dev.meta.ai/models/muse-spark",
+      "category": "developer",
+      "status": "source-reviewed",
+      "lastObservedDate": "2026-09-28",
+      "sha256": "ab71ea482b2034c2962a54e86ec8b2e980655009420eee74d704780f2db83bf5",
+      "accessAndReuse": "Attributed model and benchmark result facts only; no page text, assets, or model files are copied.",
+      "notes": ["Muse Spark 1.3 benchmarks → Coding → DeepSWE v1.1 row; first model column ‘Muse Spark 1.3 (max)’ reports 75.4, confirmed against rendered row alignment. The nearby 59.4 is on the SWE-Atlas Codebase QnA row.", "The page lists Meta Model API identifier muse-spark-1.3; an immutable backend revision is not disclosed.", "Evaluation details are cross-referenced to meta-muse-spark-1.3-evaluation-methodology; release publication date is cross-referenced to meta-muse-spark-1.3-announcement."]
+    },
+    {
+      "id": "meta-muse-spark-1.3-evaluation-methodology",
+      "publisher": "Meta",
+      "title": "Muse Spark 1.3 Multimodal Evaluation Methodology",
+      "url": "https://research.meta.ai/static/muse-spark-1-3-multimodal-evaluation-methodology",
+      "category": "developer",
+      "status": "source-reviewed",
+      "lastObservedDate": "2026-09-28",
+      "sha256": "315a5d1de2932bf772caf1945aa2c7460a1e040c5df3d8b6bbfb53eddea864fe",
+      "accessAndReuse": "PDF inspected; retain attributed metric and protocol facts with section locators only. The PDF and task materials are not redistributed.",
+      "notes": ["Per-benchmark details → Software engineering and code understanding → DeepSWE v1.1: Muse Spark 1.3 max with mini-swe-agent; primary metric is task pass rate, defined as tasks whose functional and regression tests both pass.", "The section describes DeepSWE v1.1 as a 113-task benchmark across 91 repositories and five languages; per-model attempted-task denominator, run count, uncertainty interval, and per-task efficiency values are not stated.", "PDF CreationDate metadata is 2026-09-03T22:11:34Z; the linked Muse Spark 1.3 announcement was published 2026-09-02."]
+    },
+    {
+      "id": "meta-muse-spark-1.3-announcement",
+      "publisher": "Meta",
+      "title": "Introducing Muse Spark 1.3",
+      "url": "https://research.meta.ai/blog/introducing-muse-spark-1-3",
+      "category": "developer",
+      "status": "source-reviewed",
+      "lastObservedDate": "2026-09-28",
+      "sha256": "33bc6221b61a6b40caf8ee043609f22b36563099fe15e8ff2459c7eb8de45627",
+      "accessAndReuse": "Attributed publication date and release facts only; the article text and scorecard image are not copied.",
+      "notes": ["Meta article metadata gives publication date 2026-09-02 and links to the evaluation methodology report.", "The numeric DeepSWE v1.1 result is transcribed from the linked Meta model-and-benchmarks page, not inferred from the scorecard image."]
     }
   ]
 }

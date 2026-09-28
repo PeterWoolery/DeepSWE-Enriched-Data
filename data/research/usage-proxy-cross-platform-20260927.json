@@ -632,12 +632,12 @@
   ],
   "coverageAudit": {
     "researchDate": "2026-09-28",
-    "baselineObservationCount": 127,
-    "baselineMissingAllThreeMetricsCount": 57,
-    "baselineDistinctReportedModelLabelCount": 42,
+    "baselineObservationCount": 128,
+    "baselineMissingAllThreeMetricsCount": 58,
+    "baselineDistinctReportedModelLabelCount": 43,
     "baselineMissingMetrics": ["cost", "outputTokens", "time"],
     "outcomeRule": "Every listed target had null source-reported mean cost, mean output tokens, and mean time. Only exact targetObservationId entries in scenarioObservationIds receive separate mean scenarios, and only when scenarios are enabled outside strict mode. Their approved measurement fields remain null. Every remaining ID is a no-data outcome for all three metrics. Only percentage-scale score rows can be placed in the chart's no-data lane; raw scores with unspecified units remain outside the percentage plot and in the score-only list.",
-    "chartNoDataLaneCount": 38,
+    "chartNoDataLaneCount": 39,
     "unscaledNoDataScoreCount": 12,
     "scenarioObservationIds": [
       "aa-codex-gpt-6-luna-max-v1.1",
@@ -698,7 +698,8 @@
       "fireworks-deepswe-deepseek-v4.1-flash-max",
       "fireworks-deepswe-gpt-6-astra-xhigh",
       "fireworks-deepswe-gemini-3.8-flash-high",
-      "fireworks-deepswe-claude-opus-5-max"
+      "fireworks-deepswe-claude-opus-5-max",
+      "meta-muse-spark-1.3-v1.1-max"
     ],
     "chartNoDataLaneObservationIds": [
       "openai-gpt-6-sol-v1.1-max",
@@ -738,7 +739,8 @@
       "fireworks-deepswe-deepseek-v4.1-flash-max",
       "fireworks-deepswe-gpt-6-astra-xhigh",
       "fireworks-deepswe-gemini-3.8-flash-high",
-      "fireworks-deepswe-claude-opus-5-max"
+      "fireworks-deepswe-claude-opus-5-max",
+      "meta-muse-spark-1.3-v1.1-max"
     ],
     "unscaledNoDataScoreObservationIds": [
       "deepseek-v4.1-flash-mini-swe-v1.1",
@@ -779,6 +781,11 @@
       {
         "sourceIds": ["fireworks-deepswe-comparison", "datacurve-paper-arxiv-pdf"],
         "finding": "Fireworks Cost/Task is retained outside normalized mean cost because its aggregation and billing basis are unspecified and it supplies no output/time values. Older Datacurve paper rows are version-unknown and have no matching efficiency data; no current feed usage is joined to them."
+      },
+      {
+        "sourceIds": ["meta-muse-spark-1.3-model-page", "meta-muse-spark-1.3-evaluation-methodology", "meta-muse-spark-1.3-announcement"],
+        "urls": ["https://dev.meta.ai/models/muse-spark", "https://research.meta.ai/static/muse-spark-1-3-multimodal-evaluation-methodology", "https://research.meta.ai/blog/introducing-muse-spark-1-3"],
+        "finding": "Meta reports 75.4 on the DeepSWE v1.1 row for Muse Spark 1.3 max and defines task pass rate with the mini-swe-agent harness. Its per-model denominator, run count, uncertainty, and per-task usage are not reported; no estimate or Muse Spark 1.1/1.2 usage is transferred."
       }
     ],
     "noDataReasonsByMetric": {

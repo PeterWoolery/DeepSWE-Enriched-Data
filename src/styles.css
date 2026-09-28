@@ -218,6 +218,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .effort-chart .estimated-label { fill: var(--amber); font: 9px var(--mono); paint-order: stroke; stroke: var(--paper-strong); stroke-width: 3px; pointer-events: none; }
 .effort-chart .confidence-mark line { stroke: var(--ink); stroke-width: 1.25; opacity: .76; }
 .effort-chart .point-label { fill: var(--ink); font: 10px var(--mono); paint-order: stroke; stroke: var(--paper-strong); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
+.effort-chart .selected-guide { pointer-events: none; }
+.effort-chart .selected-guide-line { fill: none; stroke: var(--teal); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.effort-chart .selected-guide.is-estimated .selected-guide-line { stroke: var(--amber); stroke-dasharray: 2 3; }
+.effort-chart .selected-guide-label { fill: var(--teal); font: 10px var(--mono); font-weight: 700; paint-order: stroke; stroke: var(--paper-strong); stroke-width: 4px; stroke-linejoin: round; }
+.effort-chart .selected-guide.is-estimated .selected-guide-label { fill: var(--amber); }
+.effort-chart .selected-guide-missing-label { fill: var(--amber); font: 9px var(--mono); font-weight: 700; paint-order: stroke; stroke: var(--paper-strong); stroke-width: 4px; stroke-linejoin: round; }
 .effort-chart .chart-callout rect { fill: var(--teal-soft); stroke: var(--line); }
 .effort-chart .chart-callout text { fill: var(--teal); font: 14px var(--mono); }
 .effort-chart .chart-callout .callout-caption { font-size: 7px; letter-spacing: .07em; }

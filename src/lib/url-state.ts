@@ -60,7 +60,7 @@ export function parseExplorerUrl(search: string): ExplorerUrlState {
     scale: isOneOf(params.get('scale'), ['linear', 'log']) ? params.get('scale') as AxisScale : defaultExplorerState.scale,
     effortMode: isOneOf(params.get('effort'), ['all', 'best']) ? params.get('effort') as EffortMode : defaultExplorerState.effortMode,
     statistic: isOneOf(params.get('stat'), ['mean', 'median']) ? params.get('stat') as Statistic : defaultExplorerState.statistic,
-    scoreMetric: isOneOf(params.get('score'), ['pass_at_1', 'pass_at_4', 'reported_score_unspecified']) ? params.get('score') as ScoreMetric : defaultExplorerState.scoreMetric,
+    scoreMetric: isOneOf(params.get('score'), ['pass_at_1', 'pass_at_4', 'reported_score_unspecified', 'task_pass_rate']) ? params.get('score') as ScoreMetric : defaultExplorerState.scoreMetric,
     query: params.get('q') ?? '',
     selectedModels: [...new Set(params.getAll('model').filter(Boolean))],
     sources: params.has('sources') ? [...new Set(selectedSources)] : defaultExplorerState.sources,

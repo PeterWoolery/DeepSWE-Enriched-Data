@@ -2,7 +2,7 @@ import type { Observation } from './schema'
 
 export type XMetric = 'cost' | 'outputTokens' | 'time'
 export type Statistic = 'mean' | 'median'
-export type ScoreMetric = 'pass_at_1' | 'pass_at_4' | 'reported_score_unspecified'
+export type ScoreMetric = 'pass_at_1' | 'pass_at_4' | 'reported_score_unspecified' | 'task_pass_rate'
 export type SourceCategory = Observation['sourceCategory']
 
 export const xMetricLabels: Record<XMetric, { label: string; mean: string; median: string; axis: string; shortUnit: string }> = {
@@ -15,6 +15,7 @@ export const scoreMetricLabels: Record<ScoreMetric, string> = {
   pass_at_1: 'pass@1 · scored attempt pass rate',
   pass_at_4: 'pass@4 · unique task pass rate',
   reported_score_unspecified: 'reported score · metric or unit unspecified',
+  task_pass_rate: 'task pass rate · tasks passing both test suites',
 }
 
 export function metricObservation(observation: Observation, metric: XMetric, statistic: Statistic) {

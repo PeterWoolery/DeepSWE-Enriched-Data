@@ -82,6 +82,16 @@ interface NoDataMark {
   y: number
 }
 
+interface SelectedGuideMark {
+  observation: Observation
+  score: ReturnType<typeof displayScoreResult>
+  x: number
+  y: number
+  xValue: number | null
+  estimated: boolean
+  missingReason: string | null
+}
+
 function arrangeNoDataMarks(items: Omit<NoDataMark, 'x' | 'y'>[]): NoDataMark[] {
   const columns = Array.from({ length: NO_DATA_COLUMNS }, () => [] as number[])
   const ordered = [...items].sort((left, right) => scaleY(left.score.value) - scaleY(right.score.value) || left.observation.id.localeCompare(right.observation.id))
@@ -217,8 +227,80 @@ export function ExplorerChart({
     ? 'PASS@1 (%)'
     : plottedMetricIds.size === 1 && plottedMetricIds.has('pass_at_4')
       ? 'PASS@4 (%)'
+      : plottedMetricIds.size === 1 && plottedMetricIds.has('task_pass_rate')
+        ? 'TASK PASS RATE (%)'
       : 'SCORE (%)'
   const hasChartMarks = plottedRows.length > 0 || estimatedPlotPoints.length > 0 || noDataMarks.length > 0
+  const selectedGuide: SelectedGuideMark | null = (() => {
+    if (!selectedObservationId) return null
+    const measured = plottedRows.find(({ observation }) => observation.id === selectedObservationId)
+    if (measured) {
+      const score = displayScoreResult(measured.observation, scoreMetric)
+      return {
+        observation: measured.observation,
+        score,
+        x: scaleX(measured.point.x!, scale, xMin, xMax),
+        y: scaleY(measured.point.y!),
+        xValue: measured.point.x!,
+        estimated: false,
+        missingReason: null,
+      }
+    }
+    const estimated = estimatedPlotPoints.find(({ observation }) => observation.id === selectedObservationId)
+    if (estimated) {
+      return {
+        observation: estimated.observation,
+        score: estimated.score,
+        x: scaleX(estimated.x, scale, xMin, xMax),
+        y: scaleY(estimated.score.value),
+        xValue: estimated.x,
+        estimated: true,
+        missingReason: null,
+      }
+    }
+    const missing = noDataMarks.find(({ observation }) => observation.id === selectedObservationId)
+    if (!missing) return null
+    return {
+      observation: missing.observation,
+      score: missing.score,
+      x: missing.x,
+      y: missing.y,
+      xValue: null,
+      estimated: false,
+      missingReason: missing.missingReason,
+    }
+  })()
+  const selectedGuideLabel = selectedGuide
+    ? selectedGuide.xValue === null
+      ? `${selectedGuide.observation.model.reportedName}; ${displayScoreValue(selectedGuide.score)} ${selectedGuide.score.metricLabel}; no ${xMetricLabels[xMetric].label.toLowerCase()} value is reported: ${selectedGuide.missingReason}. No numeric X guide is shown.`
+      : `${selectedGuide.observation.model.reportedName}; ${displayScoreValue(selectedGuide.score)} ${selectedGuide.score.metricLabel}; ${selectedGuide.estimated ? 'estimated scenario' : 'reported'} ${statistic} ${xMetricLabels[xMetric].axis}: ${formatAxis(selectedGuide.xValue, xMetric)}.`
+    : null
+  const selectedGuideXAnchor = selectedGuide && selectedGuide.x <= PLOT.left + 54
+    ? 'start'
+    : selectedGuide && selectedGuide.x >= PLOT.right - 54
+      ? 'end'
+      : 'middle'
+  const selectedGuideLabelX = selectedGuide
+    ? selectedGuideXAnchor === 'start'
+      ? Math.min(selectedGuide.x + 7, PLOT.right - 24)
+      : selectedGuideXAnchor === 'end'
+        ? Math.max(selectedGuide.x - 7, PLOT.left + 24)
+        : selectedGuide.x
+    : 0
+  const selectedGuideScoreX = selectedGuide && selectedGuide.xValue !== null && selectedGuide.x <= PLOT.left + 55
+    ? Math.min(selectedGuide.x + 12, PLOT.right - 52)
+    : PLOT.left + 8
+  const selectedGuideScoreY = selectedGuide && selectedGuide.y <= PLOT.top + 12
+    ? selectedGuide.y + 16
+    : (selectedGuide?.y ?? 0) - 7
+  const selectedGuideMissingLabel = xMetric === 'outputTokens'
+    ? 'NO OUTPUT-TOKEN DATA'
+    : xMetric === 'time'
+      ? 'NO TIME DATA'
+      : 'NO COST DATA'
+  const selectedGuideMissingX = selectedGuide && selectedGuide.x > WIDTH - 110 ? selectedGuide.x - 12 : (selectedGuide?.x ?? 0) + 12
+  const selectedGuideMissingAnchor = selectedGuide && selectedGuide.x > WIDTH - 110 ? 'end' : 'start'
+  const selectedGuideMissingY = selectedGuide && selectedGuide.y > PLOT.bottom - 12 ? selectedGuide.y - 11 : (selectedGuide?.y ?? 0) + 4
 
   return (
     <div className="chart-frame">
@@ -428,6 +510,26 @@ export function ExplorerChart({
               </g>
             )
           })}
+          {selectedGuide && selectedGuideLabel && (
+            <g
+              className={`selected-guide${selectedGuide.estimated ? ' is-estimated' : ''}${selectedGuide.xValue === null ? ' is-no-data' : ''}`}
+              data-selected-guide-for={selectedGuide.observation.id}
+              data-selected-guide-type={selectedGuide.xValue === null ? 'no-data' : selectedGuide.estimated ? 'estimated' : 'measured'}
+              data-x-metric={xMetric}
+              data-x-value={selectedGuide.xValue ?? 'missing'}
+              role="img"
+              aria-label={selectedGuideLabel}
+              style={{ pointerEvents: 'none' }}
+            >
+              <title>{selectedGuideLabel}</title>
+              <line className="selected-guide-line selected-guide-y" x1={PLOT.left} x2={selectedGuide.x} y1={selectedGuide.y} y2={selectedGuide.y} />
+              {selectedGuide.xValue !== null && <line className="selected-guide-line selected-guide-x" x1={selectedGuide.x} x2={selectedGuide.x} y1={selectedGuide.y} y2={PLOT.bottom} />}
+              <text className="selected-guide-label selected-guide-y-label" data-guide-axis="y" x={selectedGuideScoreX} y={selectedGuideScoreY} textAnchor="start">{displayScoreValue(selectedGuide.score)}</text>
+              {selectedGuide.xValue !== null
+                ? <text className="selected-guide-label selected-guide-x-label" data-guide-axis="x" x={selectedGuideLabelX} y={PLOT.bottom + 35} textAnchor={selectedGuideXAnchor}>{selectedGuide.estimated ? 'EST · ' : ''}{formatAxis(selectedGuide.xValue, xMetric)}</text>
+                : <text className="selected-guide-missing-label" data-guide-axis="x-missing" x={selectedGuideMissingX} y={selectedGuideMissingY} textAnchor={selectedGuideMissingAnchor}>{selectedGuideMissingLabel}</text>}
+            </g>
+          )}
         </svg>
       )}
       {noDataMarks.length > 0 && <details className="no-data-key">

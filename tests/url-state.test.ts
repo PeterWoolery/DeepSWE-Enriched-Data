@@ -34,6 +34,12 @@ describe('shareable query-state round trip', () => {
     expect(parseExplorerUrl('?scenarios=0').includeUsageScenarios).toBe(false)
   })
 
+  it('round trips the source-defined task pass-rate metric', () => {
+    const search = serializeExplorerUrl({ ...defaultExplorerState, scoreMetric: 'task_pass_rate' })
+    expect(search).toContain('score=task_pass_rate')
+    expect(parseExplorerUrl(`?${search}`).scoreMetric).toBe('task_pass_rate')
+  })
+
   it('resets malformed choices to safe defaults without losing valid filters', () => {
     const state = parseExplorerUrl('?x=steps&scale=linear&view=combined&q=sol&model=a&model=b')
     expect(state.xMetric).toBe('cost')

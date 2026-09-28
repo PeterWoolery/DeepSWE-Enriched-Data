@@ -325,6 +325,7 @@ export interface ApprovedReport {
   publicationDate?: string | null
   model: string
   canonicalId: string | null
+  modelSnapshot?: string | null
   score: number
   normalizedScore: number
   scoreUnit: string
@@ -449,7 +450,7 @@ export function normalizeApprovedReports(reports: ApprovedReport[]): Observation
     model: {
       reportedName: report.model,
       canonicalId: report.canonicalId,
-      snapshot: null,
+      snapshot: report.modelSnapshot ?? null,
       aliasEvidence: report.canonicalId ? 'Explicit source-backed alias; see data/sources/aliases.json. Evaluation series remain separate.' : null,
     },
     publisher: report.publisher,
