@@ -9,7 +9,7 @@ import { datacurveChartPrecedence, displayModelName, displayScoreResult, display
 import { downloadText, filteredCsvExport, filteredJsonExport, usageScenarioCsvExport, usageScenarioJsonExport } from './lib/exports'
 import { CandidateQueueSchema, DatasetSchema, type Candidate, type Dataset, type Observation } from './lib/schema'
 import { defaultExplorerState, parseExplorerUrl, serializeExplorerUrl, type ExplorerUrlState, type ExplorerView } from './lib/url-state'
-import { usageScenarioForComparison } from './lib/usage-scenarios'
+import { scenarioXValue, usageScenarioForComparison } from './lib/usage-scenarios'
 
 interface SourceEntry {
   id: string
@@ -175,7 +175,11 @@ function App() {
       return scenario ? [{ observation, scenario }] : []
     })
   }, [displayedChartObservations, state.includeUsageScenarios, state.xMetric, state.statistic, state.strict])
-  const usageScenariosByObservationId = useMemo(() => new Map(visibleUsageScenarios.map(({ observation, scenario }) => [observation.id, scenario])), [visibleUsageScenarios])
+  const usageScenariosByObservationId = useMemo(() => new Map(displayedObservations.flatMap((observation) => {
+    const scenario = state.includeUsageScenarios ? usageScenarioForComparison(observation, state.xMetric, state.statistic, state.strict) : null
+    return scenario ? [[observation.id, scenario] as const] : []
+  })), [displayedObservations, state.includeUsageScenarios, state.xMetric, state.statistic, state.strict])
+  const visibleScenarioMarks = visibleUsageScenarios.filter(({ observation, scenario }) => scenarioXValue(scenario, state.xMetric) !== null && hasPercentageScoreScale(displayScoreResult(observation, state.scoreMetric)))
 
   const chartScoreDetails = useMemo(() => displayedChartObservations.map((observation) => ({ observation, score: displayScoreResult(observation, state.scoreMetric) })), [displayedChartObservations, state.scoreMetric])
   const chartScoreMetrics = new Set(chartScoreDetails.filter(({ score }) => hasPercentageScoreScale(score)).map(({ score }) => score.metric))
@@ -435,24 +439,24 @@ function App() {
             </div>
 
             {state.xMetric === 'time' && <div className="timing-scope-note"><strong>Reported time, scope incomplete.</strong> Measured values are source-reported seconds per scored rollout attempt; timer boundaries and duration-specific sample counts are not reported. Strict timing comparison excludes these rows. Optional scenarios are separate and are not verified end-to-end durations.</div>}
-            {state.xMetric === 'outputTokens' && <div className="timing-scope-note token-scope-note"><strong>Output-token semantics are not fully matched.</strong> Reasoning-token inclusion is unknown for most configurations; strict comparisons require it to be known.</div>}
+            {state.xMetric === 'outputTokens' && <div className="timing-scope-note token-scope-note"><strong>Output-token populations differ by source.</strong> Datacurve reports output per scored rollout attempt; exact AA variants report a DeepSWE task-attempt mean without an output-telemetry-specific sample count. Reasoning-token inclusion is unknown for most configurations; strict comparisons require it to be known.</div>}
             {state.includeUsageScenarios && state.strict && <div className="usage-scenario-note" role="note"><strong>Strict comparison excludes usage scenarios.</strong> Only source-reported measurements are considered in strict groups.</div>}
             {state.includeUsageScenarios && !state.strict && state.statistic === 'median' && <div className="usage-scenario-note" role="note"><strong>Scenarios are shown only with the Mean control.</strong> Median remains limited to source-reported measurements. Fireworks source Cost/Task rows do not publish a mean/median statistic and keep that limitation in their scenario label.</div>}
             {state.includeUsageScenarios && !state.strict && state.statistic === 'mean' && visibleUsageScenarios.length > 0 && <div className="usage-scenario-note" role="note">
-              <strong>Mean-only cost and usage scenarios · separate from measurements.</strong> Hollow diamonds are standalone. Cross-platform scenarios stay anchored to exact Artificial Analysis rows; cost-only proxies are not populated as measured cost, output-token, or time values.
+               <strong>Mean-only cost and usage scenarios · separate from measurements.</strong> Hollow diamonds are standalone. Each scenario remains attached to its exact source row; unavailable metrics stay absent.
               <ul>{visibleUsageScenarios.map(({ observation, scenario }) => {
                 const value = state.xMetric === 'cost'
-                  ? `$${scenario.costUsd.toFixed(2)} · ${scenario.costUnit}`
+                   ? scenario.costUsd === null ? 'no cost estimate' : `$${scenario.costUsd.toFixed(2)} · ${scenario.costUnit}`
                   : state.xMetric === 'outputTokens'
-                    ? scenario.outputTokensPerScoredAttempt === null ? `cost-only $${scenario.costUsd.toFixed(2)} · no output-token estimate` : `${new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(scenario.outputTokensPerScoredAttempt)} output tokens/attempt`
-                    : scenario.timeSecondsPerScoredAttempt === null ? `cost-only $${scenario.costUsd.toFixed(2)} · no time estimate` : `${new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(scenario.timeSecondsPerScoredAttempt / 60)} min/attempt`
+                     ? scenario.outputTokensPerScoredAttempt === null ? 'no output-token estimate' : `${new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(scenario.outputTokensPerScoredAttempt)} ${scenario.outputUnit}`
+                     : scenario.timeSecondsPerScoredAttempt === null ? 'no time estimate' : `${new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(scenario.timeSecondsPerScoredAttempt / 60)} min/attempt`
                 const range = state.xMetric === 'cost' ? scenario.costSensitivityRange : state.xMetric === 'outputTokens' ? scenario.outputTokenSensitivityRange : scenario.timeSensitivityRange
-                return <li key={scenario.id}>{observation.model.reportedName}: {scenario.confidence === 'low' ? 'low' : 'very low'} qualitative evidence; {value}{range ? ' · observed small-sample sensitivity only, not a confidence interval' : ' · no defensible range or prediction interval'}.</li>
+                 return <li key={scenario.id}>{observation.model.reportedName}: {scenario.outputEvidenceType === 'same-source-deepswe-mean' && state.xMetric === 'outputTokens' ? 'same-source AA DeepSWE mean' : `${scenario.confidence === 'low' ? 'low' : 'very low'} qualitative scenario evidence`}; {value}{range ? ' · observed small-sample sensitivity only, not a confidence interval' : ' · no defensible range or prediction interval'}.</li>
               })}</ul>
               {state.xMetric === 'outputTokens'
-                ? <p>Only output-only Intelligence Index counts or exact-model/effort DeepSWE measurements support output scenarios. Coding Agent suite totals mix input, cache, cache-write, reasoning, and output; they are never displayed as output tokens.</p>
+                 ? <p>Output scenarios use separate DeepSWE references, same-source AA DeepSWE means, or explicitly weak output-only Intelligence Index transfers. Coding Agent suite mixed-token totals are never displayed as output tokens.</p>
                 : state.xMetric === 'cost'
-                   ? <p>Costs are either Datacurve per-attempt references, same-row Artificial Analysis three-benchmark suite proxies, or exact-row Fireworks Cost/Task reports whose accounting basis is unknown. The latter two are not DeepSWE-only mean-cost measurements and are not transferred to other experiments. No cost is derived from scores, token counts, or current rate cards.</p>
+                    ? <p>Costs are Datacurve per-attempt references, cross-benchmark transfers, AA three-benchmark suite proxies, or exact-row Fireworks Cost/Task reports whose accounting basis is unknown. The latter two are not DeepSWE-only mean-cost measurements. No cost is derived from scores, token counts, or rate cards.</p>
                   : <p>Time scenarios use measured per-task wall-clock pairs or an exact-model/effort DeepSWE reference. AA pools multiple benchmarks and Datacurve timer boundaries are unspecified; these are reported-time scenarios, not verified end-to-end durations.</p>}
               <p>Evidence grades are qualitative, not probabilities. Sensitivity envelopes are observed sample ranges, not confidence or prediction intervals. Strict comparisons exclude scenarios.</p>
             </div>}
@@ -463,7 +467,7 @@ function App() {
                <p>{strictGroups.length === 0 ? 'No complete groups match the current filters. Unknown protocol fields fail closed.' : !selectedStrictGroupAvailable ? `${strictGroups.length} compatible group${strictGroups.length === 1 ? '' : 's'} available. Select a group to compare; no group is selected automatically.` : `${chartFilteredObservations.length} observations in the selected protocol group; ${strictExcluded - strictIncomplete} selected rows belong to another incompatible group.`}</p>
                 {Object.entries(strictReasons).length > 0 && <small>{Object.entries(strictReasons).slice(0, 3).map(([reason, count]) => `${count} excluded: ${reason}`).join(' · ')}</small>}
               </div>}
-            <div className="coverage-row" role="status"><span className="coverage-big">{coverage.available}<i> / {coverage.total}</i></span><span>{state.xMetric === 'cost' ? `Source-reported ${state.statistic} USD per scored-attempt measurements among observations reporting ${scoreMetricLabels[state.scoreMetric]}; separately labeled task-cost scenarios do not increase coverage.` : `Source-reported ${state.statistic} ${xMetricLabels[state.xMetric].axis} values among observations reporting ${scoreMetricLabels[state.scoreMetric]}.`}</span><span className="omission-count">{coverage.missing} without source value{visibleUsageScenarios.length ? ` · ${visibleUsageScenarios.length} scenario record${visibleUsageScenarios.length === 1 ? '' : 's'}` : ''}</span></div>
+            <div className="coverage-row" role="status"><span className="coverage-big">{coverage.available}<i> / {coverage.total}</i></span><span>{state.xMetric === 'cost' ? `Source-reported ${state.statistic} USD per scored-attempt measurements among observations reporting ${scoreMetricLabels[state.scoreMetric]}; scenarios do not increase measured coverage.` : `Source-reported ${state.statistic} ${xMetricLabels[state.xMetric].axis} values among observations reporting ${scoreMetricLabels[state.scoreMetric]}.`}</span><span className="omission-count">{coverage.missing} without source value{visibleUsageScenarios.length ? ` · ${visibleScenarioMarks.length} scenario mark${visibleScenarioMarks.length === 1 ? '' : 's'} for selected X` : ''}</span></div>
 
             <div className="analysis-grid">
               <div className="chart-card">

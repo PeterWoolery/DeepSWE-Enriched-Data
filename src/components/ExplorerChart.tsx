@@ -90,6 +90,7 @@ interface SelectedGuideMark {
   xValue: number | null
   estimated: boolean
   scenarioType?: UsageScenario['costScenarioType'] | null
+  scenarioOutputEvidenceType?: UsageScenario['outputEvidenceType'] | null
   scenarioCostUnit?: string | null
   missingReason: string | null
 }
@@ -210,13 +211,15 @@ export function ExplorerChart({
     const scenarioNote = !scenario
       ? null
       : scenarioMetricValue === null
-        ? `A cost-only scenario exists (${scenario.costUnit}); no ${xMetricLabels[xMetric].label.toLowerCase()} estimate is available.`
+         ? `A scenario exists${scenario.costUsd === null ? '' : ` (${scenario.costUnit})`}; no ${xMetricLabels[xMetric].label.toLowerCase()} estimate is available.`
         : !includeUsageScenarios
         ? 'A cost/usage scenario exists, but the scenario toggle is off.'
         : strict
           ? 'A cost/usage scenario exists, but strict comparisons exclude scenarios.'
-          : statistic === 'median'
-            ? scenario.scenarioStatistic === 'source-statistic-unspecified'
+         : statistic === 'median'
+             ? xMetric === 'outputTokens' && scenario.outputStatistic === 'source-deepswe-mean'
+               ? 'A same-source AA DeepSWE output mean exists; no median output statistic is reported.'
+               : scenario.scenarioStatistic === 'source-statistic-unspecified'
               ? 'This source-reported task cost has no mean/median statistic and is not shown in this Median view.'
               : scenario.scenarioStatistic === 'pooled-suite-average'
                 ? 'This pooled-suite-average cost proxy is not converted to a median and is not shown in this view.'
@@ -262,7 +265,8 @@ export function ExplorerChart({
         y: scaleY(measured.point.y!),
         xValue: measured.point.x!,
         estimated: false,
-        scenarioType: null,
+         scenarioType: null,
+         scenarioOutputEvidenceType: null,
         scenarioCostUnit: null,
         missingReason: null,
       }
@@ -276,7 +280,8 @@ export function ExplorerChart({
         y: scaleY(estimated.score.value),
         xValue: estimated.x,
         estimated: true,
-        scenarioType: estimated.scenario.costScenarioType,
+         scenarioType: estimated.scenario.costScenarioType,
+         scenarioOutputEvidenceType: estimated.scenario.outputEvidenceType,
         scenarioCostUnit: estimated.scenario.costUnit,
         missingReason: null,
       }
@@ -290,7 +295,8 @@ export function ExplorerChart({
       y: missing.y,
         xValue: null,
         estimated: false,
-        scenarioType: null,
+         scenarioType: null,
+         scenarioOutputEvidenceType: null,
         scenarioCostUnit: null,
         missingReason: missing.missingReason,
     }
@@ -298,9 +304,11 @@ export function ExplorerChart({
   const selectedGuideLabel = selectedGuide
     ? selectedGuide.xValue === null
       ? `${selectedGuide.observation.model.reportedName}; ${displayScoreValue(selectedGuide.score)} ${selectedGuide.score.metricLabel}; no ${xMetricLabels[xMetric].label.toLowerCase()} value is reported: ${selectedGuide.missingReason}. No numeric X guide is shown.`
-      : selectedGuide.scenarioType === 'source-reported-cost'
+       : selectedGuide.scenarioOutputEvidenceType === 'same-source-deepswe-mean' && xMetric === 'outputTokens'
+         ? `${selectedGuide.observation.model.reportedName}; ${displayScoreValue(selectedGuide.score)} ${selectedGuide.score.metricLabel}; source-reported AA DeepSWE output mean per task attempt (output-telemetry sample count unspecified): ${formatAxis(selectedGuide.xValue, xMetric)} tokens. This is a separate scenario-layer reference, not a populated approved measurement.`
+       : selectedGuide.scenarioType === 'source-reported-cost'
         ? `${selectedGuide.observation.model.reportedName}; ${displayScoreValue(selectedGuide.score)} ${selectedGuide.score.metricLabel}; source-reported cost scenario: ${formatAxis(selectedGuide.xValue, xMetric)} ${selectedGuide.scenarioCostUnit}.`
-        : selectedGuide.scenarioType === 'aa-suite-proxy'
+       : selectedGuide.scenarioType === 'aa-suite-proxy' && xMetric === 'cost'
           ? `${selectedGuide.observation.model.reportedName}; ${displayScoreValue(selectedGuide.score)} ${selectedGuide.score.metricLabel}; pooled-suite cost proxy: ${formatAxis(selectedGuide.xValue, xMetric)} ${selectedGuide.scenarioCostUnit}.`
           : `${selectedGuide.observation.model.reportedName}; ${displayScoreValue(selectedGuide.score)} ${selectedGuide.score.metricLabel}; ${selectedGuide.estimated ? 'estimated scenario' : 'reported'} ${statistic} ${xMetricLabels[xMetric].axis}: ${formatAxis(selectedGuide.xValue, xMetric)}.`
     : null
@@ -491,7 +499,7 @@ export function ExplorerChart({
             const estimate = xMetric === 'cost'
               ? `$${x.toFixed(2)} · ${scenario.costUnit}`
               : xMetric === 'outputTokens'
-                ? `${new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(x)} output tokens per scored attempt`
+                 ? `${new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(x)} ${scenario.outputUnit}`
                 : `${formatDuration(x)} reported time per scored attempt`
             const range = xMetric === 'cost' ? scenario.costSensitivityRange : xMetric === 'outputTokens' ? scenario.outputTokenSensitivityRange : scenario.timeSensitivityRange
             const sensitivity = range
@@ -502,20 +510,28 @@ export function ExplorerChart({
             const tokenNote = xMetric === 'outputTokens' && scenario.aaCodingSuiteMixedTokensPerTask !== null
               ? ` AA Coding Agent suite total ${new Intl.NumberFormat('en').format(scenario.aaCodingSuiteMixedTokensPerTask)} tokens/task mixes categories and is not used as output; cost is not converted into tokens.`
               : ''
-            const directNote = scenario.costScenarioType === 'source-reported-cost'
-              ? ' This publisher-reported Cost/Task value is shown only for this exact report; the benchmark version, harness, denominator, run identity, and cost accounting basis are unspecified, so it is not normalized as a mean cost per scored attempt.'
-              : scenario.costScenarioType === 'aa-suite-proxy'
+             const directNote = xMetric === 'outputTokens' && scenario.outputEvidenceType === 'same-source-deepswe-mean'
+               ? scenario.costScenarioType === 'aa-suite-proxy'
+                 ? ' The output is this AA variant’s DeepSWE mean; its separate dollar value is a three-benchmark pooled-suite proxy, not a DeepSWE-only cost.'
+                 : scenario.directUsageReference
+                   ? ' The output is this AA variant’s DeepSWE mean; its separate cost/time scenario uses a different Datacurve run, not an AA DeepSWE bill.'
+                   : ' The output is this AA variant’s DeepSWE mean; its separate cost/time scenarios are cross-benchmark transfers, not AA DeepSWE measurements.'
+               : scenario.costScenarioType === 'source-reported-cost'
+               ? ' This publisher-reported Cost/Task value is shown only for this exact report; the benchmark version, harness, denominator, run identity, and cost accounting basis are unspecified, so it is not normalized as a mean cost per scored attempt.'
+               : scenario.costScenarioType === 'aa-suite-proxy' && xMetric === 'cost'
                 ? ' The Artificial Analysis cost is a same-row pooled Coding Agent suite value across DeepSWE v1.1, Terminal-Bench 4.0, and SWE-Atlas-QnA; it is carried unchanged as a proxy, not allocated to DeepSWE.'
                 : scenario.directUsageReference
-              ? ` The scenario uses a separate exact-model/effort Datacurve DeepSWE row (${scenario.directUsageReference.configurationId}, ${scenario.directUsageReference.scoredAttempts} scored attempts, ${scenario.directUsageReference.runs} runs); it is not the target AA run.`
-              : ' The AA source metric is pooled across DeepSWE, Terminal-Bench 4.0, and SWE-Atlas-QnA, with no DeepSWE-only allocation.'
+               ? ` The scenario uses a separate same-model/effort Datacurve DeepSWE row (${scenario.directUsageReference.configurationId}, ${scenario.directUsageReference.scoredAttempts} scored attempts, ${scenario.directUsageReference.runs} runs); it is not the target source run.`
+               : ' These are cross-benchmark transfer inputs; their task populations and source cost bases are not established as equal.'
             const timeNote = xMetric === 'time' ? ' Timer boundaries are unspecified for the Datacurve mean; this is not a verified end-to-end duration.' : ''
             const scenarioLead = scenario.costScenarioType === 'source-reported-cost'
               ? 'Source-reported cost scenario — not a normalized DeepSWE measurement.'
-              : scenario.costScenarioType === 'aa-suite-proxy'
-                ? 'Estimated suite-cost proxy — not a DeepSWE-only measurement.'
+               : scenario.costScenarioType === 'aa-suite-proxy' && xMetric === 'cost'
+                 ? 'Estimated suite-cost proxy — not a DeepSWE-only measurement.'
+                 : scenario.outputEvidenceType === 'same-source-deepswe-mean' && xMetric === 'outputTokens'
+                   ? 'Same-source AA DeepSWE mean — separate scenario layer, not a normalized approved measurement.'
                 : 'Estimated usage scenario — not a DeepSWE measurement.'
-            const detail = `${scenarioLead} ${observation.model.reportedName}, ${observation.effort.reportedLabel ?? 'effort unreported'}, ${observation.series.harness ?? 'harness unknown'}; source score ${score.reportedText} (${score.metricLabel}); ${estimate}. Evidence quality: ${scenario.confidence === 'low' ? 'low' : 'very low'}, qualitative and not probabilistic. Method: ${method}.${sensitivity}${tokenNote}${directNote}${timeNote} Evidence: ${sourceNotes}.`
+             const detail = `${scenarioLead} ${observation.model.reportedName}, ${observation.effort.reportedLabel ?? 'effort unreported'}, ${observation.series.harness ?? 'harness unknown'}; source score ${score.reportedText} (${score.metricLabel}); ${estimate}. ${scenario.outputEvidenceType === 'same-source-deepswe-mean' && xMetric === 'outputTokens' ? 'Output is a same-source DeepSWE mean; the separate dollar/time evidence is qualitative.' : `Evidence quality: ${scenario.confidence === 'low' ? 'low' : 'very low'}, qualitative and not probabilistic.`} Method: ${method}.${sensitivity}${tokenNote}${directNote}${timeNote} Evidence: ${sourceNotes}.`
             const onKeyDown = (event: React.KeyboardEvent<SVGGElement>) => {
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault()
@@ -545,7 +561,7 @@ export function ExplorerChart({
                 <title>{detail}</title>
                 <circle cx={px} cy={py} r="13" className="point-hit-area" />
                 <path d={`M ${px} ${py - 8} L ${px + 8} ${py} L ${px} ${py + 8} L ${px - 8} ${py} Z`} className="estimated-diamond" />
-                {(activeSeriesId === seriesId || selectedObservationId === observation.id) && <text x={px + 10} y={py - 9} className="estimated-label">EST · {observation.effort.reportedLabel}</text>}
+                 {(activeSeriesId === seriesId || selectedObservationId === observation.id) && <text x={px + 10} y={py - 9} className="estimated-label">{xMetric === 'outputTokens' && scenario.outputEvidenceType === 'same-source-deepswe-mean' ? 'AA MEAN' : 'EST'} · {observation.effort.reportedLabel}</text>}
               </g>
             )
           })}
@@ -553,7 +569,7 @@ export function ExplorerChart({
             <g
               className={`selected-guide${selectedGuide.estimated ? ' is-estimated' : ''}${selectedGuide.xValue === null ? ' is-no-data' : ''}`}
               data-selected-guide-for={selectedGuide.observation.id}
-              data-selected-guide-type={selectedGuide.xValue === null ? 'no-data' : selectedGuide.estimated ? 'estimated' : 'measured'}
+              data-selected-guide-type={selectedGuide.xValue === null ? 'no-data' : xMetric === 'outputTokens' && selectedGuide.scenarioOutputEvidenceType === 'same-source-deepswe-mean' ? 'source-output' : selectedGuide.estimated ? 'estimated' : 'measured'}
               data-x-metric={xMetric}
               data-x-value={selectedGuide.xValue ?? 'missing'}
               role="img"
@@ -565,7 +581,7 @@ export function ExplorerChart({
               {selectedGuide.xValue !== null && <line className="selected-guide-line selected-guide-x" x1={selectedGuide.x} x2={selectedGuide.x} y1={selectedGuide.y} y2={PLOT.bottom} />}
               <text className="selected-guide-label selected-guide-y-label" data-guide-axis="y" x={selectedGuideScoreX} y={selectedGuideScoreY} textAnchor="start">{displayScoreValue(selectedGuide.score)}</text>
               {selectedGuide.xValue !== null
-                ? <text className="selected-guide-label selected-guide-x-label" data-guide-axis="x" x={selectedGuideLabelX} y={PLOT.bottom + 35} textAnchor={selectedGuideXAnchor}>{selectedGuide.scenarioType === 'source-reported-cost' ? 'SRC · ' : selectedGuide.scenarioType === 'aa-suite-proxy' ? 'PROXY · ' : selectedGuide.estimated ? 'EST · ' : ''}{formatAxis(selectedGuide.xValue, xMetric)}</text>
+                ? <text className="selected-guide-label selected-guide-x-label" data-guide-axis="x" x={selectedGuideLabelX} y={PLOT.bottom + 35} textAnchor={selectedGuideXAnchor}>{selectedGuide.scenarioOutputEvidenceType === 'same-source-deepswe-mean' && xMetric === 'outputTokens' ? 'AA MEAN · ' : selectedGuide.scenarioType === 'source-reported-cost' ? 'SRC · ' : selectedGuide.scenarioType === 'aa-suite-proxy' && xMetric === 'cost' ? 'PROXY · ' : selectedGuide.estimated ? 'EST · ' : ''}{formatAxis(selectedGuide.xValue, xMetric)}</text>
                 : <text className="selected-guide-missing-label" data-guide-axis="x-missing" x={selectedGuideMissingX} y={selectedGuideMissingY} textAnchor={selectedGuideMissingAnchor}>{selectedGuideMissingLabel}</text>}
             </g>
           )}

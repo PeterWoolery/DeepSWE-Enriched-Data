@@ -70,7 +70,7 @@ export function ResultsTable({ observations, xMetric, statistic, scoreMetric, se
               : xMetric === 'cost'
                 ? `$${scenarioMetricValue.toFixed(2)} · ${scenario!.costUnit}`
                 : xMetric === 'outputTokens'
-                  ? `${new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(scenarioMetricValue)} output tokens / scored attempt`
+                   ? `${new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(scenarioMetricValue)} ${scenario!.outputUnit}`
                   : `${displayDuration(scenarioMetricValue)} reported time / scored attempt`
             const scenarioRange = !scenario
               ? null
@@ -107,9 +107,9 @@ export function ResultsTable({ observations, xMetric, statistic, scoreMetric, se
                   {sourceReportedCostText ? <><span className="unknown-value">Not a mean/median metric</span><span className="table-subline">Source-reported Cost/Task {sourceReportedCostText}</span></> : display(metric.value, metric.unit)}
                   {metric.value === null && <span className="table-subline">{metric.missingReason}</span>}
                   {scenario && <span className="table-usage-scenario">
-                    <strong>{scenario.costScenarioType === 'source-reported-cost' ? 'Source-reported cost scenario · scope incomplete' : `Estimated scenario · ${scenario.confidence === 'low' ? 'low' : 'very low'} qualitative confidence · not measured`}</strong>
-                    <small>Qualitative evidence grade, not a probability.</small>
-                    {scenarioValue ? <span>{scenarioValue}</span> : <span>Cost-only: ${scenario.costUsd.toFixed(2)} · {scenario.costUnit}. No estimate for the selected X metric.</span>}
+                     <strong>{scenario.outputEvidenceType === 'same-source-deepswe-mean' && xMetric === 'outputTokens' ? 'AA source-reported DeepSWE output mean · separate from approved measurement' : scenario.costScenarioType === 'source-reported-cost' ? 'Source-reported cost scenario · scope incomplete' : `Estimated scenario · ${scenario.confidence === 'low' ? 'low' : 'very low'} qualitative confidence · not measured`}</strong>
+                     <small>{scenario.outputEvidenceType === 'same-source-deepswe-mean' && xMetric === 'outputTokens' ? 'Output is a same-source benchmark mean; the separate dollar/time scenario has a qualitative evidence grade.' : 'Qualitative evidence grade, not a probability.'}</small>
+                     {scenarioValue ? <span>{scenario.outputEvidenceType === 'same-source-deepswe-mean' && xMetric === 'outputTokens' ? 'Same-source AA DeepSWE mean · ' : ''}{scenarioValue}</span> : <span>{scenario.costUsd === null ? 'No cost estimate.' : `Cost only: $${scenario.costUsd.toFixed(2)} · ${scenario.costUnit}.`} No estimate for the selected X metric.</span>}
                     {scenarioRange
                       ? <small>Sensitivity envelope {xMetric === 'cost' ? `$${scenarioRange[0].toFixed(2)}–$${scenarioRange[1].toFixed(2)}` : xMetric === 'outputTokens' ? `${new Intl.NumberFormat('en').format(scenarioRange[0])}–${new Intl.NumberFormat('en').format(scenarioRange[1])} tokens` : `${displayDuration(scenarioRange[0])}–${displayDuration(scenarioRange[1])}`}; not a confidence interval.</small>
                       : <small>No defensible range or prediction interval is available.</small>}

@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { displayScoreResult } from '../src/lib/comparison'
 import { DatasetSchema } from '../src/lib/schema'
 import { scenarioXValue, usageScenarioForComparison, usageScenarioForObservation, usageScenarios } from '../src/lib/usage-scenarios'
+import metaResearch from '../data/research/inference-meta-google-xai.json'
+import chineseResearch from '../data/research/inference-chinese-models.json'
 
 const dataset = DatasetSchema.parse(JSON.parse(readFileSync(new URL('../data/approved/dataset.json', import.meta.url), 'utf8')))
 const research = JSON.parse(readFileSync(new URL('../data/research/usage-proxy-cross-platform-20260927.json', import.meta.url), 'utf8'))
@@ -10,30 +12,24 @@ const luna = dataset.observations.find((row) => row.id === 'aa-codex-gpt-6-luna-
 const opus = dataset.observations.find((row) => row.id === 'artificial-analysis-claude-code-opus-5.5-max-v1.1')!
 
 describe('cross-platform mean usage scenarios', () => {
-  it('reproduces Luna and Opus scenarios from raw, exact-effort public aggregates', () => {
+  it('prefers same-source AA DeepSWE output over transferred output while retaining separate cost evidence', () => {
     const lunaScenario = usageScenarioForObservation(luna)!
     const opusScenario = usageScenarioForObservation(opus)!
-    const outputRatios = research.outputTokenCalibration.openaiMaxPairs.map((pair: { deepSWEOutputTokensPerScoredAttempt: number; aaIntelligenceIndexOutput: { approxTokens: number } }) => pair.deepSWEOutputTokensPerScoredAttempt / pair.aaIntelligenceIndexOutput.approxTokens)
-    const outputMean = outputRatios.reduce((sum: number, ratio: number) => sum + ratio, 0) / outputRatios.length
     const costPairs = research.costCalibration.openaiMaxPairs as { aaPooledUsdPerTask: number; deepSWEUsdPerScoredAttempt: number }[]
     const costSlope = costPairs.reduce((sum, pair) => sum + pair.aaPooledUsdPerTask * pair.deepSWEUsdPerScoredAttempt, 0)
       / costPairs.reduce((sum, pair) => sum + pair.aaPooledUsdPerTask ** 2, 0)
 
-    expect(lunaScenario.outputTokensPerScoredAttempt).toBeCloseTo(51_000 * outputMean, 7)
     expect(lunaScenario.costUsd).toBeCloseTo(0.18 * costSlope, 12)
-    expect(lunaScenario.outputTokensPerScoredAttempt).toBeCloseTo(98_421.65603779937, 7)
-    expect(lunaScenario.outputTokenSensitivityRange).toEqual([91_302.07529398955, 105_541.2367816092])
+    expect(lunaScenario.outputTokensPerScoredAttempt).toBeCloseTo(108_271.5634218289, 7)
+    expect(lunaScenario.outputTokenSensitivityRange).toBeNull()
     expect(lunaScenario.costSensitivityRange).toEqual([0.18067055413690158, 1.2387750587459414])
-    expect(lunaScenario.outputLeaveOneOutMapePercent).toBeCloseTo(14.543611181332372, 8)
+    expect(lunaScenario.outputLeaveOneOutMapePercent).toBeNull()
     expect(lunaScenario.costLeaveOneOutMapePercent).toBeCloseTo(46.724032053043665, 8)
 
-    const opusOutputPair = research.outputTokenCalibration.anthropicMaxPair
     const opusCostPair = research.costCalibration.anthropicOpusFamilyPair
-    expect(opusOutputPair.calibrationModel).toBe('Opus 5')
     expect(opusCostPair.ratio).toBe(opusCostPair.deepSWEUsdPerScoredAttempt / opusCostPair.aaPooledUsdPerTask)
-    expect(opusScenario.outputTokensPerScoredAttempt).toBeCloseTo(119_000 * (opusOutputPair.deepSWEOutputTokensPerScoredAttempt / opusOutputPair.aaIntelligenceIndexOutput.approxTokens), 7)
     expect(opusScenario.costUsd).toBeCloseTo(13.04 * (opusCostPair.deepSWEUsdPerScoredAttempt / opusCostPair.aaPooledUsdPerTask), 12)
-    expect(opusScenario.outputTokensPerScoredAttempt).toBeCloseTo(191_648.18561026783, 7)
+    expect(opusScenario.outputTokensPerScoredAttempt).toBeCloseTo(406_479.005899705, 7)
     expect(opusScenario.costUsd).toBeCloseTo(14.306032053661632, 11)
     expect(opusScenario.outputTokenSensitivityRange).toBeNull()
     expect(opusScenario.costSensitivityRange).toBeNull()
@@ -42,14 +38,15 @@ describe('cross-platform mean usage scenarios', () => {
     expect(opusScenario.confidence).toBe('very-low')
   })
 
-  it('uses output-only Intelligence Index ratios, not mixed-token totals or cost-to-token conversion', () => {
+  it('uses per-variant AA DeepSWE output means, not mixed-token totals or cost-to-token conversion', () => {
     const lunaScenario = usageScenarioForObservation(luna)!
     const opusScenario = usageScenarioForObservation(opus)!
     expect(lunaScenario.aaCodingSuiteMixedTokensPerTask).toBe(10_200_000)
     expect(opusScenario.aaCodingSuiteMixedTokensPerTask).toBe(15_600_000)
     expect(lunaScenario.outputTokensPerScoredAttempt).not.toBe(lunaScenario.aaCodingSuiteMixedTokensPerTask)
     expect(opusScenario.outputTokensPerScoredAttempt).not.toBe(opusScenario.aaCodingSuiteMixedTokensPerTask)
-    expect(lunaScenario.outputCalibrationDescription).toContain('output-token / AA Intelligence Index')
+    expect(lunaScenario.outputCalibrationDescription).toContain('mean.outputTokens')
+    expect(lunaScenario.outputEvidenceType).toBe('same-source-deepswe-mean')
     expect(lunaScenario.costCalibrationDescription).toContain('USD/attempt')
     expect(research.outputTokenCalibration.costToOutputConversionUsed).toBe(false)
     expect(luna.metrics.cost.value).toBeNull()
@@ -94,7 +91,7 @@ describe('cross-platform mean usage scenarios', () => {
 
   it('excludes strict and median scenarios while supporting calibrated mean time', () => {
     expect(usageScenarioForComparison(luna, 'cost', 'mean', false)?.costUsd).toBeCloseTo(0.20668317244049378, 12)
-    expect(usageScenarioForComparison(luna, 'outputTokens', 'mean', false)?.outputTokensPerScoredAttempt).toBeCloseTo(98_421.65603779937, 7)
+    expect(usageScenarioForComparison(luna, 'outputTokens', 'mean', false)?.outputTokensPerScoredAttempt).toBeCloseTo(108_271.5634218289, 7)
     expect(usageScenarioForComparison(luna, 'time', 'mean', false)?.timeSecondsPerScoredAttempt).toBeCloseTo(1097.5267854181109, 7)
     expect(usageScenarioForComparison(luna, 'cost', 'median', false)).toBeNull()
     expect(usageScenarioForComparison(opus, 'outputTokens', 'median', false)).toBeNull()
@@ -102,28 +99,29 @@ describe('cross-platform mean usage scenarios', () => {
     expect(usageScenarioForComparison(opus, 'time', 'median', false)).toBeNull()
     expect(usageScenarioForComparison(opus, 'cost', 'mean', true)).toBeNull()
     expect(scenarioXValue(usageScenarioForObservation(luna)!, 'cost')).toBeCloseTo(0.20668317244049378, 12)
-    expect(scenarioXValue(usageScenarioForObservation(opus)!, 'outputTokens')).toBeCloseTo(191_648.18561026783, 7)
+    expect(scenarioXValue(usageScenarioForObservation(opus)!, 'outputTokens')).toBeCloseTo(406_479.005899705, 7)
     expect(scenarioXValue(usageScenarioForObservation(luna)!, 'time')).toBeCloseTo(1097.5267854181109, 7)
     expect(usageScenarios.map((scenario) => scenario.model)).toEqual([
       'GPT-6 Luna', 'Opus 5.5', 'GPT-6 Astra', 'GPT-6 Sol', 'Opus 5', 'GPT-5.6 Sol', 'GPT-5.6 Luna',
       'Fable 5.1 (max) (with fallback)', 'DeepSeek V4 Pro 0813', 'DeepSeek V4 Flash 0731',
       'DeepSeek V4.1-Flash', 'GPT-6-Astra', 'Gemini 3.8 Flash', 'Claude Opus 5',
+      'Muse Spark 1.3', 'Gemini 3.8 Flash', 'Grok 4.7',
     ])
   })
 
-  it('uses exact-model/max DeepSWE rows for the additional AA scenarios', () => {
+  it('uses exact-AA-variant DeepSWE means, keeping separate Datacurve references for costs and time', () => {
     const targets = [
-      ['aa-codex-gpt-6-astra-max-v1.1', 'mini_swe_agent_gpt_6_astra_max'],
-      ['aa-claude-code-opus-5-max-v1.1', 'mini_swe_agent_claude_opus_5_max'],
-      ['aa-codex-gpt-5.6-sol-max-v1.1', 'mini_swe_agent_gpt_5_6_sol_max'],
-      ['aa-codex-gpt-5.6-luna-max-v1.1', 'mini_swe_agent_gpt_5_6_luna_max'],
+      ['aa-codex-gpt-6-astra-max-v1.1', 'mini_swe_agent_gpt_6_astra_max', 56420.18289085546],
+      ['aa-claude-code-opus-5-max-v1.1', 'mini_swe_agent_claude_opus_5_max', 129793.94690265486],
+      ['aa-codex-gpt-5.6-sol-max-v1.1', 'mini_swe_agent_gpt_5_6_sol_max', 56943.890855457226],
+      ['aa-codex-gpt-5.6-luna-max-v1.1', 'mini_swe_agent_gpt_5_6_luna_max', 75781.00294985251],
     ] as const
-    for (const [targetId, configurationId] of targets) {
+    for (const [targetId, configurationId, expectedTokens] of targets) {
       const scenario = usageScenarioForObservation(dataset.observations.find((row) => row.id === targetId)!)!
       const direct = research.datacurveDirectMatches.find((row: { configurationId: string }) => row.configurationId === configurationId)!
       expect(scenario.directUsageReference?.configurationId).toBe(configurationId)
       expect(scenario.costUsd).toBe(direct.meanCostUsdPerScoredAttempt)
-      expect(scenario.outputTokensPerScoredAttempt).toBe(direct.meanOutputTokensPerScoredAttempt)
+      expect(scenario.outputTokensPerScoredAttempt).toBe(expectedTokens)
       expect(scenario.timeSecondsPerScoredAttempt).toBe(direct.meanDurationSecondsPerScoredAttempt)
       expect(scenario.costSensitivityRange).toBeNull()
       expect(scenario.timeSensitivityRange).toBeNull()
@@ -142,7 +140,8 @@ describe('cross-platform mean usage scenarios', () => {
     const chartNoDataIds = new Set(audit.chartNoDataLaneObservationIds as string[])
     const unscaledIds = new Set(audit.unscaledNoDataScoreObservationIds as string[])
     expect(missing).toHaveLength(58)
-    expect(scenarioIds.size).toBe(usageScenarios.length)
+    expect(scenarioIds.size).toBe(14)
+    expect(usageScenarios.length).toBe(17)
     expect(noDataIds.size).toBe(44)
     expect(chartNoDataIds.size).toBe(24)
     expect(unscaledIds.size).toBe(12)
@@ -156,7 +155,8 @@ describe('cross-platform mean usage scenarios', () => {
   it('adds same-row suite-cost proxies and source-reported cost-only scenarios without inventing other metrics', () => {
     const costOnly = usageScenarios.filter((scenario) => scenario.costScenarioType === 'aa-suite-proxy' || scenario.costScenarioType === 'source-reported-cost')
     expect(costOnly).toHaveLength(7)
-    expect(costOnly.every((scenario) => scenario.outputTokensPerScoredAttempt === null && scenario.timeSecondsPerScoredAttempt === null)).toBe(true)
+    expect(costOnly.every((scenario) => scenario.timeSecondsPerScoredAttempt === null)).toBe(true)
+    expect(costOnly.filter((scenario) => scenario.outputTokensPerScoredAttempt !== null)).toHaveLength(3)
     expect(costOnly.every((scenario) => scenario.costSensitivityRange === null)).toBe(true)
 
     const aaCosts = costOnly.filter((scenario) => scenario.costScenarioType === 'aa-suite-proxy')
@@ -189,5 +189,63 @@ describe('cross-platform mean usage scenarios', () => {
     expect(scenarioXValue(firework, 'outputTokens')).toBeNull()
     expect(scenarioXValue(firework, 'time')).toBeNull()
     expect(research.coverageAudit.costOnlyScenarioObservationIds).toHaveLength(7)
+    const fable = usageScenarioForObservation(dataset.observations.find((row) => row.id === 'aa-claude-code-fable-5.1-max-v1.1')!)!
+    expect(fable.outputTokensPerScoredAttempt).toBeCloseTo(155542.35398230088, 6)
+    expect(fable.outputEvidenceType).toBe('same-source-deepswe-mean')
+    expect(fable.outputStatistic).toBe('source-deepswe-mean')
+    expect(fable.scenarioStatistic).toBe('pooled-suite-average')
+    expect(fable.costUsd).toBe(12.39)
+    expect(fable.costUnit).toContain('three-benchmark suite proxy')
+  })
+
+  it('uses AA per-benchmark output means on exact DeepSeek snapshots, independently of pooled-suite dollars', () => {
+    for (const input of chineseResearch.targets.slice(0, 2)) {
+      const row = dataset.observations.find((observation) => observation.id === input.id)!
+      const scenario = usageScenarioForObservation(row)!
+      expect(scenario.outputTokensPerScoredAttempt).toBe(input.output?.tokens)
+      expect(scenario.outputEvidenceType).toBe('same-source-deepswe-mean')
+      expect(scenario.outputUnit).toContain('AA DeepSWE v1.1')
+      expect(scenario.costUsd).toBe(input.cost?.usd)
+      expect(scenario.costUnit).toContain('three-benchmark suite proxy')
+      expect(scenario.timeSecondsPerScoredAttempt).toBeNull()
+      expect(row.metrics.outputTokens.value).toBeNull()
+      expect(usageScenarioForComparison(row, 'outputTokens', 'median', false)).toBeNull()
+      expect(usageScenarioForComparison(row, 'outputTokens', 'mean', true)).toBeNull()
+      const wrongSnapshot = structuredClone(row)
+      wrongSnapshot.model.reportedName += ' updated'
+      expect(usageScenarioForObservation(wrongSnapshot)).toBeNull()
+    }
+  })
+
+  it('recomputes distinct Meta/xAI transfers and keeps Google high thinking a separate cross-run reference', () => {
+    for (const input of metaResearch.targets) {
+      const observation = dataset.observations.find((row) => row.id === input.observationId)!
+      const scenario = usageScenarioForObservation(observation)!
+      expect(scenario.costUsd).toBeCloseTo(input.usdPerScoredAttemptScenario, 8)
+      expect(scenario.outputTokensPerScoredAttempt).toBeCloseTo(input.outputTokensPerScoredAttemptScenario, 5)
+      expect(scenario.timeSecondsPerScoredAttempt).toBeNull()
+      expect(scenario.outputEvidenceType).toBe(input.observationId.startsWith('google-') ? 'cross-experiment-reference' : 'cross-benchmark-transfer')
+      expect(observation.metrics.cost.value).toBeNull()
+      expect(observation.metrics.outputTokens.value).toBeNull()
+      expect(usageScenarioForComparison(observation, 'cost', 'median', false)).toBeNull()
+      const wrongEffort = structuredClone(observation)
+      wrongEffort.effort.rawSetting = 'default'
+      expect(usageScenarioForObservation(wrongEffort)).toBeNull()
+    }
+    const meta = usageScenarioForObservation(dataset.observations.find((row) => row.id === 'meta-muse-spark-1.3-v1.1-max')!)!
+    const grok = usageScenarioForObservation(dataset.observations.find((row) => row.id === 'xai-grok-4.7-high-v1.1')!)!
+    expect(meta.outputLeaveOneOutMapePercent).toBeCloseTo(59.14610401685732, 5)
+    expect(grok.costLeaveOneOutMapePercent).toBeCloseTo(1.47964379585927, 5)
+    expect(meta.outputCalibrationDescription).toContain('Meta predecessors are xhigh while the target is max')
+    expect(grok.outputCalibrationDescription).toContain('Grok predecessors and target are all high effort')
+    expect(grok.outputCalibrationDescription).not.toContain('xhigh→max')
+    meta.outputTokenSensitivityRange?.forEach((value, index) => expect(value).toBeCloseTo(metaResearch.targets[0]!.outputSensitivityEnvelope![index]!, 6))
+    grok.costSensitivityRange?.forEach((value, index) => expect(value).toBeCloseTo(metaResearch.targets[2]!.costSensitivityEnvelopeUsd![index]!, 8))
+    const google = usageScenarioForObservation(dataset.observations.find((row) => row.id === 'google-gemini-3.8-flash-high-v1.1')!)!
+    expect(google.directUsageReference?.configurationId).toBe('mini_swe_agent_gemini_3_8_flash_high')
+    expect(google.costSensitivityRange).toBeNull()
+    const tokenOnly = { ...google, costUsd: null, costUnit: 'not estimated' }
+    expect(scenarioXValue(tokenOnly, 'cost')).toBeNull()
+    expect(scenarioXValue(tokenOnly, 'outputTokens')).toBe(google.outputTokensPerScoredAttempt)
   })
 })

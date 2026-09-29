@@ -7,7 +7,7 @@ export type SourceCategory = Observation['sourceCategory']
 
 export const xMetricLabels: Record<XMetric, { label: string; mean: string; median: string; axis: string; shortUnit: string }> = {
   cost: { label: 'Cost per task', mean: 'Mean cost per task', median: 'Median cost per task', axis: 'USD per scored rollout attempt; task-scenario units labeled by point', shortUnit: 'USD' },
-  outputTokens: { label: 'Output tokens per task', mean: 'Mean output tokens per task', median: 'Median output tokens per task', axis: 'output tokens per scored rollout attempt', shortUnit: 'tokens' },
+  outputTokens: { label: 'Output tokens per task', mean: 'Mean output tokens per task', median: 'Median output tokens per task', axis: 'output tokens per source-defined attempt · see point scope', shortUnit: 'tokens' },
   time: { label: 'Time per task', mean: 'Reported mean time per task', median: 'Reported median time per task', axis: 'reported seconds per scored rollout attempt · timer boundaries unspecified', shortUnit: 'seconds' },
 }
 

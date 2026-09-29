@@ -1,9 +1,35 @@
 import research from '../../data/research/usage-proxy-cross-platform-20260927.json'
+import metaResearch from '../../data/research/inference-meta-google-xai.json'
+import chineseResearch from '../../data/research/inference-chinese-models.json'
 import type { Observation } from './schema'
 import type { Statistic, XMetric } from './comparison'
 
 type ResearchScenario = typeof research.scenarios[number]
 type ResearchCostOnlyScenario = typeof research.costOnlyScenarios[number]
+
+// Public AA variant evals[datasetIndexName="deep-swe-v1.1"].mean.outputTokens,
+// reviewed 2026-09-29 (docs/inference-source-review.md). These are same-source
+// benchmark means, unlike the separate Intelligence Index transfer hypotheses.
+const aaDirectOutput = [
+  { id: 'aa-codex-gpt-6-sol-max-v1.1', tokens: 70300.33038348083, page: 'codex' },
+  { id: 'aa-codex-gpt-6-luna-max-v1.1', tokens: 108271.5634218289, page: 'codex' },
+  { id: 'artificial-analysis-claude-code-opus-5.5-max-v1.1', tokens: 406479.005899705, page: 'claude' },
+  { id: 'aa-claude-code-opus-5-max-v1.1', tokens: 129793.94690265486, page: 'claude' },
+  { id: 'aa-codex-gpt-6-astra-max-v1.1', tokens: 56420.18289085546, page: 'codex' },
+  { id: 'aa-codex-gpt-5.6-sol-max-v1.1', tokens: 56943.890855457226, page: 'codex' },
+  { id: 'aa-codex-gpt-5.6-luna-max-v1.1', tokens: 75781.00294985251, page: 'codex' },
+  { id: 'aa-claude-code-fable-5.1-max-v1.1', tokens: 155542.35398230088, page: 'claude' },
+] as const
+
+function aaDirectOutputSource(page: 'codex' | 'claude'): UsageScenarioSource {
+  return {
+    id: `aa-direct-deepswe-output-${page}`,
+    publisher: 'Artificial Analysis',
+    url: page === 'codex' ? 'https://artificialanalysis.ai/agents/coding-agents/comparisons/codex-vs-kimi-code-cli' : 'https://artificialanalysis.ai/agents/coding-agents/comparisons/claude-code-vs-codex',
+    accessedOn: '2026-09-29',
+    evidenceLocator: `Exact displayLabel → evals[datasetIndexName="deep-swe-v1.1"].mean.outputTokens; response SHA-256 ${page === 'codex' ? '38e53b663085602e147094f4afd61cc6a7f67fa0156921f3bcc9b9d8f' : '2150113e1b5c0e7a08d60defd83cbca160663769d15625a133e104c6bf8156e0'}; output-specific telemetry count unspecified.`,
+  }
+}
 
 export type CostScenarioType = 'datacurve-usage-reference' | 'cross-platform-transfer' | 'aa-suite-proxy' | 'source-reported-cost'
 
@@ -34,8 +60,11 @@ export interface UsageScenario {
   aaCodingSuiteTimeSecondsPerTask: number | null
   aaCodingSuiteMixedTokensPerTask: number | null
   outputTokensPerScoredAttempt: number | null
+  outputUnit: string
+  outputEvidenceType: 'cross-benchmark-transfer' | 'cross-experiment-reference' | 'same-source-deepswe-mean' | 'not-estimated'
+  outputStatistic: 'source-deepswe-mean' | 'mean-only' | 'not-estimated'
   outputTokenSensitivityRange: [number, number] | null
-  costUsd: number
+  costUsd: number | null
   costUnit: string
   costSensitivityRange: [number, number] | null
   timeSecondsPerScoredAttempt: number | null
@@ -67,29 +96,12 @@ function sourceReference(id: string, evidenceLocator: string): UsageScenarioSour
   return { id: sourceFields.id, publisher: sourceFields.publisher, url: sourceFields.url, accessedOn, evidenceLocator }
 }
 
+function inferenceSourceReference(source: { id: string; url: string; retrievedOn: string; locator: string }, prefix: string): UsageScenarioSource {
+  return { id: `${prefix}:${source.id}`, publisher: source.id === 'dc' || source.id === 'datacurve-feed' ? 'Datacurve' : source.id.startsWith('aa-') ? 'Artificial Analysis' : source.id === 'google-method' ? 'Google DeepMind' : source.id === 'meta-model' ? 'Meta' : source.id === 'xai-release' ? 'xAI' : source.id, url: source.url, accessedOn: source.retrievedOn, evidenceLocator: source.locator }
+}
+
 function meanAbsolutePercentageError(errors: number[]): number | null {
   return errors.length ? errors.reduce((sum, error) => sum + Math.abs(error), 0) / errors.length : null
-}
-
-function openAiOutputPairs() {
-  return research.outputTokenCalibration.openaiMaxPairs.map((pair) => ({
-    model: pair.model,
-    aaOutputTokens: pair.aaIntelligenceIndexOutput.approxTokens,
-    deepSWEOutputTokens: pair.deepSWEOutputTokensPerScoredAttempt,
-    scoredAttempts: pair.datacurveScoredAttempts,
-    ratio: pair.deepSWEOutputTokensPerScoredAttempt / pair.aaIntelligenceIndexOutput.approxTokens,
-  }))
-}
-
-function opusOutputPair() {
-  const pair = research.outputTokenCalibration.anthropicMaxPair
-  return [{
-    model: pair.calibrationModel,
-    aaOutputTokens: pair.aaIntelligenceIndexOutput.approxTokens,
-    deepSWEOutputTokens: pair.deepSWEOutputTokensPerScoredAttempt,
-    scoredAttempts: pair.datacurveScoredAttempts,
-    ratio: pair.deepSWEOutputTokensPerScoredAttempt / pair.aaIntelligenceIndexOutput.approxTokens,
-  }]
 }
 
 function openAiCostPairs() {
@@ -146,13 +158,11 @@ function directUsageReference(input: ResearchScenario) {
 
 function outputLeaveOneOutMape(rows: UsageScenario['outputCalibrationRows']): number | null {
   if (rows.length < 2) return null
-  const errors = rows.map((heldOut, index) => {
+  return meanAbsolutePercentageError(rows.map((heldOut, index) => {
     const training = rows.filter((_, rowIndex) => rowIndex !== index)
     const factor = training.reduce((sum, row) => sum + row.ratio, 0) / training.length
-    const predicted = heldOut.aaOutputTokens * factor
-    return (predicted - heldOut.deepSWEOutputTokens) / heldOut.deepSWEOutputTokens * 100
-  })
-  return meanAbsolutePercentageError(errors)
+    return (heldOut.aaOutputTokens * factor - heldOut.deepSWEOutputTokens) / heldOut.deepSWEOutputTokens * 100
+  }))
 }
 
 function throughOriginSlope(rows: UsageScenario['costCalibrationRows']): number {
@@ -195,13 +205,6 @@ function buildScenario(input: ResearchScenario): UsageScenario {
   }
 
   const direct = directUsageReference(input)
-  const outputCalibrationRows = input.outputCalibrationMethod === 'openai-max-arithmetic-mean-ratio'
-    ? openAiOutputPairs()
-    : input.outputCalibrationMethod === 'opus-5-max-single-pair-ratio'
-      ? opusOutputPair()
-      : input.outputCalibrationMethod === 'exact-model-effort-deepswe-reference'
-        ? []
-        : null
   const costCalibrationRows = input.costCalibrationMethod === 'openai-max-through-origin-proportional-fit'
     ? openAiCostPairs()
     : input.costCalibrationMethod === 'opus-5-max-single-pair-ratio'
@@ -216,20 +219,12 @@ function buildScenario(input: ResearchScenario): UsageScenario {
       : input.timeCalibrationMethod === 'exact-model-effort-deepswe-reference'
         ? []
         : null
-  if (!outputCalibrationRows || !costCalibrationRows || !timeCalibrationRows) throw new Error(`Unsupported calibration method for ${input.model}`)
+  if (!costCalibrationRows || !timeCalibrationRows) throw new Error(`Unsupported calibration method for ${input.model}`)
   if (input.directUsageReferenceConfigurationId && !direct) throw new Error(`Missing direct usage reference for ${input.model}`)
   if (!input.directUsageReferenceConfigurationId && direct) throw new Error(`Unexpected direct usage reference for ${input.model}`)
 
-  const outputFactors = outputCalibrationRows.map((row) => row.ratio)
-  const outputFactor = input.outputCalibrationMethod === 'openai-max-arithmetic-mean-ratio'
-    ? outputFactors.reduce((sum, factor) => sum + factor, 0) / outputFactors.length
-    : outputFactors[0] ?? 0
-  const outputTokensPerScoredAttempt = direct
-    ? direct.meanOutputTokensPerScoredAttempt
-    : input.aaIntelligenceIndexOutputTokensPerTaskApprox * outputFactor
-  const outputTokenSensitivityRange = outputFactors.length > 1
-    ? [Math.min(...outputFactors) * input.aaIntelligenceIndexOutputTokensPerTaskApprox, Math.max(...outputFactors) * input.aaIntelligenceIndexOutputTokensPerTaskApprox] as [number, number]
-    : null
+  const sameSourceOutput = aaDirectOutput.find((row) => row.id === input.targetObservation.observationId)
+  if (!sameSourceOutput) throw new Error(`Missing direct AA DeepSWE output for ${input.model}`)
 
   const costUsd = input.costCalibrationMethod === 'openai-max-through-origin-proportional-fit'
     ? throughOriginSlope(costCalibrationRows) * targetVariant.pooledCostPerTask.usd
@@ -251,20 +246,14 @@ function buildScenario(input: ResearchScenario): UsageScenario {
     ? [Math.min(...timeFactors) * targetVariant.pooledExecutionTimePerTask.seconds, Math.max(...timeFactors) * targetVariant.pooledExecutionTimePerTask.seconds] as [number, number]
     : null
 
-  const outputLooMape = outputLeaveOneOutMape(outputCalibrationRows)
   const costLooMape = costLeaveOneOutMape(costCalibrationRows)
   const timeLooMape = timeLeaveOneOutMape(timeCalibrationRows)
   const unknownCostBases = costCalibrationRows.filter((row) => !row.costBasisKnown).length
   const confidenceNote = direct
     ? `Low qualitative evidence, not a probability: a separate Datacurve DeepSWE v1.1 ${direct.model} max mini-swe-agent row supplies ${direct.scoredAttempts} scored attempts across ${direct.runs} runs. Model and effort match, but evaluator/harness differ from the AA ${input.aaAgent} row. Cost basis ${direct.costBasis ? 'is reported' : 'is unspecified'}; Datacurve timer boundaries are unspecified. No prediction interval is justified.`
     : input.evidenceQuality === 'low'
-      ? `Low qualitative evidence, not a probability: ${outputCalibrationRows.length} output-transfer pairs (LOO MAPE ${outputLooMape?.toFixed(1) ?? 'not available'}%), ${costCalibrationRows.length} cost pairs (LOO MAPE ${costLooMape?.toFixed(1) ?? 'not available'}%), and ${timeCalibrationRows.length} measured wall-time pairs (LOO MAPE ${timeLooMape?.toFixed(1) ?? 'not available'}%); ${unknownCostBases} calibration cost bases are unknown. These small-sample envelopes are not confidence or prediction intervals.`
+      ? `Low qualitative dollar/time evidence, not a probability: ${costCalibrationRows.length} cost pairs (LOO MAPE ${costLooMape?.toFixed(1) ?? 'not available'}%) and ${timeCalibrationRows.length} measured wall-time pairs (LOO MAPE ${timeLooMape?.toFixed(1) ?? 'not available'}%); ${unknownCostBases} calibration cost bases are unknown. These small-sample envelopes are not confidence or prediction intervals.`
       : 'Very low qualitative evidence, not a probability: one adjacent-version Opus 5 max pair, with no holdout and no defensible sensitivity range or prediction interval; target time is additionally rounded to 0.1 hour.'
-  const outputCalibrationDescription = input.outputCalibrationMethod === 'openai-max-arithmetic-mean-ratio'
-    ? 'Mean of two same-effort Datacurve DeepSWE output-token / AA Intelligence Index output-token ratios, transferred to the target AA Intelligence Index output/task figure.'
-    : direct
-      ? `Same-model, same-max Datacurve DeepSWE mean output tokens from ${direct.configurationId}; carried as a separate cross-harness scenario, not the target AA run.`
-      : 'Single Opus 5 max Datacurve DeepSWE / AA Intelligence Index output-token ratio transferred to Opus 5.5.'
   const costCalibrationDescription = input.costCalibrationMethod === 'openai-max-through-origin-proportional-fit'
     ? 'Through-origin proportional fit of three OpenAI max Datacurve DeepSWE USD/attempt values against AA pooled Coding Agent USD/task values, applied to the target AA suite cost.'
     : direct
@@ -276,7 +265,6 @@ function buildScenario(input: ResearchScenario): UsageScenario {
       ? `Same-model, same-max Datacurve reported mean seconds per scored attempt from ${direct.configurationId}; carried as a separate cross-harness scenario. Timer boundaries are unspecified, so it is not a verified end-to-end duration.`
       : 'Single same-family Opus 5 max measured Datacurve/AA wall-clock time ratio applied to Opus 5.5 AA reported 1.1h. The target input is rounded and timer boundaries are unspecified; this is not a verified end-to-end duration.'
   const aaComparison = sourceReference(input.codingAgentComparisonSourceId, 'Coding Agent Index model-variant table; pooled suite cost, reported time, and mixed-category total tokens')
-  const aaOutput = sourceReference(input.intelligenceIndexOutputSourceId, direct ? 'Intelligence Index output-only reference; the scenario uses the separate exact-model/effort Datacurve DeepSWE row.' : 'Intelligence Index output tokens per task; separate from Coding Agent Index totals')
   const datacurve = sourceReference('datacurve-v1.1-json', `Exact calibration rows retained in this artifact; ${research.sources.find((item) => item.id === 'datacurve-v1.1-json')?.sha256 ?? 'source hash unavailable'}`)
 
   return {
@@ -293,27 +281,30 @@ function buildScenario(input: ResearchScenario): UsageScenario {
     targetScoreReportedText: input.aaDeepSWEv1_1Score,
     costScenarioType: direct ? 'datacurve-usage-reference' : 'cross-platform-transfer',
     confidence: input.evidenceQuality === 'low' ? 'low' : 'very-low',
-    confidenceNote,
+    confidenceNote: `Exact AA variant DeepSWE v1.1 output mean is source-reported (output-specific telemetry count and reasoning scope unspecified). Dollar/time scenario evidence remains separate: ${confidenceNote}`,
     aaCodingSuiteCostUsdPerTask: targetVariant.pooledCostPerTask.usd,
     aaCodingSuiteTimeSecondsPerTask: targetVariant.pooledExecutionTimePerTask.seconds,
     aaCodingSuiteMixedTokensPerTask: targetVariant.pooledTokenUsagePerTask.tokens,
-    outputTokensPerScoredAttempt,
-    outputTokenSensitivityRange,
+    outputTokensPerScoredAttempt: sameSourceOutput.tokens,
+    outputUnit: 'AA DeepSWE v1.1 output tokens / task attempt',
+    outputEvidenceType: 'same-source-deepswe-mean',
+    outputStatistic: 'source-deepswe-mean',
+    outputTokenSensitivityRange: null,
     costUsd,
     costUnit: 'USD per scored rollout attempt',
     costSensitivityRange,
     timeSecondsPerScoredAttempt,
     timeSensitivityRange,
-    outputCalibrationMethod: input.outputCalibrationMethod,
+    outputCalibrationMethod: 'same-aa-variant-deepswe-mean',
     costCalibrationMethod: input.costCalibrationMethod,
     timeCalibrationMethod: input.timeCalibrationMethod,
-    outputCalibrationDescription,
+    outputCalibrationDescription: `AA public serialized variant data reports the exact ${input.model} ${input.effort} ${input.aaAgent} DeepSWE v1.1 mean.outputTokens. No cost-to-token conversion or Intelligence Index transfer is used for this output. Output-specific telemetry count and reasoning inclusion are unspecified.`,
     costCalibrationDescription,
     timeCalibrationDescription,
-    outputCalibrationRows,
+    outputCalibrationRows: [],
     costCalibrationRows,
     timeCalibrationRows,
-    outputLeaveOneOutMapePercent: outputLooMape,
+    outputLeaveOneOutMapePercent: null,
     costLeaveOneOutMapePercent: costLooMape,
     timeLeaveOneOutMapePercent: timeLooMape,
     directUsageReference: direct ? {
@@ -325,8 +316,8 @@ function buildScenario(input: ResearchScenario): UsageScenario {
       runs: direct.runs,
       costBasis: direct.costBasis,
     } : null,
-    sensitivityNote: 'Observed small-sample transfer-factor envelopes are not confidence or prediction intervals. Exact-row matches and one-pair transfers have no defensible interval.',
-    sources: [aaComparison, aaOutput, datacurve],
+    sensitivityNote: 'The same-source AA DeepSWE output mean has no reported output-token interval. Dollar/time transfer-factor envelopes are sensitivity choices, not confidence or prediction intervals.',
+    sources: [aaComparison, datacurve, aaDirectOutputSource(sameSourceOutput.page)],
     scenarioStatistic: 'mean-only',
   }
 }
@@ -347,6 +338,11 @@ function buildCostOnlyScenario(input: ResearchCostOnlyScenario): UsageScenario {
   }
 
   const source = sourceReference(input.sourceId, input.evidenceLocator)
+  const directOutput = chineseResearch.targets.find((row) => row.id === input.targetObservation.observationId && row.output?.method === 'aaDirectOutput')
+  const fableOutput = aaDirectOutput.find((row) => row.id === input.targetObservation.observationId)
+  if (directOutput && (input.costScenarioType !== 'aa-suite-proxy' || directOutput.cost?.usd !== input.costUsd || directOutput.modelSnapshot !== input.model || directOutput.effort !== input.effort || directOutput.harness !== input.targetObservation.harness)) throw new Error(`AA output evidence does not match the suite-cost target: ${input.model}`)
+  const aaOutputSource = directOutput && chineseResearch.sources.find((row) => row.id === 'aa-codex-kimi-live')
+  if (directOutput && !aaOutputSource) throw new Error(`Missing AA DeepSWE output source for ${input.model}`)
   return {
     id: input.id,
     model: input.model,
@@ -365,17 +361,20 @@ function buildCostOnlyScenario(input: ResearchCostOnlyScenario): UsageScenario {
     aaCodingSuiteCostUsdPerTask: targetVariant?.pooledCostPerTask.usd ?? null,
     aaCodingSuiteTimeSecondsPerTask: targetVariant?.pooledExecutionTimePerTask.seconds ?? null,
     aaCodingSuiteMixedTokensPerTask: targetVariant?.pooledTokenUsagePerTask.tokens ?? null,
-    outputTokensPerScoredAttempt: null,
+    outputTokensPerScoredAttempt: directOutput?.output?.tokens ?? fableOutput?.tokens ?? null,
+    outputUnit: directOutput || fableOutput ? 'AA DeepSWE v1.1 output tokens / task attempt' : 'output tokens / scored rollout attempt',
+    outputEvidenceType: directOutput || fableOutput ? 'same-source-deepswe-mean' : 'not-estimated',
+    outputStatistic: directOutput || fableOutput ? 'source-deepswe-mean' : 'not-estimated',
     outputTokenSensitivityRange: null,
     costUsd: input.costUsd,
     costUnit: input.costUnit,
     costSensitivityRange: null,
     timeSecondsPerScoredAttempt: null,
     timeSensitivityRange: null,
-    outputCalibrationMethod: 'not-estimated',
+    outputCalibrationMethod: directOutput || fableOutput ? 'same-aa-variant-deepswe-mean' : 'not-estimated',
     costCalibrationMethod: input.costMethod,
     timeCalibrationMethod: 'not-estimated',
-    outputCalibrationDescription: 'No output-token estimate is attached to this cost-only scenario.',
+    outputCalibrationDescription: directOutput || fableOutput ? `Source-reported mean.outputTokens for the exact ${input.model} ${input.effort} ${input.targetObservation.harness} variant's DeepSWE v1.1 eval; token-telemetry-specific count and reasoning-token inclusion not established. This is not derived from pooled suite cost and does not populate the approved measurement field.` : 'No output-token estimate is attached to this cost-only scenario.',
     costCalibrationDescription: input.costDescription,
     timeCalibrationDescription: 'No time estimate is attached to this cost-only scenario.',
     outputCalibrationRows: [],
@@ -385,15 +384,58 @@ function buildCostOnlyScenario(input: ResearchCostOnlyScenario): UsageScenario {
     costLeaveOneOutMapePercent: null,
     timeLeaveOneOutMapePercent: null,
     directUsageReference: null,
-    sensitivityNote: 'No cost sensitivity range or prediction interval is supported for this cost-only scenario.',
-    sources: [source],
+    sensitivityNote: 'No cost sensitivity range or prediction interval is supported; same-source DeepSWE output means have no published output-token interval.',
+    sources: aaOutputSource ? [source, inferenceSourceReference(aaOutputSource, 'chinese')] : fableOutput ? [source, aaDirectOutputSource(fableOutput.page)] : [source],
     scenarioStatistic: input.costScenarioType === 'aa-suite-proxy' ? 'pooled-suite-average' : 'source-statistic-unspecified',
+  }
+}
+
+function buildMetaGoogleXaiScenario(input: typeof metaResearch.targets[number]): UsageScenario {
+  const isGoogle = input.observationId === 'google-gemini-3.8-flash-high-v1.1'
+  const isMeta = input.observationId === 'meta-muse-spark-1.3-v1.1-max'
+  const group = isMeta ? metaResearch.calibration.meta : metaResearch.calibration.xai
+  const target = isGoogle
+    ? { name: 'Gemini 3.8 Flash', publisher: 'Google DeepMind', sourceCategory: 'developer', harness: 'mini-SWE-agent', effort: 'high thinking', scoreMetric: 'pass_at_1' }
+    : isMeta
+      ? { name: 'Muse Spark 1.3', publisher: 'Meta', sourceCategory: 'developer', harness: 'mini-swe-agent', effort: 'max', scoreMetric: 'task_pass_rate' }
+      : { name: 'Grok 4.7', publisher: 'xAI / SpaceXAI', sourceCategory: 'developer', harness: null, effort: 'high', scoreMetric: 'reported_score_unspecified' }
+  if (input.reportedModel !== target.name || input.publisher !== (isGoogle ? 'Google' : isMeta ? 'Meta' : 'xAI') || input.scoreReportedText !== (isGoogle ? '73.7%' : isMeta ? '75.4%' : '71.0%*')) throw new Error(`Mismatched research target: ${input.observationId}`)
+  const outputCalibrationRows: UsageScenario['outputCalibrationRows'] = isGoogle ? [] : group.map((row) => ({ model: `${row.model} ${row.effort} · AA II aggregate`, aaOutputTokens: row.aaIITotalOutputMillions * 1_000_000, deepSWEOutputTokens: row.meanOutputTokensPerScoredAttempt, scoredAttempts: row.attempts, ratio: row.meanOutputTokensPerScoredAttempt / (row.aaIITotalOutputMillions * 1_000_000) }))
+  const costCalibrationRows: UsageScenario['costCalibrationRows'] = isGoogle ? [] : group.map((row) => ({ model: `${row.model} ${row.effort} · AA II cost/task`, aaUsd: row.aaIIUsdPerTask, deepSWEUsd: row.meanUsdPerScoredAttempt, ratio: row.meanUsdPerScoredAttempt / row.aaIIUsdPerTask, costBasisKnown: row.costBasis !== null }))
+  const cost = isGoogle ? input.usdPerScoredAttemptScenario : costCalibrationRows.reduce((sum, row) => sum + row.ratio * input.aaIIUsdPerTask!, 0) / costCalibrationRows.length
+  const output = isGoogle ? input.outputTokensPerScoredAttemptScenario : outputCalibrationRows.reduce((sum, row) => sum + row.ratio * input.aaIITotalOutputMillions! * 1_000_000, 0) / outputCalibrationRows.length
+  if (Math.abs(cost - input.usdPerScoredAttemptScenario) > 1e-8 || Math.abs(output - input.outputTokensPerScoredAttemptScenario) > 1e-6) throw new Error(`Inconsistent research arithmetic for ${input.observationId}`)
+  const sourceIds = isGoogle ? ['google-method', 'dc'] : isMeta ? ['meta-model', 'dc', 'aa-muse-1.1-xhigh', 'aa-muse-1.2-xhigh', 'aa-muse-1.3-max'] : ['xai-release', 'dc', 'aa-grok-4.5-high', 'aa-grok-4.6-high', 'aa-grok-4.7-high']
+  const sources = sourceIds.map((id) => {
+    const source = metaResearch.sources.find((row) => row.id === id)
+    if (!source) throw new Error(`Missing ${id} research source`)
+    return inferenceSourceReference({ ...source, locator: [source.locator, source.responseCaveat].filter(Boolean).join(' · ') }, 'meta-google-xai')
+  })
+  const direct = isGoogle ? { configurationId: input.directReferenceConfig!, model: 'Gemini 3.8 Flash', effort: 'high thinking', harness: 'mini-swe-agent', scoredAttempts: input.directReferenceAttempts!, runs: input.directReferenceRuns!, costBasis: input.directReferenceCostBasis! } : null
+  return {
+    id: `${input.observationId}:usage-scenario`, model: target.name, effort: target.effort,
+    targetObservationId: input.observationId, targetReportedName: target.name, targetPublisher: target.publisher, targetHarness: target.harness, targetSourceCategory: target.sourceCategory, targetBenchmarkVersion: '1.1', targetScoreMetric: target.scoreMetric, targetScoreReportedText: input.scoreReportedText,
+    costScenarioType: isGoogle ? 'datacurve-usage-reference' : 'cross-platform-transfer', confidence: isGoogle ? 'low' : 'very-low',
+    confidenceNote: isGoogle ? 'Same reported API model, high thinking and mini-SWE-agent DeepSWE v1.1, but this is a separate Datacurve experiment (447 attempts, four runs), not the Google run. Immutable checkpoint, attempt set and cost basis are not established.' : isMeta ? 'Very weak adjacent-version 1.1/1.2 xhigh to 1.3 max transfer across DeepSWE and AA Intelligence Index workloads; effort differs. Two-predecessor output/cost LOO MAPE 59.1%/88.9%. A separate Muse Code 1.3 max AA DeepSWE variant directly reports ~122,492 output tokens/task attempt, but it is not Meta’s mini-swe-agent run and its $3.98/task is a three-benchmark suite average, not Meta’s bill.' : 'Very weak adjacent-version Grok 4.5/4.6 high to 4.7 high transfer across DeepSWE and AA Intelligence Index workloads; developer harness unknown. Output LOO MAPE 35.1%. A tight two-point cost fit does not imply a reliable bill.',
+    aaCodingSuiteCostUsdPerTask: null, aaCodingSuiteTimeSecondsPerTask: null, aaCodingSuiteMixedTokensPerTask: null,
+    outputTokensPerScoredAttempt: output, outputUnit: 'output tokens / scored rollout attempt', outputEvidenceType: isGoogle ? 'cross-experiment-reference' : 'cross-benchmark-transfer', outputStatistic: 'mean-only', outputTokenSensitivityRange: isGoogle ? null : [Math.min(...outputCalibrationRows.map((row) => row.ratio * input.aaIITotalOutputMillions! * 1_000_000)), Math.max(...outputCalibrationRows.map((row) => row.ratio * input.aaIITotalOutputMillions! * 1_000_000))],
+    costUsd: cost, costUnit: 'USD per scored rollout attempt', costSensitivityRange: isGoogle ? null : [Math.min(...costCalibrationRows.map((row) => row.ratio * input.aaIIUsdPerTask!)), Math.max(...costCalibrationRows.map((row) => row.ratio * input.aaIIUsdPerTask!))],
+    timeSecondsPerScoredAttempt: null, timeSensitivityRange: null,
+    outputCalibrationMethod: isGoogle ? 'separate-experiment-same-model-effort-deepswe-reference' : 'two-predecessor-aa-ii-aggregate-output-transfer',
+    costCalibrationMethod: isGoogle ? 'separate-experiment-same-model-effort-deepswe-reference' : 'two-predecessor-aa-ii-cost-transfer', timeCalibrationMethod: 'not-estimated',
+    outputCalibrationDescription: isGoogle ? `Datacurve ${direct!.configurationId} mean output tokens over ${direct!.scoredAttempts} scored attempts in four runs; same API model/high thinking, separate Google experiment.` : `Unweighted mean of two predecessor Datacurve DeepSWE output means scaled by target/reference AA Intelligence Index AGGREGATE output tokens (millions over entire evaluation, not tokens/task). Cross-benchmark adjacent-version transfer; ${isMeta ? 'Meta predecessors are xhigh while the target is max.' : 'Grok predecessors and target are all high effort.'}`,
+    costCalibrationDescription: isGoogle ? `Datacurve ${direct!.configurationId} mean USD per scored attempt; separate Google experiment, cost basis unreported.` : 'Unweighted mean of two predecessor Datacurve DeepSWE USD/attempt scaled by target/reference AA Intelligence Index weighted USD/task. Different benchmarks and unknown Datacurve price bases; not the AA pooled Coding Agent suite cost.',
+    timeCalibrationDescription: 'No time estimate is attached to this scenario.',
+    outputCalibrationRows, costCalibrationRows, timeCalibrationRows: [], outputLeaveOneOutMapePercent: isGoogle ? null : outputLeaveOneOutMape(outputCalibrationRows), costLeaveOneOutMapePercent: isGoogle ? null : meanAbsolutePercentageError(costCalibrationRows.map((heldOut, index) => { const other = costCalibrationRows[1 - index]!; return (other.ratio * heldOut.aaUsd - heldOut.deepSWEUsd) / heldOut.deepSWEUsd * 100 })), timeLeaveOneOutMapePercent: null,
+    directUsageReference: direct, sensitivityNote: isGoogle ? 'One separate run reference, not a confidence interval or a measurement of the Google run.' : 'Extrema of two predecessor transfers are sensitivity cases, not confidence or prediction intervals.',
+    sources: isMeta ? [...sources, { id: 'aa-muse-code-1.3-max-direct-output-context', publisher: 'Artificial Analysis', url: 'https://artificialanalysis.ai/agents/coding-agents/comparisons/grok-build-vs-muse-code', accessedOn: '2026-09-29', evidenceLocator: 'Muse Code 1.3 max evals[datasetIndexName="deep-swe-v1.1"].mean.outputTokens=122491.69026548673, a different harness from Meta mini-swe-agent; $3.98/task pooled suite; response SHA-256 1b2fbd39cab29eb8c3d399f948adb82260f1c47ab8dfc0cc419690a506fc70be' }] : sources, scenarioStatistic: 'mean-only',
   }
 }
 
 export const usageScenarios: UsageScenario[] = [
   ...research.scenarios.map(buildScenario),
   ...research.costOnlyScenarios.map(buildCostOnlyScenario),
+  ...metaResearch.targets.map(buildMetaGoogleXaiScenario),
 ]
 
 /** Exact Artificial Analysis observation identity is required; aliases and other harness reports never inherit a scenario. */
