@@ -179,6 +179,7 @@ export function ExplorerChart({
   }, [observations, xMetric, statistic, scoreMetric, scale])
 
   const accepted = plotSeries.flatMap((series) => series.segments.points)
+  const hasApproximateCost = xMetric === 'cost' && statistic === 'mean' && observations.some((observation) => Boolean(observation.approximation))
   const scenarioCandidates = usageScenarios.flatMap(({ observation, scenario }) => {
     const score = displayScoreResult(observation, scoreMetric)
     if (!hasPercentageScoreScale(score)) return []
@@ -310,7 +311,9 @@ export function ExplorerChart({
         ? `${selectedGuide.observation.model.reportedName}; ${displayScoreValue(selectedGuide.score)} ${selectedGuide.score.metricLabel}; source-reported cost scenario: ${formatAxis(selectedGuide.xValue, xMetric)} ${selectedGuide.scenarioCostUnit}.`
        : selectedGuide.scenarioType === 'aa-suite-proxy' && xMetric === 'cost'
           ? `${selectedGuide.observation.model.reportedName}; ${displayScoreValue(selectedGuide.score)} ${selectedGuide.score.metricLabel}; pooled-suite cost proxy: ${formatAxis(selectedGuide.xValue, xMetric)} ${selectedGuide.scenarioCostUnit}.`
-          : `${selectedGuide.observation.model.reportedName}; ${displayScoreValue(selectedGuide.score)} ${selectedGuide.score.metricLabel}; ${selectedGuide.estimated ? 'estimated scenario' : 'reported'} ${statistic} ${xMetricLabels[xMetric].axis}: ${formatAxis(selectedGuide.xValue, xMetric)}.`
+           : selectedGuide.observation.approximation && xMetric === 'cost'
+             ? `${selectedGuide.observation.model.reportedName}; ${selectedGuide.observation.effort.reportedLabel}; approximate screenshot-derived score ${displayScoreValue(selectedGuide.score)}; approximate source-chart Cost per task ${formatAxis(selectedGuide.xValue, xMetric)}; aggregation and task denominator unspecified. Reading bounds ${selectedGuide.observation.approximation.costBoundsUsd.join('–')} USD and ${selectedGuide.observation.approximation.scoreBoundsPercent.join('–')}%; not a confidence interval.`
+             : `${selectedGuide.observation.model.reportedName}; ${displayScoreValue(selectedGuide.score)} ${selectedGuide.score.metricLabel}; ${selectedGuide.estimated ? 'estimated scenario' : 'reported'} ${statistic} ${xMetricLabels[xMetric].axis}: ${formatAxis(selectedGuide.xValue, xMetric)}.`
     : null
   const selectedGuideXAnchor = selectedGuide && selectedGuide.x <= PLOT.left + 54
     ? 'start'
@@ -355,8 +358,9 @@ export function ExplorerChart({
           className="effort-chart"
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
           role="group"
-            aria-label={`Score chart. Horizontal axis: ${hasXAxisExtent ? `${statistic} ${xMetricLabels[xMetric].label}` : `no usable numeric ${xMetricLabels[xMetric].label} values`}; vertical axis: ${scoreAxisLabel}. Connected segments use only measured configurations from one evaluation series. Hollow diamonds are standalone cost/usage scenarios with point-specific evidence and units; they are never connected. The far-right no-data lane is outside the numeric X axis; horizontal position in that lane encodes no X value.`}
+             aria-label={`Score chart. Horizontal axis: ${hasXAxisExtent ? `${hasApproximateCost ? 'mixed mean-per-attempt and approximate source-chart' : statistic} ${xMetricLabels[xMetric].label}` : `no usable numeric ${xMetricLabels[xMetric].label} values`}; vertical axis: ${scoreAxisLabel}. Connected segments follow one source series; screenshot-derived coordinates are approximate and have unknown cost aggregation. Hollow diamonds are standalone cost/usage scenarios with point-specific evidence and units; they are never connected. The far-right no-data lane is outside the numeric X axis; horizontal position in that lane encodes no X value.`}
         >
+          {hasApproximateCost && <desc>GPT-6.1 Sol source path: five screenshot-derived approximate coordinates. Cost is source-chart Cost per task with unknown task denominator and aggregation; reading bounds are not confidence intervals. Point details retain the screenshot hash and source.</desc>}
           <defs>
             <pattern id="chart-hatch" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
               <line x1="0" y1="0" x2="0" y2="8" stroke="#d7d0c1" strokeWidth="1" />
@@ -392,7 +396,7 @@ export function ExplorerChart({
           <line x1={PLOT.left} x2={PLOT.right} y1={PLOT.bottom} y2={PLOT.bottom} className="axis-line" />
           <line x1={PLOT.left} x2={PLOT.left} y1={PLOT.top} y2={PLOT.bottom} className="axis-line" />
           <text x={(PLOT.left + PLOT.right) / 2} y={HEIGHT - 10} className="axis-title x-axis-title" textAnchor="middle">
-            {hasXAxisExtent ? `${statistic === 'mean' ? 'MEAN' : 'MEDIAN'} ${xMetricLabels[xMetric].axis.toUpperCase()}` : 'SCORE-ONLY · NO NUMERIC X DATA'}
+             {hasXAxisExtent ? hasApproximateCost ? 'COST (USD / TASK) · SOURCE SCOPE VARIES BY POINT' : `${statistic === 'mean' ? 'MEAN' : 'MEDIAN'} ${xMetricLabels[xMetric].axis.toUpperCase()}` : 'SCORE-ONLY · NO NUMERIC X DATA'}
           </text>
           <text x="21" y={(PLOT.top + PLOT.bottom) / 2} className="axis-title y-title" textAnchor="middle" transform={`rotate(-90 21 ${(PLOT.top + PLOT.bottom) / 2})`}>
             {scoreAxisLabel}
@@ -451,7 +455,7 @@ export function ExplorerChart({
             const seriesDimmed = Boolean(activeSeriesId && activeSeriesId !== series.id)
             const metricNote = result.metric === scoreMetric ? '' : ` Different metric from selected ${scoreMetricLabels[scoreMetric]}.`
             const protocol = `${observation.publisher}; ${observation.benchmark.version ? `DeepSWE v${observation.benchmark.version}` : 'DeepSWE version unspecified'}; protocol ${observation.series.harness ?? 'not reported'}; evaluation policy ${observation.series.evaluationPolicy ?? 'not reported'}`
-            const label = `${observation.model.reportedName}; ${displayScoreValue(result)}; source metric: ${result.metricLabel}.${metricNote} Source/protocol: ${protocol}; ${observation.effort.reportedLabel ?? 'effort unreported'}; ${formatAxis(point.x!, xMetric)} ${xMetricLabels[xMetric].axis}`
+             const label = `${observation.model.reportedName}; ${displayScoreValue(result)}; source metric: ${result.metricLabel}.${metricNote} Source/protocol: ${protocol}; ${observation.effort.reportedLabel ?? 'effort unreported'}; ${observation.approximation && xMetric === 'cost' ? `approximate screenshot-derived Cost per task ${formatAxis(point.x!, xMetric)}; aggregation and denominator unknown; reading bounds ${observation.approximation.costBoundsUsd.join('–')} USD and ${observation.approximation.scoreBoundsPercent.join('–')}%, not a confidence interval` : `${formatAxis(point.x!, xMetric)} ${xMetricLabels[xMetric].axis}`}`
             const onKeyDown = (event: React.KeyboardEvent<SVGGElement>) => {
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault()
@@ -486,7 +490,7 @@ export function ExplorerChart({
                 )}
                 <circle cx={x} cy={y} r="13" className="point-hit-area" />
                 {sourceShape(observation.sourceCategory, x, y, series.color, selectedObservationId === observation.id)}
-                {activeSeriesId === series.id && <text x={x + 9} y={y - (index % 2 ? 10 : -18)} className="point-label">{observation.effort.reportedLabel ?? 'effort ?'}</text>}
+                 {activeSeriesId === series.id && <text x={x + 9} y={y - (index % 2 ? 10 : -18)} className="point-label">{observation.effort.reportedLabel ?? 'effort ?'}{observation.approximation ? ' ≈' : ''}</text>}
               </g>
             )
           })}
@@ -581,7 +585,7 @@ export function ExplorerChart({
               {selectedGuide.xValue !== null && <line className="selected-guide-line selected-guide-x" x1={selectedGuide.x} x2={selectedGuide.x} y1={selectedGuide.y} y2={PLOT.bottom} />}
               <text className="selected-guide-label selected-guide-y-label" data-guide-axis="y" x={selectedGuideScoreX} y={selectedGuideScoreY} textAnchor="start">{displayScoreValue(selectedGuide.score)}</text>
               {selectedGuide.xValue !== null
-                ? <text className="selected-guide-label selected-guide-x-label" data-guide-axis="x" x={selectedGuideLabelX} y={PLOT.bottom + 35} textAnchor={selectedGuideXAnchor}>{selectedGuide.scenarioOutputEvidenceType === 'same-source-deepswe-mean' && xMetric === 'outputTokens' ? 'AA MEAN · ' : selectedGuide.scenarioType === 'source-reported-cost' ? 'SRC · ' : selectedGuide.scenarioType === 'aa-suite-proxy' && xMetric === 'cost' ? 'PROXY · ' : selectedGuide.estimated ? 'EST · ' : ''}{formatAxis(selectedGuide.xValue, xMetric)}</text>
+                 ? <text className="selected-guide-label selected-guide-x-label" data-guide-axis="x" x={selectedGuideLabelX} y={PLOT.bottom + 35} textAnchor={selectedGuideXAnchor}>{selectedGuide.observation.approximation && xMetric === 'cost' ? '≈ SRC · ' : selectedGuide.scenarioOutputEvidenceType === 'same-source-deepswe-mean' && xMetric === 'outputTokens' ? 'AA MEAN · ' : selectedGuide.scenarioType === 'source-reported-cost' ? 'SRC · ' : selectedGuide.scenarioType === 'aa-suite-proxy' && xMetric === 'cost' ? 'PROXY · ' : selectedGuide.estimated ? 'EST · ' : ''}{formatAxis(selectedGuide.xValue, xMetric)}</text>
                 : <text className="selected-guide-missing-label" data-guide-axis="x-missing" x={selectedGuideMissingX} y={selectedGuideMissingY} textAnchor={selectedGuideMissingAnchor}>{selectedGuideMissingLabel}</text>}
             </g>
           )}
@@ -629,7 +633,7 @@ export function ExplorerChart({
         </p>
       )}
       <div className="chart-caption-row">
-          <span>{plottedRows.length} measured · {estimatedPlotPoints.length} scenario · {noDataMarks.length} no-data. Hollow amber diamonds are standalone cost/usage scenarios and never join effort paths; task-cost source statistics remain point-specific. The far-right no-data lane is outside the numeric X axis.</span>
+           <span>{plottedRows.length} source coordinates{hasApproximateCost ? ' (including 5 approximate screenshot readings; cost aggregation unspecified)' : ''} · {estimatedPlotPoints.length} scenario · {noDataMarks.length} no-data. Hollow amber diamonds are standalone cost/usage scenarios and never join effort paths; task-cost source statistics remain point-specific. The far-right no-data lane is outside the numeric X axis.</span>
           <span>Source marks: ● organizer · ◆ developer · ▲ independent · ■ local evaluation · expand the no-data key for source, metric and omission notes.</span>
       </div>
       {suppressedCount > 0 && <p className="chart-footnote chart-precedence-note" role="status">{suppressedCount} matching non-Datacurve report{suppressedCount === 1 ? ' is' : 's are'} retained in the evidence table and exports but omitted from this chart by display precedence. An unspecified source version is not treated as a version conflict; known model, version, scope, and score-metric conflicts remain separate. Source rows are not merged.</p>}

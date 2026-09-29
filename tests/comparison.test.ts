@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { datacurveChartPrecedence, displayModelName, displayScoreResult, filterObservations, getEfficiencyCoverage, metricObservation, modelKey, projectBest, scoreResult, strictExclusionReason, strictProtocolGroups, type SourceCategory } from '../src/lib/comparison'
 import { normalizeOfficialFeed } from '../src/lib/normalize'
 import { DatasetSchema, ObservationSchema } from '../src/lib/schema'
+import { segmentXY } from '../src/lib/xy'
 
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/official-feed-small.json', import.meta.url), 'utf8'))
 const effortOrder = JSON.parse(readFileSync(new URL('../data/sources/effort-order.json', import.meta.url), 'utf8'))
@@ -52,6 +53,20 @@ function strictObservation(source: typeof fixtureObservations[number], id: strin
 }
 
 describe('comparison projections', () => {
+  it('keeps the five approximate GPT-6.1 Sol source marks linked and separate from other Sol models', () => {
+    const rows = approvedDataset.observations.filter((row) => row.model.canonicalId === 'openai:gpt-6.1-sol')
+    expect(rows).toHaveLength(5)
+    expect(rows.map((row) => row.effort.reportedLabel)).toEqual(['Setting 1', 'Setting 2', 'Setting 3', 'Setting 4', 'Setting 5'])
+    expect(rows.map((row) => [row.metrics.cost.value, row.result.value])).toEqual([[0.2, 0.64], [0.4, 0.72], [0.7, 0.75], [0.8, 0.72], [1.6, 0.71]])
+    expect(new Set(rows.map((row) => row.series.id).values()).size).toBe(1)
+    const segments = segmentXY(rows.map((row) => ({ id: row.id, x: row.metrics.cost.value, y: row.result.value, effortOrder: row.effort.order })))
+    expect(segments.connected).toHaveLength(1)
+    expect(segments.connected[0]).toHaveLength(5)
+    expect(rows.every((row) => row.approximation && row.metrics.cost.statistic === 'reported' && row.metrics.medianCost.value === null && row.metrics.outputTokens.value === null && row.metrics.time.value === null)).toBe(true)
+    expect(rows.every((row) => strictExclusionReason(row, 'cost', 'mean', 'reported_score_unspecified') !== null)).toBe(true)
+    expect(projectBest(rows, 'reported_score_unspecified').map((row) => row.effort.reportedLabel)).toEqual(['Setting 3'])
+    expect(new Set([modelKey(rows[0]!), 'openai:gpt-6-sol', 'gpt-5-6-sol', 'gpt-6-astra']).size).toBe(4)
+  })
   it('formats model strings for display without changing source identity', () => {
     const observation = normalizeOfficialFeed(fixture, retrieval, effortOrder).observations[0]!
     expect(displayModelName('gpt-5-6-sol')).toBe('GPT 5.6 Sol')
@@ -176,7 +191,7 @@ describe('comparison projections', () => {
       'google-gemini-3.8-flash-high-v1.1',
     ].sort())
     expect([...suppressed.keys()].sort()).toEqual([...researchAudit.coverageAudit.chartPrecedenceSuppressedObservationIds].sort())
-    expect(approvedDataset.observations).toHaveLength(128)
+    expect(approvedDataset.observations).toHaveLength(133)
     expect(approvedDataset.observations.some((observation) => observation.id === 'datacurve-paper-gpt-5.5-xhigh-version-unknown')).toBe(true)
     expect(suppressed.has('datacurve-paper-gpt-5.5-xhigh-version-unknown')).toBe(false)
     expect(suppressed.has('meta-muse-spark-1.3-v1.1-max')).toBe(false)

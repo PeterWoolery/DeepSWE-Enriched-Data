@@ -71,6 +71,18 @@
       "notes": []
     },
     {
+      "id": "openai-gpt-6.1-sol-deepswe-figure",
+      "publisher": "OpenAI",
+      "title": "Introducing GPT-6.1 Sol · DeepSWE figure (user-supplied screenshot)",
+      "url": "https://openai.com/index/introducing-gpt-6-1-sol/",
+      "category": "developer",
+      "status": "source-reviewed",
+      "lastObservedDate": "2026-09-29",
+      "sha256": "2cac9bafeea62d03972bfc721c1131734616a720c61753f1f0e305c40e94ef29",
+      "accessAndReuse": "Five approximate coordinate pairs visually transcribed from user-supplied screenshot; no article image or price card redistributed.",
+      "notes": ["SHA-256 and date refer to local Screenshot_2026-09-29_10-23-46.png (date from filename), not to a freshly retrieved article response.", "Five marks visibly linked in the GPT-6.1 Sol path; Setting 1–5 follows image path order, not known thinking levels. Cost/Task aggregation, denominator, harness and confidence intervals are unspecified.", "The separate pricing screenshot contains per-million-token rates, not DeepSWE task costs; no tokens/time or rate-card costing is inferred."]
+    },
+    {
       "id": "openai-gpt-6-sol-luna",
       "publisher": "OpenAI",
       "title": "Introducing GPT-6 Sol and Luna",

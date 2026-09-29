@@ -1,5 +1,7 @@
 import { CandidateQueueSchema, DatasetSchema } from '../src/lib/schema.ts'
-import { readJson, writeJsonAtomic } from './lib.ts'
+import { normalizeApprovedReports, type ApprovedReport } from '../src/lib/normalize.ts'
+import { buildRevisionEvents, mergeRevisionEvents, type RevisionEvent } from '../src/lib/revisions.ts'
+import { readJson, sha256, writeJsonAtomic } from './lib.ts'
 
 function csvCell(value: unknown): string {
   const raw = value === null || value === undefined ? '' : String(value)
@@ -8,7 +10,22 @@ function csvCell(value: unknown): string {
 }
 
 async function main() {
-  const dataset = DatasetSchema.parse(await readJson<unknown>('data/approved/dataset.json'))
+  let dataset = DatasetSchema.parse(await readJson<unknown>('data/approved/dataset.json'))
+  if (process.argv.includes('--sync-supplemental')) {
+    const reports = await readJson<{ reports: ApprovedReport[] }>('data/sources/approved-reports.json')
+    const approved = normalizeApprovedReports(reports.reports)
+    const existing = new Set(dataset.observations.map((row) => row.id))
+    const added = approved.filter((row) => !existing.has(row.id))
+    if (added.length) {
+      const now = new Date().toISOString()
+      const revisionId = `dsv1.1-${sha256(`${dataset.revisionId}:${JSON.stringify(added)}`).slice(0, 16)}`
+      const revisions = await readJson<{ schemaVersion: number; events: RevisionEvent[] }>('data/approved/revisions.json')
+      const events = mergeRevisionEvents(revisions.events, buildRevisionEvents([], added, sha256(JSON.stringify(added)), now))
+      dataset = DatasetSchema.parse({ ...dataset, observations: [...dataset.observations, ...added], revisionId, lastDataChangeAt: now })
+      await writeJsonAtomic('data/approved/revisions.json', { schemaVersion: 1, events })
+    }
+    await writeJsonAtomic('data/approved/dataset.json', dataset)
+  }
   const candidateQueue = CandidateQueueSchema.parse(await readJson<unknown>('data/candidates/queue.json'))
   const registry = await readJson<unknown>('data/sources/registry.json')
   const aliases = await readJson<unknown>('data/sources/aliases.json')
@@ -18,6 +35,7 @@ async function main() {
     'scored_attempts', 'benchmark_runs', 'score_metric', 'score_metric_label', 'score_value_normalized', 'score_normalized_unit', 'score_reported_value', 'score_reported_unit',
     'score_reported_text', 'denominator', 'denominator_count', 'pass_at_4_fraction', 'pass_at_4_denominator_count', 'ci_low', 'ci_high', 'ci_confidence', 'ci_method', 'effort_label',
     'effort_order', 'harness', 'provider', 'mean_cost_usd_per_scored_attempt', 'median_cost_usd_per_scored_attempt', 'source_reported_cost_usd',
+    'approx_source_chart_cost_usd_per_task', 'approx_cost_reading_low_usd', 'approx_cost_reading_high_usd', 'approx_score_reading_low_percent', 'approx_score_reading_high_percent', 'approx_extraction_method', 'approx_bounds_note', 'approx_image_sha256',
     'mean_output_tokens_per_scored_attempt', 'median_output_tokens_per_scored_attempt', 'reported_mean_seconds_per_scored_attempt',
     'reported_median_seconds_per_scored_attempt', 'time_scope', 'cost_basis', 'rendered_leaderboard_cost_usd', 'rendered_cost_source_title',
     'rendered_cost_source_url', 'rendered_cost_source_retrieved_at', 'rendered_cost_source_sha256', 'cost_reconciliation_status', 'source_title', 'source_url', 'evidence_locator',
@@ -59,9 +77,17 @@ async function main() {
     observation.effort.order,
     observation.series.harness,
     observation.series.provider,
-    observation.metrics.cost.value,
+    observation.metrics.cost.statistic === 'mean' ? observation.metrics.cost.value : null,
     observation.metrics.medianCost.value,
     observation.pricing.asReportedCost,
+    observation.approximation ? observation.metrics.cost.value : null,
+    observation.approximation?.costBoundsUsd[0] ?? null,
+    observation.approximation?.costBoundsUsd[1] ?? null,
+    observation.approximation?.scoreBoundsPercent[0] ?? null,
+    observation.approximation?.scoreBoundsPercent[1] ?? null,
+    observation.approximation?.method ?? null,
+    observation.approximation?.boundsNote ?? null,
+    observation.approximation?.imageSha256 ?? null,
     observation.metrics.outputTokens.value,
     observation.metrics.medianOutputTokens.value,
     observation.metrics.time.value,

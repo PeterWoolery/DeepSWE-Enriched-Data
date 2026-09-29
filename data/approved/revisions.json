@@ -89254,6 +89254,791 @@
         "attemptCount": null,
         "scoredAttemptCount": null
       }
+    },
+    {
+      "eventId": "be40aa47457a191e:new-configuration:openai-gpt-6.1-sol-deepswe-setting1",
+      "observedAt": "2026-09-29T17:48:36.728Z",
+      "observationId": "openai-gpt-6.1-sol-deepswe-setting1",
+      "kind": "new-configuration",
+      "sourceId": "openai-gpt-6.1-sol-deepswe-figure",
+      "previous": null,
+      "current": {
+        "publisher": "OpenAI",
+        "evaluator": null,
+        "sourceCategory": "developer",
+        "model": {
+          "reportedName": "GPT-6.1 Sol",
+          "canonicalId": "openai:gpt-6.1-sol",
+          "snapshot": null,
+          "aliasEvidence": "Exact model identity in the supplied OpenAI figure; no cross-model alias."
+        },
+        "benchmark": {
+          "version": "1.1",
+          "scope": "unknown",
+          "taskSetRevision": null,
+          "taskCount": null,
+          "tasksAttempted": null,
+          "attempts": null,
+          "scoredAttempts": null,
+          "runs": null,
+          "excludedPolicy": null
+        },
+        "scoreMetric": "reported_score_unspecified",
+        "resultDetails": {
+          "metric": "reported_score_unspecified",
+          "metricLabel": "Approximate DeepSWE chart score; statistic and denominator unspecified",
+          "value": 0.64,
+          "unit": "fraction (normalized from reported percentage)",
+          "reportedValue": 64,
+          "reportedUnit": "%",
+          "reportedText": "≈64% (screenshot-derived)",
+          "denominator": null,
+          "denominatorCount": null,
+          "confidenceInterval": {
+            "low": null,
+            "high": null,
+            "confidence": null,
+            "method": null,
+            "passed": null,
+            "attempted": null,
+            "missingReason": "The source does not report a confidence interval."
+          }
+        },
+        "score": 0.64,
+        "reportedScore": 64,
+        "confidenceInterval": {
+          "low": null,
+          "high": null,
+          "confidence": null,
+          "method": null,
+          "passed": null,
+          "attempted": null,
+          "missingReason": "The source does not report a confidence interval."
+        },
+        "additionalResults": [],
+        "meanCostUsd": null,
+        "approximateSourceChartCostUsd": 0.2,
+        "approximation": {"method":"Visual digitization of the 400×329 supplied screenshot: horizontal ticks $0 at x≈61, $2 at x≈134; vertical ticks 0% at y≈280 and 80% at y≈61. Rounded costs to $0.1 and scores to whole percentage points; point centers visually estimated.","imageFile":"Screenshot_2026-09-29_10-23-46.png","imageSha256":"2cac9bafeea62d03972bfc721c1131734616a720c61753f1f0e305c40e94ef29","costBoundsUsd":[0.1,0.3],"scoreBoundsPercent":[63,65],"boundsNote":"Reading/rounding bounds only (roughly ±$0.1–0.2 and ±1 percentage point), not a statistical confidence interval."},
+        "medianCostUsd": null,
+        "meanOutputTokens": null,
+        "medianOutputTokens": null,
+        "meanDurationSeconds": null,
+        "medianDurationSeconds": null,
+        "pricing": {
+          "asReportedCost": null,
+          "currency": "USD",
+          "basis": null,
+          "repricedCost": null,
+          "repricingSource": null,
+          "repricedAt": null,
+          "renderedLeaderboardCost": null,
+          "renderedCostEvidence": null,
+          "renderedCostSourceTitle": null,
+          "renderedCostSourceUrl": null,
+          "renderedCostSourceRetrievedAt": null,
+          "renderedCostSourceSha256": null,
+          "reconciliationStatus": "not-reported"
+        },
+        "metricScopeDetails": {
+          "cost": {
+            "scope": "source chart cost per task; task population and aggregation unspecified",
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": "The chart does not give a task/attempt denominator or sample count.",
+            "definition": "Approximate USD read from the source chart's Cost per task axis, rounded to $0.1; aggregation, billing basis, and task/attempt denominator are unspecified. Reading/rounding bounds only (roughly ±$0.1–0.2 and ±1 percentage point), not a statistical confidence interval."
+          },
+          "medianCost": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "outputTokens": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "medianOutputTokens": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "time": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "medianTime": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          }
+        },
+        "contentSha256": "2cac9bafeea62d03972bfc721c1131734616a720c61753f1f0e305c40e94ef29",
+        "sourceId": "openai-gpt-6.1-sol-deepswe-figure",
+        "sourceTitle": "Introducing GPT-6.1 Sol · DeepSWE figure (user-supplied screenshot)",
+        "sourceUrl": "https://openai.com/index/introducing-gpt-6-1-sol/",
+        "evidenceLocator": "DeepSWE curve; GPT-6.1 Sol path, leftmost mark (Setting 1); local Screenshot_2026-09-29_10-23-46.png",
+        "reviewStatus": "source-reviewed",
+        "independentReplication": "not-independently-reproduced",
+        "effortLabel": "Setting 1",
+        "effortOrder": 0,
+        "effortOrderEvidence": "The screenshot shows five connected GPT-6.1 Sol marks; numbering follows the visible path from left to right, not a named reasoning-effort sequence.",
+        "seriesId": "openai-gpt-6.1-sol-deepswe-figure",
+        "protocol": {
+          "id": "openai-gpt-6.1-sol-deepswe-figure",
+          "connectionEvidence": "Five marks are visibly linked in the GPT-6.1 Sol path of the same DeepSWE figure; order is chart path order only. No thinking-setting names or protocol are specified.",
+          "connectable": true,
+          "harness": null,
+          "harnessRevision": null,
+          "provider": null,
+          "evaluationPolicy": null,
+          "deployment": null,
+          "servingEndpoint": null,
+          "timingScope": null,
+          "pricingBasis": null
+        },
+        "benchmarkRuns": null,
+        "attemptCount": null,
+        "scoredAttemptCount": null
+      }
+    },
+    {
+      "eventId": "be40aa47457a191e:new-configuration:openai-gpt-6.1-sol-deepswe-setting2",
+      "observedAt": "2026-09-29T17:48:36.728Z",
+      "observationId": "openai-gpt-6.1-sol-deepswe-setting2",
+      "kind": "new-configuration",
+      "sourceId": "openai-gpt-6.1-sol-deepswe-figure",
+      "previous": null,
+      "current": {
+        "publisher": "OpenAI",
+        "evaluator": null,
+        "sourceCategory": "developer",
+        "model": {
+          "reportedName": "GPT-6.1 Sol",
+          "canonicalId": "openai:gpt-6.1-sol",
+          "snapshot": null,
+          "aliasEvidence": "Exact model identity in the supplied OpenAI figure; no cross-model alias."
+        },
+        "benchmark": {
+          "version": "1.1",
+          "scope": "unknown",
+          "taskSetRevision": null,
+          "taskCount": null,
+          "tasksAttempted": null,
+          "attempts": null,
+          "scoredAttempts": null,
+          "runs": null,
+          "excludedPolicy": null
+        },
+        "scoreMetric": "reported_score_unspecified",
+        "resultDetails": {
+          "metric": "reported_score_unspecified",
+          "metricLabel": "Approximate DeepSWE chart score; statistic and denominator unspecified",
+          "value": 0.72,
+          "unit": "fraction (normalized from reported percentage)",
+          "reportedValue": 72,
+          "reportedUnit": "%",
+          "reportedText": "≈72% (screenshot-derived)",
+          "denominator": null,
+          "denominatorCount": null,
+          "confidenceInterval": {
+            "low": null,
+            "high": null,
+            "confidence": null,
+            "method": null,
+            "passed": null,
+            "attempted": null,
+            "missingReason": "The source does not report a confidence interval."
+          }
+        },
+        "score": 0.72,
+        "reportedScore": 72,
+        "confidenceInterval": {
+          "low": null,
+          "high": null,
+          "confidence": null,
+          "method": null,
+          "passed": null,
+          "attempted": null,
+          "missingReason": "The source does not report a confidence interval."
+        },
+        "additionalResults": [],
+        "meanCostUsd": null,
+        "approximateSourceChartCostUsd": 0.4,
+        "approximation": {"method":"Visual digitization of the 400×329 supplied screenshot: horizontal ticks $0 at x≈61, $2 at x≈134; vertical ticks 0% at y≈280 and 80% at y≈61. Rounded costs to $0.1 and scores to whole percentage points; point centers visually estimated.","imageFile":"Screenshot_2026-09-29_10-23-46.png","imageSha256":"2cac9bafeea62d03972bfc721c1131734616a720c61753f1f0e305c40e94ef29","costBoundsUsd":[0.3,0.5],"scoreBoundsPercent":[71,73],"boundsNote":"Reading/rounding bounds only (roughly ±$0.1–0.2 and ±1 percentage point), not a statistical confidence interval."},
+        "medianCostUsd": null,
+        "meanOutputTokens": null,
+        "medianOutputTokens": null,
+        "meanDurationSeconds": null,
+        "medianDurationSeconds": null,
+        "pricing": {
+          "asReportedCost": null,
+          "currency": "USD",
+          "basis": null,
+          "repricedCost": null,
+          "repricingSource": null,
+          "repricedAt": null,
+          "renderedLeaderboardCost": null,
+          "renderedCostEvidence": null,
+          "renderedCostSourceTitle": null,
+          "renderedCostSourceUrl": null,
+          "renderedCostSourceRetrievedAt": null,
+          "renderedCostSourceSha256": null,
+          "reconciliationStatus": "not-reported"
+        },
+        "metricScopeDetails": {
+          "cost": {
+            "scope": "source chart cost per task; task population and aggregation unspecified",
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": "The chart does not give a task/attempt denominator or sample count.",
+            "definition": "Approximate USD read from the source chart's Cost per task axis, rounded to $0.1; aggregation, billing basis, and task/attempt denominator are unspecified. Reading/rounding bounds only (roughly ±$0.1–0.2 and ±1 percentage point), not a statistical confidence interval."
+          },
+          "medianCost": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "outputTokens": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "medianOutputTokens": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "time": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "medianTime": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          }
+        },
+        "contentSha256": "2cac9bafeea62d03972bfc721c1131734616a720c61753f1f0e305c40e94ef29",
+        "sourceId": "openai-gpt-6.1-sol-deepswe-figure",
+        "sourceTitle": "Introducing GPT-6.1 Sol · DeepSWE figure (user-supplied screenshot)",
+        "sourceUrl": "https://openai.com/index/introducing-gpt-6-1-sol/",
+        "evidenceLocator": "DeepSWE curve; GPT-6.1 Sol path, second mark (Setting 2); local Screenshot_2026-09-29_10-23-46.png",
+        "reviewStatus": "source-reviewed",
+        "independentReplication": "not-independently-reproduced",
+        "effortLabel": "Setting 2",
+        "effortOrder": 1,
+        "effortOrderEvidence": "The screenshot shows five connected GPT-6.1 Sol marks; numbering follows the visible path from left to right, not a named reasoning-effort sequence.",
+        "seriesId": "openai-gpt-6.1-sol-deepswe-figure",
+        "protocol": {
+          "id": "openai-gpt-6.1-sol-deepswe-figure",
+          "connectionEvidence": "Five marks are visibly linked in the GPT-6.1 Sol path of the same DeepSWE figure; order is chart path order only. No thinking-setting names or protocol are specified.",
+          "connectable": true,
+          "harness": null,
+          "harnessRevision": null,
+          "provider": null,
+          "evaluationPolicy": null,
+          "deployment": null,
+          "servingEndpoint": null,
+          "timingScope": null,
+          "pricingBasis": null
+        },
+        "benchmarkRuns": null,
+        "attemptCount": null,
+        "scoredAttemptCount": null
+      }
+    },
+    {
+      "eventId": "be40aa47457a191e:new-configuration:openai-gpt-6.1-sol-deepswe-setting3",
+      "observedAt": "2026-09-29T17:48:36.728Z",
+      "observationId": "openai-gpt-6.1-sol-deepswe-setting3",
+      "kind": "new-configuration",
+      "sourceId": "openai-gpt-6.1-sol-deepswe-figure",
+      "previous": null,
+      "current": {
+        "publisher": "OpenAI",
+        "evaluator": null,
+        "sourceCategory": "developer",
+        "model": {
+          "reportedName": "GPT-6.1 Sol",
+          "canonicalId": "openai:gpt-6.1-sol",
+          "snapshot": null,
+          "aliasEvidence": "Exact model identity in the supplied OpenAI figure; no cross-model alias."
+        },
+        "benchmark": {
+          "version": "1.1",
+          "scope": "unknown",
+          "taskSetRevision": null,
+          "taskCount": null,
+          "tasksAttempted": null,
+          "attempts": null,
+          "scoredAttempts": null,
+          "runs": null,
+          "excludedPolicy": null
+        },
+        "scoreMetric": "reported_score_unspecified",
+        "resultDetails": {
+          "metric": "reported_score_unspecified",
+          "metricLabel": "Approximate DeepSWE chart score; statistic and denominator unspecified",
+          "value": 0.75,
+          "unit": "fraction (normalized from reported percentage)",
+          "reportedValue": 75,
+          "reportedUnit": "%",
+          "reportedText": "≈75% (screenshot-derived)",
+          "denominator": null,
+          "denominatorCount": null,
+          "confidenceInterval": {
+            "low": null,
+            "high": null,
+            "confidence": null,
+            "method": null,
+            "passed": null,
+            "attempted": null,
+            "missingReason": "The source does not report a confidence interval."
+          }
+        },
+        "score": 0.75,
+        "reportedScore": 75,
+        "confidenceInterval": {
+          "low": null,
+          "high": null,
+          "confidence": null,
+          "method": null,
+          "passed": null,
+          "attempted": null,
+          "missingReason": "The source does not report a confidence interval."
+        },
+        "additionalResults": [],
+        "meanCostUsd": null,
+        "approximateSourceChartCostUsd": 0.7,
+        "approximation": {"method":"Visual digitization of the 400×329 supplied screenshot: horizontal ticks $0 at x≈61, $2 at x≈134; vertical ticks 0% at y≈280 and 80% at y≈61. Rounded costs to $0.1 and scores to whole percentage points; point centers visually estimated.","imageFile":"Screenshot_2026-09-29_10-23-46.png","imageSha256":"2cac9bafeea62d03972bfc721c1131734616a720c61753f1f0e305c40e94ef29","costBoundsUsd":[0.6,0.8],"scoreBoundsPercent":[74,76],"boundsNote":"Reading/rounding bounds only (roughly ±$0.1–0.2 and ±1 percentage point), not a statistical confidence interval."},
+        "medianCostUsd": null,
+        "meanOutputTokens": null,
+        "medianOutputTokens": null,
+        "meanDurationSeconds": null,
+        "medianDurationSeconds": null,
+        "pricing": {
+          "asReportedCost": null,
+          "currency": "USD",
+          "basis": null,
+          "repricedCost": null,
+          "repricingSource": null,
+          "repricedAt": null,
+          "renderedLeaderboardCost": null,
+          "renderedCostEvidence": null,
+          "renderedCostSourceTitle": null,
+          "renderedCostSourceUrl": null,
+          "renderedCostSourceRetrievedAt": null,
+          "renderedCostSourceSha256": null,
+          "reconciliationStatus": "not-reported"
+        },
+        "metricScopeDetails": {
+          "cost": {
+            "scope": "source chart cost per task; task population and aggregation unspecified",
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": "The chart does not give a task/attempt denominator or sample count.",
+            "definition": "Approximate USD read from the source chart's Cost per task axis, rounded to $0.1; aggregation, billing basis, and task/attempt denominator are unspecified. Reading/rounding bounds only (roughly ±$0.1–0.2 and ±1 percentage point), not a statistical confidence interval."
+          },
+          "medianCost": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "outputTokens": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "medianOutputTokens": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "time": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "medianTime": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          }
+        },
+        "contentSha256": "2cac9bafeea62d03972bfc721c1131734616a720c61753f1f0e305c40e94ef29",
+        "sourceId": "openai-gpt-6.1-sol-deepswe-figure",
+        "sourceTitle": "Introducing GPT-6.1 Sol · DeepSWE figure (user-supplied screenshot)",
+        "sourceUrl": "https://openai.com/index/introducing-gpt-6-1-sol/",
+        "evidenceLocator": "DeepSWE curve; GPT-6.1 Sol path, third mark (Setting 3); local Screenshot_2026-09-29_10-23-46.png",
+        "reviewStatus": "source-reviewed",
+        "independentReplication": "not-independently-reproduced",
+        "effortLabel": "Setting 3",
+        "effortOrder": 2,
+        "effortOrderEvidence": "The screenshot shows five connected GPT-6.1 Sol marks; numbering follows the visible path from left to right, not a named reasoning-effort sequence.",
+        "seriesId": "openai-gpt-6.1-sol-deepswe-figure",
+        "protocol": {
+          "id": "openai-gpt-6.1-sol-deepswe-figure",
+          "connectionEvidence": "Five marks are visibly linked in the GPT-6.1 Sol path of the same DeepSWE figure; order is chart path order only. No thinking-setting names or protocol are specified.",
+          "connectable": true,
+          "harness": null,
+          "harnessRevision": null,
+          "provider": null,
+          "evaluationPolicy": null,
+          "deployment": null,
+          "servingEndpoint": null,
+          "timingScope": null,
+          "pricingBasis": null
+        },
+        "benchmarkRuns": null,
+        "attemptCount": null,
+        "scoredAttemptCount": null
+      }
+    },
+    {
+      "eventId": "be40aa47457a191e:new-configuration:openai-gpt-6.1-sol-deepswe-setting4",
+      "observedAt": "2026-09-29T17:48:36.728Z",
+      "observationId": "openai-gpt-6.1-sol-deepswe-setting4",
+      "kind": "new-configuration",
+      "sourceId": "openai-gpt-6.1-sol-deepswe-figure",
+      "previous": null,
+      "current": {
+        "publisher": "OpenAI",
+        "evaluator": null,
+        "sourceCategory": "developer",
+        "model": {
+          "reportedName": "GPT-6.1 Sol",
+          "canonicalId": "openai:gpt-6.1-sol",
+          "snapshot": null,
+          "aliasEvidence": "Exact model identity in the supplied OpenAI figure; no cross-model alias."
+        },
+        "benchmark": {
+          "version": "1.1",
+          "scope": "unknown",
+          "taskSetRevision": null,
+          "taskCount": null,
+          "tasksAttempted": null,
+          "attempts": null,
+          "scoredAttempts": null,
+          "runs": null,
+          "excludedPolicy": null
+        },
+        "scoreMetric": "reported_score_unspecified",
+        "resultDetails": {
+          "metric": "reported_score_unspecified",
+          "metricLabel": "Approximate DeepSWE chart score; statistic and denominator unspecified",
+          "value": 0.72,
+          "unit": "fraction (normalized from reported percentage)",
+          "reportedValue": 72,
+          "reportedUnit": "%",
+          "reportedText": "≈72% (screenshot-derived)",
+          "denominator": null,
+          "denominatorCount": null,
+          "confidenceInterval": {
+            "low": null,
+            "high": null,
+            "confidence": null,
+            "method": null,
+            "passed": null,
+            "attempted": null,
+            "missingReason": "The source does not report a confidence interval."
+          }
+        },
+        "score": 0.72,
+        "reportedScore": 72,
+        "confidenceInterval": {
+          "low": null,
+          "high": null,
+          "confidence": null,
+          "method": null,
+          "passed": null,
+          "attempted": null,
+          "missingReason": "The source does not report a confidence interval."
+        },
+        "additionalResults": [],
+        "meanCostUsd": null,
+        "approximateSourceChartCostUsd": 0.8,
+        "approximation": {"method":"Visual digitization of the 400×329 supplied screenshot: horizontal ticks $0 at x≈61, $2 at x≈134; vertical ticks 0% at y≈280 and 80% at y≈61. Rounded costs to $0.1 and scores to whole percentage points; point centers visually estimated.","imageFile":"Screenshot_2026-09-29_10-23-46.png","imageSha256":"2cac9bafeea62d03972bfc721c1131734616a720c61753f1f0e305c40e94ef29","costBoundsUsd":[0.7,0.9],"scoreBoundsPercent":[71,73],"boundsNote":"Reading/rounding bounds only (roughly ±$0.1–0.2 and ±1 percentage point), not a statistical confidence interval."},
+        "medianCostUsd": null,
+        "meanOutputTokens": null,
+        "medianOutputTokens": null,
+        "meanDurationSeconds": null,
+        "medianDurationSeconds": null,
+        "pricing": {
+          "asReportedCost": null,
+          "currency": "USD",
+          "basis": null,
+          "repricedCost": null,
+          "repricingSource": null,
+          "repricedAt": null,
+          "renderedLeaderboardCost": null,
+          "renderedCostEvidence": null,
+          "renderedCostSourceTitle": null,
+          "renderedCostSourceUrl": null,
+          "renderedCostSourceRetrievedAt": null,
+          "renderedCostSourceSha256": null,
+          "reconciliationStatus": "not-reported"
+        },
+        "metricScopeDetails": {
+          "cost": {
+            "scope": "source chart cost per task; task population and aggregation unspecified",
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": "The chart does not give a task/attempt denominator or sample count.",
+            "definition": "Approximate USD read from the source chart's Cost per task axis, rounded to $0.1; aggregation, billing basis, and task/attempt denominator are unspecified. Reading/rounding bounds only (roughly ±$0.1–0.2 and ±1 percentage point), not a statistical confidence interval."
+          },
+          "medianCost": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "outputTokens": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "medianOutputTokens": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "time": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "medianTime": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          }
+        },
+        "contentSha256": "2cac9bafeea62d03972bfc721c1131734616a720c61753f1f0e305c40e94ef29",
+        "sourceId": "openai-gpt-6.1-sol-deepswe-figure",
+        "sourceTitle": "Introducing GPT-6.1 Sol · DeepSWE figure (user-supplied screenshot)",
+        "sourceUrl": "https://openai.com/index/introducing-gpt-6-1-sol/",
+        "evidenceLocator": "DeepSWE curve; GPT-6.1 Sol path, fourth mark (Setting 4); local Screenshot_2026-09-29_10-23-46.png",
+        "reviewStatus": "source-reviewed",
+        "independentReplication": "not-independently-reproduced",
+        "effortLabel": "Setting 4",
+        "effortOrder": 3,
+        "effortOrderEvidence": "The screenshot shows five connected GPT-6.1 Sol marks; numbering follows the visible path from left to right, not a named reasoning-effort sequence.",
+        "seriesId": "openai-gpt-6.1-sol-deepswe-figure",
+        "protocol": {
+          "id": "openai-gpt-6.1-sol-deepswe-figure",
+          "connectionEvidence": "Five marks are visibly linked in the GPT-6.1 Sol path of the same DeepSWE figure; order is chart path order only. No thinking-setting names or protocol are specified.",
+          "connectable": true,
+          "harness": null,
+          "harnessRevision": null,
+          "provider": null,
+          "evaluationPolicy": null,
+          "deployment": null,
+          "servingEndpoint": null,
+          "timingScope": null,
+          "pricingBasis": null
+        },
+        "benchmarkRuns": null,
+        "attemptCount": null,
+        "scoredAttemptCount": null
+      }
+    },
+    {
+      "eventId": "be40aa47457a191e:new-configuration:openai-gpt-6.1-sol-deepswe-setting5",
+      "observedAt": "2026-09-29T17:48:36.728Z",
+      "observationId": "openai-gpt-6.1-sol-deepswe-setting5",
+      "kind": "new-configuration",
+      "sourceId": "openai-gpt-6.1-sol-deepswe-figure",
+      "previous": null,
+      "current": {
+        "publisher": "OpenAI",
+        "evaluator": null,
+        "sourceCategory": "developer",
+        "model": {
+          "reportedName": "GPT-6.1 Sol",
+          "canonicalId": "openai:gpt-6.1-sol",
+          "snapshot": null,
+          "aliasEvidence": "Exact model identity in the supplied OpenAI figure; no cross-model alias."
+        },
+        "benchmark": {
+          "version": "1.1",
+          "scope": "unknown",
+          "taskSetRevision": null,
+          "taskCount": null,
+          "tasksAttempted": null,
+          "attempts": null,
+          "scoredAttempts": null,
+          "runs": null,
+          "excludedPolicy": null
+        },
+        "scoreMetric": "reported_score_unspecified",
+        "resultDetails": {
+          "metric": "reported_score_unspecified",
+          "metricLabel": "Approximate DeepSWE chart score; statistic and denominator unspecified",
+          "value": 0.71,
+          "unit": "fraction (normalized from reported percentage)",
+          "reportedValue": 71,
+          "reportedUnit": "%",
+          "reportedText": "≈71% (screenshot-derived)",
+          "denominator": null,
+          "denominatorCount": null,
+          "confidenceInterval": {
+            "low": null,
+            "high": null,
+            "confidence": null,
+            "method": null,
+            "passed": null,
+            "attempted": null,
+            "missingReason": "The source does not report a confidence interval."
+          }
+        },
+        "score": 0.71,
+        "reportedScore": 71,
+        "confidenceInterval": {
+          "low": null,
+          "high": null,
+          "confidence": null,
+          "method": null,
+          "passed": null,
+          "attempted": null,
+          "missingReason": "The source does not report a confidence interval."
+        },
+        "additionalResults": [],
+        "meanCostUsd": null,
+        "approximateSourceChartCostUsd": 1.6,
+        "approximation": {"method":"Visual digitization of the 400×329 supplied screenshot: horizontal ticks $0 at x≈61, $2 at x≈134; vertical ticks 0% at y≈280 and 80% at y≈61. Rounded costs to $0.1 and scores to whole percentage points; point centers visually estimated.","imageFile":"Screenshot_2026-09-29_10-23-46.png","imageSha256":"2cac9bafeea62d03972bfc721c1131734616a720c61753f1f0e305c40e94ef29","costBoundsUsd":[1.4,1.8],"scoreBoundsPercent":[70,72],"boundsNote":"Reading/rounding bounds only (roughly ±$0.1–0.2 and ±1 percentage point), not a statistical confidence interval."},
+        "medianCostUsd": null,
+        "meanOutputTokens": null,
+        "medianOutputTokens": null,
+        "meanDurationSeconds": null,
+        "medianDurationSeconds": null,
+        "pricing": {
+          "asReportedCost": null,
+          "currency": "USD",
+          "basis": null,
+          "repricedCost": null,
+          "repricingSource": null,
+          "repricedAt": null,
+          "renderedLeaderboardCost": null,
+          "renderedCostEvidence": null,
+          "renderedCostSourceTitle": null,
+          "renderedCostSourceUrl": null,
+          "renderedCostSourceRetrievedAt": null,
+          "renderedCostSourceSha256": null,
+          "reconciliationStatus": "not-reported"
+        },
+        "metricScopeDetails": {
+          "cost": {
+            "scope": "source chart cost per task; task population and aggregation unspecified",
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": "The chart does not give a task/attempt denominator or sample count.",
+            "definition": "Approximate USD read from the source chart's Cost per task axis, rounded to $0.1; aggregation, billing basis, and task/attempt denominator are unspecified. Reading/rounding bounds only (roughly ±$0.1–0.2 and ±1 percentage point), not a statistical confidence interval."
+          },
+          "medianCost": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "outputTokens": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "medianOutputTokens": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "time": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "medianTime": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          }
+        },
+        "contentSha256": "2cac9bafeea62d03972bfc721c1131734616a720c61753f1f0e305c40e94ef29",
+        "sourceId": "openai-gpt-6.1-sol-deepswe-figure",
+        "sourceTitle": "Introducing GPT-6.1 Sol · DeepSWE figure (user-supplied screenshot)",
+        "sourceUrl": "https://openai.com/index/introducing-gpt-6-1-sol/",
+        "evidenceLocator": "DeepSWE curve; GPT-6.1 Sol path, rightmost mark (Setting 5); local Screenshot_2026-09-29_10-23-46.png",
+        "reviewStatus": "source-reviewed",
+        "independentReplication": "not-independently-reproduced",
+        "effortLabel": "Setting 5",
+        "effortOrder": 4,
+        "effortOrderEvidence": "The screenshot shows five connected GPT-6.1 Sol marks; numbering follows the visible path from left to right, not a named reasoning-effort sequence.",
+        "seriesId": "openai-gpt-6.1-sol-deepswe-figure",
+        "protocol": {
+          "id": "openai-gpt-6.1-sol-deepswe-figure",
+          "connectionEvidence": "Five marks are visibly linked in the GPT-6.1 Sol path of the same DeepSWE figure; order is chart path order only. No thinking-setting names or protocol are specified.",
+          "connectable": true,
+          "harness": null,
+          "harnessRevision": null,
+          "provider": null,
+          "evaluationPolicy": null,
+          "deployment": null,
+          "servingEndpoint": null,
+          "timingScope": null,
+          "pricingBasis": null
+        },
+        "benchmarkRuns": null,
+        "attemptCount": null,
+        "scoredAttemptCount": null
+      }
     }
   ]
 }

@@ -23,6 +23,23 @@ function csvFieldCount(line: string): number {
 }
 
 describe('approved-data exports', () => {
+  it('exports approximate source-chart cost separately from mean cost with reading bounds and image hash', () => {
+    const row = dataset.observations.find((item) => item.id === 'openai-gpt-6.1-sol-deepswe-setting3')!
+    const selected = { ...filters, xMetric: 'cost' as const, statistic: 'mean' as const, scoreMetric: 'reported_score_unspecified' as const }
+    const csv = filteredCsvExport(dataset, [row], selected)
+    expect(csv).toContain('approx_source_chart_cost_usd_per_task')
+    expect(csv).toContain('reported (aggregation unspecified')
+    expect(csv).toContain('USD/source-defined task; aggregation and denominator unspecified')
+    expect(csv).toContain('2cac9bafeea62d03972bfc721c1131734616a720c61753f1f0e305c40e94ef29')
+    expect(csv).toContain('"0.6","0.8","74","76"')
+    expect(csv).toContain('"0.7"')
+    const json = filteredJsonExport(dataset, [row], selected)
+    expect(json.observations[0]?.metrics.cost.statistic).toBe('reported')
+    expect(json.observations[0]?.approximation?.costBoundsUsd).toEqual([0.6, 0.8])
+    expect(json.observations[0]?.metrics.medianCost.value).toBeNull()
+    const medianCsv = filteredCsvExport(dataset, [row], { ...selected, statistic: 'median' })
+    expect(medianCsv).toContain('"median","","USD/scored attempt"')
+  })
   it('exports selected pass@4 with its task denominator and snapshot/filter metadata', () => {
     const csv = filteredCsvExport(dataset, [observation], filters, '2026-09-26T17:00:00Z')
     expect(csv).toContain('# dataset_revision=')

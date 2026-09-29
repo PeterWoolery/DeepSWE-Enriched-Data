@@ -10,8 +10,12 @@ async function main() {
   const reports = await readJson<{ reports: ApprovedReport[] }>('data/sources/approved-reports.json')
   const retrievalHistory = await readJson<{ schemaVersion: number; events: SourceRetrievalEvent[] }>('data/approved/retrievals.json')
   const snapshotManifest = await readJson<{ schemaVersion: number; revisions: Array<{ revisionId: string; snapshotFile: string; normalizedObservationCount: number }> }>('data/snapshots/manifest.json')
-  normalizeApprovedReports(reports.reports)
+  const supplemental = normalizeApprovedReports(reports.reports)
   const ids = new Set(dataset.observations.map((observation) => observation.id))
+  for (const report of supplemental) {
+    const stored = dataset.observations.find((observation) => observation.id === report.id)
+    if (!stored || JSON.stringify(stored) !== JSON.stringify(report)) throw new Error(`Approved supplemental report is missing or differs from normalized source: ${report.id}`)
+  }
   const pendingIds = new Set(queue.candidates.map((candidate) => candidate.id))
   for (const candidate of queue.candidates) {
     if (ids.has(candidate.id)) throw new Error(`Pending candidate leaked into approved observations: ${candidate.id}`)

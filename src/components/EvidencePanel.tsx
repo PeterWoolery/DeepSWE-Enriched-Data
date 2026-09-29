@@ -71,8 +71,8 @@ export function EvidencePanel({ observation, xMetric, statistic, scoreMetric, us
         <strong>{displayScoreValue(displayedScore)}</strong>
         <small>{selectedScore ? '' : `Different metric from selected ${scoreMetricLabels[scoreMetric]}. `}Source wording: {displayedScore.reportedText}</small>
       </div>
-      <dl className="evidence-metrics">
-        <div><dt className={xMetric === 'cost' ? 'selected-evidence-metric' : ''}>{xMetricLabels.cost.label}</dt><dd>{cost.value === null ? sourceCostText ?? valueText(cost.value, cost.unit) : valueText(cost.value, cost.unit)}</dd></div>
+       <dl className="evidence-metrics">
+         <div><dt className={xMetric === 'cost' ? 'selected-evidence-metric' : ''}>{xMetricLabels.cost.label}</dt><dd>{observation.approximation && cost.value !== null ? `≈${valueText(cost.value, cost.unit)} · source-chart cost; aggregation unknown` : cost.value === null ? sourceCostText ?? valueText(cost.value, cost.unit) : valueText(cost.value, cost.unit)}</dd></div>
         <div><dt className={xMetric === 'outputTokens' ? 'selected-evidence-metric' : ''}>{xMetricLabels.outputTokens.label}</dt><dd>{valueText(tokens.value, tokens.unit)}</dd></div>
         <div><dt className={xMetric === 'time' ? 'selected-evidence-metric' : ''}>{xMetricLabels.time.label}</dt><dd>{valueText(time.value, time.unit)}</dd></div>
       </dl>
@@ -100,14 +100,15 @@ export function EvidencePanel({ observation, xMetric, statistic, scoreMetric, us
         <div><span>Evaluator / publisher</span><strong>{observation.evaluator ?? observation.publisher}</strong></div>
         <div><span>Harness</span><strong>{observation.series.harness ?? 'Not reported'}</strong></div>
         <div><span>Provider</span><strong>{observation.series.provider ?? 'Not reported'}</strong></div>
-        <div><span>Effort order</span><strong>{observation.effort.order === null ? 'Unmapped; shown as a dot' : `Source-backed order ${observation.effort.order + 1}`}</strong></div>
+         <div><span>{observation.approximation ? 'Figure path order' : 'Effort order'}</span><strong>{observation.effort.order === null ? 'Unmapped; shown as a dot' : observation.approximation ? `Mark ${observation.effort.order + 1} of 5; no named effort inferred` : `Source-backed order ${observation.effort.order + 1}`}</strong></div>
       </div>
       <section className="evidence-subsection">
         <h4>Uncertainty and measurement scope</h4>
         {confidenceInterval && confidenceInterval.low !== null && confidenceInterval.high !== null ? (
           <p>{confidenceInterval.confidence === null ? 'Confidence interval' : `${confidenceInterval.confidence * 100}% CI`}: {valueText(confidenceInterval.low, 'fraction')}–{valueText(confidenceInterval.high, 'fraction')}. {confidenceInterval.method ?? 'Method not specified.'}</p>
         ) : <p>{confidenceInterval.missingReason ?? `No confidence interval is reported for ${displayedScore.metricLabel}.`}</p>}
-        <p><strong>Score denominator:</strong> {displayedScore.denominator ?? 'Not reported'}{displayedScore.denominatorCount === null ? '' : ` (${displayedScore.denominatorCount})`}.</p>
+         <p><strong>Score denominator:</strong> {displayedScore.denominator ?? 'Not reported'}{displayedScore.denominatorCount === null ? '' : ` (${displayedScore.denominatorCount})`}.</p>
+         {observation.approximation && <p><strong>Approximate chart reading:</strong> score ≈{observation.approximation.scoreBoundsPercent.join('–')}%; cost ≈${observation.approximation.costBoundsUsd[0].toFixed(1)}–${observation.approximation.costBoundsUsd[1].toFixed(1)} per source-defined task. These are visual extraction/rounding bounds, not statistical confidence intervals. Cost aggregation, billing basis, and task/attempt denominator are unspecified. {observation.approximation.method}</p>}
         {observation.benchmark.excludedPolicy && <p><strong>Attempt policy:</strong> {observation.benchmark.excludedPolicy}</p>}
         {observation.metrics.time.value !== null && <p><strong>Timing:</strong> {observation.metrics.time.definition}</p>}
         {observation.metrics.outputTokens.inclusionNote && <p><strong>Token scope:</strong> {observation.metrics.outputTokens.inclusionNote}</p>}
@@ -128,8 +129,8 @@ export function EvidencePanel({ observation, xMetric, statistic, scoreMetric, us
           ? <a href={observation.provenance.url} target="_blank" rel="noreferrer">Open original evidence <span aria-hidden="true">↗</span></a>
           : <p>Local artifact record; no public URL.</p>}
         <dl className="source-meta">
-          <div><dt>Retrieved</dt><dd>{observation.provenance.retrievedAt}</dd></div>
-          <div><dt>Response SHA-256</dt><dd className="hash-value">{observation.provenance.contentSha256}</dd></div>
+           <div><dt>{observation.approximation ? 'Supplied screenshot filename date' : 'Retrieved'}</dt><dd>{observation.provenance.retrievedAt}</dd></div>
+           <div><dt>{observation.approximation ? 'Supplied screenshot SHA-256' : 'Response SHA-256'}</dt><dd className="hash-value">{observation.provenance.contentSha256}</dd></div>
           <div><dt>Replication</dt><dd>{observation.provenance.independentReplication === 'not-independently-reproduced' ? 'Not independently reproduced' : observation.provenance.independentReplication}</dd></div>
         </dl>
       </section>

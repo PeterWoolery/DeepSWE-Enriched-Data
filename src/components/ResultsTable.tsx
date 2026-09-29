@@ -99,12 +99,13 @@ export function ResultsTable({ observations, xMetric, statistic, scoreMetric, se
                 <td>{observation.effort.reportedLabel ?? <span className="unknown-value">not reported</span>}</td>
                 <td>
                   {reportedScore ? displayScoreValue(reportedScore) : <span className="unknown-value">not reported</span>}
+                  {observation.approximation && <span className="table-subline">Screenshot-derived; ≈{observation.approximation.scoreBoundsPercent[0]}–{observation.approximation.scoreBoundsPercent[1]}% reading bounds, not a CI.</span>}
                   {!selectedScore && <span className="table-subline">Different metric: {reportedScore.metricLabel}</span>}
                   {reportedScore.confidenceInterval.low !== null && reportedScore.confidenceInterval.high !== null && <span className="table-subline">{reportedScore.confidenceInterval.confidence === null ? 'Confidence interval' : `${reportedScore.confidenceInterval.confidence * 100}% CI`}{reportedScore.confidenceInterval.method ? ` · ${reportedScore.confidenceInterval.method}` : ''}</span>}
                   {!hasPercentageScoreScale(reportedScore) && <span className="table-subline">Raw source value · unit unspecified</span>}
                 </td>
                 <td>
-                  {sourceReportedCostText ? <><span className="unknown-value">Not a mean/median metric</span><span className="table-subline">Source-reported Cost/Task {sourceReportedCostText}</span></> : display(metric.value, metric.unit)}
+                   {sourceReportedCostText ? <><span className="unknown-value">Not a mean/median metric</span><span className="table-subline">Source-reported Cost/Task {sourceReportedCostText}</span></> : observation.approximation && xMetric === 'cost' && metric.value !== null ? <><span>≈{display(metric.value, metric.unit)}</span><span className="table-subline">Source chart Cost per task; aggregation and denominator unknown. ≈${observation.approximation.costBoundsUsd[0].toFixed(1)}–${observation.approximation.costBoundsUsd[1].toFixed(1)} reading bounds, not a CI or reported mean.</span></> : display(metric.value, metric.unit)}
                   {metric.value === null && <span className="table-subline">{metric.missingReason}</span>}
                   {scenario && <span className="table-usage-scenario">
                      <strong>{scenario.outputEvidenceType === 'same-source-deepswe-mean' && xMetric === 'outputTokens' ? 'AA source-reported DeepSWE output mean · separate from approved measurement' : scenario.costScenarioType === 'source-reported-cost' ? 'Source-reported cost scenario · scope incomplete' : `Estimated scenario · ${scenario.confidence === 'low' ? 'low' : 'very low'} qualitative confidence · not measured`}</strong>

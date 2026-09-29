@@ -160,6 +160,14 @@ export const ObservationSchema = z.object({
     independentReplication: z.enum(['not-assessed', 'not-independently-reproduced', 'independently-reproduced']),
     notes: z.array(z.string()),
   }),
+  approximation: z.preprocess((value) => value === null ? undefined : value, z.object({
+    method: z.string().min(1),
+    imageFile: z.string().min(1),
+    imageSha256: z.string().regex(/^[a-f0-9]{64}$/),
+    costBoundsUsd: z.tuple([z.number().nonnegative(), z.number().nonnegative()]),
+    scoreBoundsPercent: z.tuple([z.number().min(0).max(100), z.number().min(0).max(100)]),
+    boundsNote: z.string().min(1),
+  }).optional()),
 }).superRefine((observation, context) => {
   const ci = observation.result.confidenceInterval
   if (ci.low !== null && ci.high !== null && ci.low > ci.high) {
@@ -179,6 +187,11 @@ export const ObservationSchema = z.object({
   if (observation.series.connectable && observation.effort.order === null) {
     context.addIssue({ code: 'custom', path: ['series', 'connectable'], message: 'Connected series points require a source-backed effort order.' })
   }
+  if (observation.approximation && (
+    observation.metrics.cost.value === null || observation.metrics.cost.statistic !== 'reported'
+    || observation.approximation.costBoundsUsd[0] > observation.metrics.cost.value || observation.approximation.costBoundsUsd[1] < observation.metrics.cost.value
+    || observation.approximation.scoreBoundsPercent[0] > observation.result.value * 100 || observation.approximation.scoreBoundsPercent[1] < observation.result.value * 100
+  )) context.addIssue({ code: 'custom', path: ['approximation'], message: 'Approximation bounds must contain the displayed point.' })
 })
 
 export const DatasetSchema = z.object({

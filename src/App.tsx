@@ -361,7 +361,7 @@ function App() {
           <div className="hero-layout">
             <div className="hero-copy">
               <p className="hero-deck">A field guide to reported DeepSWE scores and the resources behind them. Follow each model’s own effort path—cost, output tokens, and reported time—without blending experiments.</p>
-      <div className="hero-note"><span aria-hidden="true">↳</span><span>Measured curves connect only reported configurations. Hollow diamonds, when enabled, are separately labeled cost/usage scenarios—not normalized measurements or interpolated effort levels.</span></div>
+       <div className="hero-note"><span aria-hidden="true">↳</span><span>Curves connect only configurations linked by one source; screenshot-derived marks are labeled approximate. Hollow diamonds, when enabled, are separately labeled cost/usage scenarios—not normalized measurements or interpolated effort levels.</span></div>
             </div>
             <div className="hero-aside">
               <span className="side-index">01 / MEASUREMENT ATLAS</span>
@@ -411,7 +411,7 @@ function App() {
 
           <section className="chart-section" aria-labelledby="chart-title">
             <div className="section-title-row">
-              <div><span className="section-kicker">THE EFFORT CURVE</span><h2 id="chart-title">One series. One path.</h2><p className="section-deck">Measured paths stay inside one evaluator, model, benchmark, and harness series. Usage scenarios are isolated marks and never join an effort path.</p></div>
+               <div><span className="section-kicker">THE EFFORT CURVE</span><h2 id="chart-title">One series. One path.</h2><p className="section-deck">Paths stay inside one source series. The GPT-6.1 Sol screenshot path uses neutral Setting numbers, not known effort names. Usage scenarios are isolated marks and never join a path.</p></div>
               <div className="display-projection" role="group" aria-label="Configuration projection"><span>CONFIGURATIONS</span><button type="button" className={state.effortMode === 'all' ? 'selected' : ''} aria-pressed={state.effortMode === 'all'} onClick={() => update({ effortMode: 'all' })}>All levels</button><button type="button" className={state.effortMode === 'best' ? 'selected' : ''} aria-pressed={state.effortMode === 'best'} onClick={() => update({ effortMode: 'best' })}>Best only</button></div>
             </div>
 
@@ -456,7 +456,7 @@ function App() {
                <p>{strictGroups.length === 0 ? 'No complete groups match the current filters. Unknown protocol fields fail closed.' : !selectedStrictGroupAvailable ? `${strictGroups.length} compatible group${strictGroups.length === 1 ? '' : 's'} available. Select a group to compare; no group is selected automatically.` : `${chartFilteredObservations.length} observations in the selected protocol group; ${strictExcluded - strictIncomplete} selected rows belong to another incompatible group.`}</p>
                 {Object.entries(strictReasons).length > 0 && <small>{Object.entries(strictReasons).slice(0, 3).map(([reason, count]) => `${count} excluded: ${reason}`).join(' · ')}</small>}
               </div>}
-            <div className="coverage-row" role="status"><span className="coverage-big">{coverage.available}<i> / {coverage.total}</i></span><span>{state.xMetric === 'cost' ? `Source-reported ${state.statistic} USD per scored-attempt measurements among observations reporting ${scoreMetricLabels[state.scoreMetric]}; scenarios do not increase measured coverage.` : `Source-reported ${state.statistic} ${xMetricLabels[state.xMetric].axis} values among observations reporting ${scoreMetricLabels[state.scoreMetric]}.`}</span><span className="omission-count">{coverage.missing} without source value{visibleUsageScenarios.length ? ` · ${visibleScenarioMarks.length} scenario mark${visibleScenarioMarks.length === 1 ? '' : 's'} for selected X` : ''}</span></div>
+             <div className="coverage-row" role="status"><span className="coverage-big">{coverage.available}<i> / {coverage.total}</i></span><span>{state.xMetric === 'cost' ? `Source-reported cost coordinates among observations reporting ${scoreMetricLabels[state.scoreMetric]}; mean per scored attempt except screenshot-derived source-chart costs (aggregation unknown). Median view includes only reported medians. Scenarios do not increase source coverage.` : `Source-reported ${state.statistic} ${xMetricLabels[state.xMetric].axis} values among observations reporting ${scoreMetricLabels[state.scoreMetric]}.`}</span><span className="omission-count">{coverage.missing} without source value{visibleUsageScenarios.length ? ` · ${visibleScenarioMarks.length} scenario mark${visibleScenarioMarks.length === 1 ? '' : 's'} for selected X` : ''}</span></div>
 
             <div className="analysis-grid">
               <div className="chart-card">
@@ -484,7 +484,7 @@ function App() {
               <aside className="chart-side-rail">
                 <section className="legend-card" aria-labelledby="legend-title">
                   <div className="side-card-head"><div><span className="section-kicker">MODEL SELECTION</span><h3 id="legend-title">Models &amp; sources</h3></div><span className="count-stamp">{availableModels.length}</span></div>
-                  <p className="legend-note">Check models to compare; when none are checked, all models are shown. Filled markers and paths are measured source rows; hollow amber diamonds are unconnected usage scenarios. No-data marks sit outside the numeric X scale.</p>
+                   <p className="legend-note">Check models to compare; when none are checked, all models are shown. Filled markers and paths are source observations, including labeled approximate screenshot readings; hollow amber diamonds are unconnected usage scenarios. No-data marks sit outside the numeric X scale.</p>
                   <ul className="legend-list">
                     {availableModels.map(({ key, observation, label }) => <li key={key}>
                       <label className="legend-item" onMouseEnter={() => setActiveSeriesId(observation.series.id)} onMouseLeave={() => setActiveSeriesId(null)}>
@@ -520,7 +520,7 @@ function App() {
           </section>
 
           <section className="results-section" aria-labelledby="results-title">
-            <div className="section-title-row results-title-row"><div><span className="section-kicker">APPROVED OBSERVATIONS</span><h2 id="results-title">The evidence table</h2><p className="section-deck">{selectedCount} visible rows · full precision retained in data and exports · expand evidence locators by keyboard.</p></div>
+             <div className="section-title-row results-title-row"><div><span className="section-kicker">APPROVED OBSERVATIONS</span><h2 id="results-title">The evidence table</h2><p className="section-deck">{selectedCount} visible rows · source precision retained; screenshot-derived points rounded and labeled · expand evidence locators by keyboard.</p></div>
               <div className="export-actions">
                 <a className="export-link" href={`${baseUrl}data/observations.json`} download="deepswe-observations.json">All JSON</a>
                 <a className="export-link" href={`${baseUrl}data/observations.csv`} download="deepswe-observations.csv">All CSV</a>

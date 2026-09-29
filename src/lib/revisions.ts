@@ -106,7 +106,11 @@ export function revisionValues(observation: Observation) {
     reportedScore: observation.result.reportedValue,
     confidenceInterval: observation.result.confidenceInterval,
     additionalResults: observation.additionalResults,
-    meanCostUsd: observation.metrics.cost.value,
+    meanCostUsd: observation.metrics.cost.statistic === 'mean' ? observation.metrics.cost.value : null,
+    ...(observation.approximation ? {
+      approximateSourceChartCostUsd: observation.metrics.cost.value,
+      approximation: observation.approximation,
+    } : {}),
     medianCostUsd: observation.metrics.medianCost.value,
     meanOutputTokens: observation.metrics.outputTokens.value,
     medianOutputTokens: observation.metrics.medianOutputTokens.value,

@@ -325,6 +325,7 @@ export interface ApprovedReport {
   publicationDate?: string | null
   model: string
   canonicalId: string | null
+  aliasEvidence?: string | null
   modelSnapshot?: string | null
   score: number
   normalizedScore: number
@@ -366,7 +367,9 @@ export interface ApprovedReport {
   medianCostMissingReason?: string | null
   pricingBasis?: string | null
   asReportedCost?: number | null
+  approximateCostUsd?: number
   metrics?: Partial<Observation['metrics']>
+  approximation?: Observation['approximation']
   notes: string[]
 }
 
@@ -451,7 +454,7 @@ export function normalizeApprovedReports(reports: ApprovedReport[]): Observation
       reportedName: report.model,
       canonicalId: report.canonicalId,
       snapshot: report.modelSnapshot ?? null,
-      aliasEvidence: report.canonicalId ? 'Explicit source-backed alias; see data/sources/aliases.json. Evaluation series remain separate.' : null,
+      aliasEvidence: report.aliasEvidence !== undefined ? report.aliasEvidence : report.canonicalId ? 'Explicit source-backed alias; see data/sources/aliases.json. Evaluation series remain separate.' : null,
     },
     publisher: report.publisher,
     evaluator: report.evaluator !== undefined
@@ -526,7 +529,23 @@ export function normalizeApprovedReports(reports: ApprovedReport[]): Observation
       pricingBasis: report.pricingBasis ?? null,
     },
     metrics: {
-      cost: report.metrics?.cost ?? missingMetric(report.costMetricMissingReason ?? `${efficiencyMissingReason} Mean task cost is not inferred.`),
+      cost: report.metrics?.cost ?? (report.approximation && report.approximateCostUsd !== undefined ? {
+        value: report.approximateCostUsd,
+        unit: 'USD',
+        statistic: 'reported' as const,
+        sourceField: 'figure: Cost per task axis',
+        reportedValue: report.approximateCostUsd,
+        reportedUnit: 'USD per source-defined task; aggregation unspecified',
+        scope: 'source chart cost per task; task population and aggregation unspecified',
+        population: null,
+        sampleCount: null,
+        sampleCountMissingReason: 'The chart does not give a task/attempt denominator or sample count.',
+        definition: `Approximate USD read from the source chart's Cost per task axis, rounded to $0.1; aggregation, billing basis, and task/attempt denominator are unspecified. ${report.approximation.boundsNote}`,
+        sourceLocator: report.evidenceLocator,
+        missingReason: null,
+        includesReasoningTokens: null,
+        inclusionNote: null,
+      } : missingMetric(report.costMetricMissingReason ?? `${efficiencyMissingReason} Mean task cost is not inferred.`)),
       medianCost: report.metrics?.medianCost ?? missingMetric(report.medianCostMissingReason ?? `${efficiencyMissingReason} Median task cost is not inferred.`),
       outputTokens: report.metrics?.outputTokens ?? missingMetric(`${efficiencyMissingReason} Output-token counts are not inferred.`),
       medianOutputTokens: report.metrics?.medianOutputTokens ?? missingMetric(`${efficiencyMissingReason} Median output-token counts are not inferred.`),
@@ -562,6 +581,7 @@ export function normalizeApprovedReports(reports: ApprovedReport[]): Observation
       independentReplication: 'not-independently-reproduced',
       notes: report.notes,
     },
+    ...(report.approximation ? { approximation: report.approximation } : {}),
   })
   })
 }

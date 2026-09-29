@@ -6,7 +6,7 @@ export type ScoreMetric = 'pass_at_1' | 'pass_at_4' | 'reported_score_unspecifie
 export type SourceCategory = Observation['sourceCategory']
 
 export const xMetricLabels: Record<XMetric, { label: string; mean: string; median: string; axis: string; shortUnit: string }> = {
-  cost: { label: 'Cost per task', mean: 'Mean cost per task', median: 'Median cost per task', axis: 'USD per scored rollout attempt; task-scenario units labeled by point', shortUnit: 'USD' },
+  cost: { label: 'Cost per task', mean: 'Mean cost per task', median: 'Median cost per task', axis: 'USD per scored rollout attempt; source-chart costs have unspecified task basis (see point)', shortUnit: 'USD' },
   outputTokens: { label: 'Output tokens per task', mean: 'Mean output tokens per task', median: 'Median output tokens per task', axis: 'output tokens per source-defined attempt · see point scope', shortUnit: 'tokens' },
   time: { label: 'Time per task', mean: 'Reported mean time per task', median: 'Reported median time per task', axis: 'reported seconds per scored rollout attempt · timer boundaries unspecified', shortUnit: 'seconds' },
 }
@@ -49,7 +49,7 @@ export function hasPercentageScoreScale(score: DisplayableScore): boolean {
 export function displayScoreValue(score: DisplayableScore): string {
   if (score.reportedUnit === '%') {
     const sourceNumber = score.reportedText.match(/^\s*([-+]?(?:\d+(?:\.\d*)?|\.\d+))/)?.[1]
-    return `${sourceNumber ?? String(score.reportedValue)}%`
+    return `${score.reportedText.trim().startsWith('≈') ? '≈' : ''}${sourceNumber ?? String(score.reportedValue)}%`
   }
   if (score.reportedUnit === 'fraction') return `${(score.value * 100).toFixed(1)}%`
   return score.reportedText
@@ -64,6 +64,7 @@ export function strictExclusionReason(
   const score = scoreResult(observation, scoreMetric)
   if (!score) return 'selected score metric is not reported'
   if (!observation.benchmark.version) return 'benchmark version is unknown'
+  if (observation.approximation) return 'screenshot-derived coordinates and protocol are approximate or unknown'
   if (observation.benchmark.scope === 'unknown' || observation.benchmark.taskCount === null) return 'task scope or task count is unknown'
   if (!observation.benchmark.taskSetRevision) return 'task-set revision is unknown'
   if (!observation.benchmark.population) return 'measurement population is unknown'
