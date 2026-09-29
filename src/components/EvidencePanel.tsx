@@ -8,6 +8,7 @@ export interface EvidencePanelProps {
   statistic: Statistic
   scoreMetric: ScoreMetric
   usageScenario?: UsageScenario | null
+  chartSuppression?: Observation[] | null
 }
 
 function valueText(value: number | null, unit: string, digits = 2): string {
@@ -23,7 +24,7 @@ function sourceTypeLabel(category: Observation['sourceCategory']): string {
   return category === 'organizer' ? 'Benchmark organizer' : category === 'developer' ? 'Developer report' : category === 'independent' ? 'Independent evaluator' : category === 'local' ? 'Local evaluation' : 'Secondary source'
 }
 
-export function EvidencePanel({ observation, xMetric, statistic, scoreMetric, usageScenario = null }: EvidencePanelProps) {
+export function EvidencePanel({ observation, xMetric, statistic, scoreMetric, usageScenario = null, chartSuppression = null }: EvidencePanelProps) {
   if (!observation) {
     return (
       <aside className="evidence-panel evidence-empty" aria-label="Evidence details">
@@ -75,18 +76,19 @@ export function EvidencePanel({ observation, xMetric, statistic, scoreMetric, us
         <div><dt className={xMetric === 'outputTokens' ? 'selected-evidence-metric' : ''}>{xMetricLabels.outputTokens.label}</dt><dd>{valueText(tokens.value, tokens.unit)}</dd></div>
         <div><dt className={xMetric === 'time' ? 'selected-evidence-metric' : ''}>{xMetricLabels.time.label}</dt><dd>{valueText(time.value, time.unit)}</dd></div>
       </dl>
-      {displayedUsageScenario && <section className="usage-evidence" aria-label="Estimated usage scenario evidence">
-        <span className="scenario-label">ESTIMATED USAGE SCENARIO · NOT MEASURED</span>
+      {chartSuppression && <div className="chart-suppression-detail"><strong>Not plotted in the combined chart.</strong> {observation.benchmark.version === null ? `This report does not specify its benchmark version; Datacurve has a DeepSWE v${chartSuppression[0]?.benchmark.version} result for the same model.` : `Datacurve has an applicable DeepSWE v${chartSuppression[0]?.benchmark.version} result for the same model.`} Chart precedence does not merge results. This source row remains in the table and exports; no chart coordinate is assigned.</div>}
+      {displayedUsageScenario && <section className="usage-evidence" aria-label="Cost and usage scenario evidence">
+        <span className="scenario-label">{displayedUsageScenario.costScenarioType === 'source-reported-cost' ? 'SOURCE-REPORTED COST SCENARIO · BASIS INCOMPLETE' : displayedUsageScenario.costScenarioType === 'aa-suite-proxy' ? 'AA SUITE-COST PROXY · NOT DEEPSWE-SPECIFIC' : 'ESTIMATED USAGE SCENARIO · NOT MEASURED'}</span>
         <dl>
-          <div><dt>Mean cost / scored attempt</dt><dd>${displayedUsageScenario.costUsdPerScoredAttempt.toFixed(2)}</dd></div>
-          <div><dt>Mean output tokens / scored attempt</dt><dd>{new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(displayedUsageScenario.outputTokensPerScoredAttempt)}</dd></div>
-          <div><dt>Mean reported time / scored attempt</dt><dd>{valueText(displayedUsageScenario.timeSecondsPerScoredAttempt, 'seconds')}</dd></div>
+          <div><dt>Scenario cost · {displayedUsageScenario.costUnit}</dt><dd>${displayedUsageScenario.costUsd.toFixed(2)}</dd></div>
+          {displayedUsageScenario.outputTokensPerScoredAttempt !== null && <div><dt>Mean output tokens / scored attempt</dt><dd>{new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(displayedUsageScenario.outputTokensPerScoredAttempt)}</dd></div>}
+          {displayedUsageScenario.timeSecondsPerScoredAttempt !== null && <div><dt>Mean reported time / scored attempt</dt><dd>{valueText(displayedUsageScenario.timeSecondsPerScoredAttempt, 'seconds')}</dd></div>}
         </dl>
         <p><strong>{displayedUsageScenario.confidence === 'low' ? 'Low' : 'Very low'} evidence quality, not a probability.</strong> {displayedUsageScenario.confidenceNote}</p>
         <p><strong>Cost method:</strong> {displayedUsageScenario.costCalibrationDescription} {displayedUsageScenario.costSensitivityRange ? `Sensitivity envelope: $${displayedUsageScenario.costSensitivityRange[0].toFixed(2)}–$${displayedUsageScenario.costSensitivityRange[1].toFixed(2)}; not a confidence interval.` : 'No defensible cost range is available.'}</p>
-        <p><strong>Output-token method:</strong> {displayedUsageScenario.outputCalibrationDescription} The Coding Agent suite total ({new Intl.NumberFormat('en').format(displayedUsageScenario.aaCodingSuiteMixedTokensPerTask)} tokens/task) mixes token categories and is not used as an output count; cost is not converted into tokens. {displayedUsageScenario.outputTokenSensitivityRange ? `Sensitivity envelope: ${new Intl.NumberFormat('en').format(displayedUsageScenario.outputTokenSensitivityRange[0])}–${new Intl.NumberFormat('en').format(displayedUsageScenario.outputTokenSensitivityRange[1])}; not a confidence interval.` : 'No defensible output-token range is available.'}</p>
-        <p><strong>Time method:</strong> {displayedUsageScenario.timeCalibrationDescription} AA pooled time/task reference: {valueText(displayedUsageScenario.aaCodingSuiteTimeSecondsPerTask, 'seconds')}. {displayedUsageScenario.timeSensitivityRange ? `Sensitivity envelope: ${valueText(displayedUsageScenario.timeSensitivityRange[0], 'seconds')}–${valueText(displayedUsageScenario.timeSensitivityRange[1], 'seconds')}; not a confidence interval.` : 'No defensible time range is available.'} Timer boundaries are unspecified; this is not a verified end-to-end duration.</p>
-        <p>This scenario belongs only to the Artificial Analysis {displayedUsageScenario.targetHarness} observation and does not modify its reported score or measurement fields.</p>
+        {displayedUsageScenario.outputTokensPerScoredAttempt !== null && <p><strong>Output-token method:</strong> {displayedUsageScenario.outputCalibrationDescription} {displayedUsageScenario.aaCodingSuiteMixedTokensPerTask !== null ? `The Coding Agent suite total (${new Intl.NumberFormat('en').format(displayedUsageScenario.aaCodingSuiteMixedTokensPerTask)} tokens/task) mixes token categories and is not used as an output count; cost is not converted into tokens. ` : ''}{displayedUsageScenario.outputTokenSensitivityRange ? `Sensitivity envelope: ${new Intl.NumberFormat('en').format(displayedUsageScenario.outputTokenSensitivityRange[0])}–${new Intl.NumberFormat('en').format(displayedUsageScenario.outputTokenSensitivityRange[1])}; not a confidence interval.` : 'No defensible output-token range is available.'}</p>}
+        {displayedUsageScenario.timeSecondsPerScoredAttempt !== null && <p><strong>Time method:</strong> {displayedUsageScenario.timeCalibrationDescription} {displayedUsageScenario.aaCodingSuiteTimeSecondsPerTask !== null ? `AA pooled time/task reference: ${valueText(displayedUsageScenario.aaCodingSuiteTimeSecondsPerTask, 'seconds')}. ` : ''}{displayedUsageScenario.timeSensitivityRange ? `Sensitivity envelope: ${valueText(displayedUsageScenario.timeSensitivityRange[0], 'seconds')}–${valueText(displayedUsageScenario.timeSensitivityRange[1], 'seconds')}; not a confidence interval.` : 'No defensible time range is available.'} Timer boundaries are unspecified; this is not a verified end-to-end duration.</p>}
+        <p>{displayedUsageScenario.costScenarioType === 'source-reported-cost' ? 'This source-reported value belongs only to this publisher row.' : `This scenario belongs only to the ${displayedUsageScenario.targetPublisher} ${displayedUsageScenario.targetHarness ?? ''} observation.`} It does not modify the reported score or measurement fields.</p>
         <ul>{displayedUsageScenario.sources.map((source) => <li key={source.id}><a href={source.url} target="_blank" rel="noreferrer">{source.publisher} · {source.id}</a> · accessed {source.accessedOn} · {source.evidenceLocator}</li>)}</ul>
       </section>}
       <div className="evidence-detail-grid">

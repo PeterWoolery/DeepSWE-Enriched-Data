@@ -89,6 +89,8 @@ interface SelectedGuideMark {
   y: number
   xValue: number | null
   estimated: boolean
+  scenarioType?: UsageScenario['costScenarioType'] | null
+  scenarioCostUnit?: string | null
   missingReason: string | null
 }
 
@@ -107,6 +109,8 @@ function arrangeNoDataMarks(items: Omit<NoDataMark, 'x' | 'y'>[]): NoDataMark[] 
 export interface ExplorerChartProps {
   observations: Observation[]
   usageScenarios: { observation: Observation; scenario: UsageScenario }[]
+  chartSuppressions: ReadonlyMap<string, Observation[]>
+  suppressedCount: number
   xMetric: XMetric
   statistic: Statistic
   strict: boolean
@@ -125,6 +129,8 @@ export interface ExplorerChartProps {
 export function ExplorerChart({
   observations,
   usageScenarios,
+  chartSuppressions,
+  suppressedCount,
   xMetric,
   statistic,
   strict,
@@ -178,8 +184,11 @@ export function ExplorerChart({
     const x = scenarioXValue(scenario, xMetric)
     return [{ observation, scenario, score, x }]
   })
-  const estimatedPlotPoints = scenarioCandidates.filter(({ x }) => Number.isFinite(x) && x >= 0 && (scale === 'linear' || x > 0))
-  const scenarioCandidateIds = new Set(scenarioCandidates.map(({ observation }) => observation.id))
+  const estimatedPlotPoints = scenarioCandidates.filter(
+    (point): point is (typeof scenarioCandidates)[number] & { x: number } =>
+      point.x !== null && Number.isFinite(point.x) && point.x >= 0 && (scale === 'linear' || point.x > 0),
+  )
+  const scenarioCandidateIds = new Set(estimatedPlotPoints.map(({ observation }) => observation.id))
   const xValues = [
     ...accepted.map((point) => point.x),
     ...estimatedPlotPoints.map((point) => point.x),
@@ -197,14 +206,21 @@ export function ExplorerChart({
     const metric = metricObservation(observation, xMetric, statistic)
     if (metric.value !== null || !hasPercentageScoreScale(score) || scenarioCandidateIds.has(observation.id)) return []
     const scenario = usageScenarioForObservation(observation)
+    const scenarioMetricValue = scenario ? scenarioXValue(scenario, xMetric) : null
     const scenarioNote = !scenario
       ? null
-      : !includeUsageScenarios
-        ? 'A mean-only estimate exists, but the usage-scenario toggle is off.'
+      : scenarioMetricValue === null
+        ? `A cost-only scenario exists (${scenario.costUnit}); no ${xMetricLabels[xMetric].label.toLowerCase()} estimate is available.`
+        : !includeUsageScenarios
+        ? 'A cost/usage scenario exists, but the scenario toggle is off.'
         : strict
-          ? 'A mean-only estimate exists, but strict comparisons exclude scenarios.'
+          ? 'A cost/usage scenario exists, but strict comparisons exclude scenarios.'
           : statistic === 'median'
-            ? 'A mean-only estimate exists; no median scenario is available.'
+            ? scenario.scenarioStatistic === 'source-statistic-unspecified'
+              ? 'This source-reported task cost has no mean/median statistic and is not shown in this Median view.'
+              : scenario.scenarioStatistic === 'pooled-suite-average'
+                ? 'This pooled-suite-average cost proxy is not converted to a median and is not shown in this view.'
+                : 'A mean-only usage estimate exists; no median scenario is available.'
             : 'A scenario estimate is not active for this view.'
     return [{
       series: { id: series.id, color: series.color },
@@ -214,7 +230,10 @@ export function ExplorerChart({
       scenarioNote,
     }]
   })))
-  const scenarioOmitted = scenarioCandidates.filter(({ x }) => !Number.isFinite(x) || x < 0 || scale === 'log' && x === 0)
+  const scenarioOmitted = scenarioCandidates.filter(
+    (point): point is (typeof scenarioCandidates)[number] & { x: number } =>
+      point.x !== null && (!Number.isFinite(point.x) || point.x < 0 || scale === 'log' && point.x === 0),
+  )
   const omitted = plotSeries.flatMap((series) => series.segments.omitted
     .filter((item) => item.reason !== 'missing-x')
     .map((item) => ({ ...item, observation: series.byId.get(item.id)! })))
@@ -243,6 +262,8 @@ export function ExplorerChart({
         y: scaleY(measured.point.y!),
         xValue: measured.point.x!,
         estimated: false,
+        scenarioType: null,
+        scenarioCostUnit: null,
         missingReason: null,
       }
     }
@@ -255,6 +276,8 @@ export function ExplorerChart({
         y: scaleY(estimated.score.value),
         xValue: estimated.x,
         estimated: true,
+        scenarioType: estimated.scenario.costScenarioType,
+        scenarioCostUnit: estimated.scenario.costUnit,
         missingReason: null,
       }
     }
@@ -265,15 +288,21 @@ export function ExplorerChart({
       score: missing.score,
       x: missing.x,
       y: missing.y,
-      xValue: null,
-      estimated: false,
-      missingReason: missing.missingReason,
+        xValue: null,
+        estimated: false,
+        scenarioType: null,
+        scenarioCostUnit: null,
+        missingReason: missing.missingReason,
     }
   })()
   const selectedGuideLabel = selectedGuide
     ? selectedGuide.xValue === null
       ? `${selectedGuide.observation.model.reportedName}; ${displayScoreValue(selectedGuide.score)} ${selectedGuide.score.metricLabel}; no ${xMetricLabels[xMetric].label.toLowerCase()} value is reported: ${selectedGuide.missingReason}. No numeric X guide is shown.`
-      : `${selectedGuide.observation.model.reportedName}; ${displayScoreValue(selectedGuide.score)} ${selectedGuide.score.metricLabel}; ${selectedGuide.estimated ? 'estimated scenario' : 'reported'} ${statistic} ${xMetricLabels[xMetric].axis}: ${formatAxis(selectedGuide.xValue, xMetric)}.`
+      : selectedGuide.scenarioType === 'source-reported-cost'
+        ? `${selectedGuide.observation.model.reportedName}; ${displayScoreValue(selectedGuide.score)} ${selectedGuide.score.metricLabel}; source-reported cost scenario: ${formatAxis(selectedGuide.xValue, xMetric)} ${selectedGuide.scenarioCostUnit}.`
+        : selectedGuide.scenarioType === 'aa-suite-proxy'
+          ? `${selectedGuide.observation.model.reportedName}; ${displayScoreValue(selectedGuide.score)} ${selectedGuide.score.metricLabel}; pooled-suite cost proxy: ${formatAxis(selectedGuide.xValue, xMetric)} ${selectedGuide.scenarioCostUnit}.`
+          : `${selectedGuide.observation.model.reportedName}; ${displayScoreValue(selectedGuide.score)} ${selectedGuide.score.metricLabel}; ${selectedGuide.estimated ? 'estimated scenario' : 'reported'} ${statistic} ${xMetricLabels[xMetric].axis}: ${formatAxis(selectedGuide.xValue, xMetric)}.`
     : null
   const selectedGuideXAnchor = selectedGuide && selectedGuide.x <= PLOT.left + 54
     ? 'start'
@@ -301,6 +330,7 @@ export function ExplorerChart({
   const selectedGuideMissingX = selectedGuide && selectedGuide.x > WIDTH - 110 ? selectedGuide.x - 12 : (selectedGuide?.x ?? 0) + 12
   const selectedGuideMissingAnchor = selectedGuide && selectedGuide.x > WIDTH - 110 ? 'end' : 'start'
   const selectedGuideMissingY = selectedGuide && selectedGuide.y > PLOT.bottom - 12 ? selectedGuide.y - 11 : (selectedGuide?.y ?? 0) + 4
+  const selectedSuppression = selectedObservationId ? chartSuppressions.get(selectedObservationId) : undefined
 
   return (
     <div className="chart-frame">
@@ -317,7 +347,7 @@ export function ExplorerChart({
           className="effort-chart"
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
           role="group"
-           aria-label={`Score chart. Horizontal axis: ${hasXAxisExtent ? `${statistic} ${xMetricLabels[xMetric].label}` : `no usable numeric ${xMetricLabels[xMetric].label} values`}; vertical axis: ${scoreAxisLabel}. Connected segments use only measured configurations from one evaluation series. Hollow diamonds are standalone estimated usage scenarios and are never connected. The far-right no-data lane is outside the numeric X axis; horizontal position in that lane encodes no X value.`}
+            aria-label={`Score chart. Horizontal axis: ${hasXAxisExtent ? `${statistic} ${xMetricLabels[xMetric].label}` : `no usable numeric ${xMetricLabels[xMetric].label} values`}; vertical axis: ${scoreAxisLabel}. Connected segments use only measured configurations from one evaluation series. Hollow diamonds are standalone cost/usage scenarios with point-specific evidence and units; they are never connected. The far-right no-data lane is outside the numeric X axis; horizontal position in that lane encodes no X value.`}
         >
           <defs>
             <pattern id="chart-hatch" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
@@ -459,7 +489,7 @@ export function ExplorerChart({
             const highlight = activeSeriesId === seriesId || selectedObservationId === observation.id
             const seriesDimmed = Boolean(activeSeriesId && activeSeriesId !== seriesId)
             const estimate = xMetric === 'cost'
-              ? `$${x.toFixed(2)} per scored attempt`
+              ? `$${x.toFixed(2)} · ${scenario.costUnit}`
               : xMetric === 'outputTokens'
                 ? `${new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(x)} output tokens per scored attempt`
                 : `${formatDuration(x)} reported time per scored attempt`
@@ -469,14 +499,23 @@ export function ExplorerChart({
               : ' No defensible sensitivity range or prediction interval is available.'
             const method = xMetric === 'cost' ? scenario.costCalibrationDescription : xMetric === 'outputTokens' ? scenario.outputCalibrationDescription : scenario.timeCalibrationDescription
             const sourceNotes = scenario.sources.map((source) => `${source.publisher} ${source.id}, accessed ${source.accessedOn}`).join('; ')
-            const tokenNote = xMetric === 'outputTokens'
+            const tokenNote = xMetric === 'outputTokens' && scenario.aaCodingSuiteMixedTokensPerTask !== null
               ? ` AA Coding Agent suite total ${new Intl.NumberFormat('en').format(scenario.aaCodingSuiteMixedTokensPerTask)} tokens/task mixes categories and is not used as output; cost is not converted into tokens.`
               : ''
-            const directNote = scenario.directUsageReference
+            const directNote = scenario.costScenarioType === 'source-reported-cost'
+              ? ' This publisher-reported Cost/Task value is shown only for this exact report; the benchmark version, harness, denominator, run identity, and cost accounting basis are unspecified, so it is not normalized as a mean cost per scored attempt.'
+              : scenario.costScenarioType === 'aa-suite-proxy'
+                ? ' The Artificial Analysis cost is a same-row pooled Coding Agent suite value across DeepSWE v1.1, Terminal-Bench 4.0, and SWE-Atlas-QnA; it is carried unchanged as a proxy, not allocated to DeepSWE.'
+                : scenario.directUsageReference
               ? ` The scenario uses a separate exact-model/effort Datacurve DeepSWE row (${scenario.directUsageReference.configurationId}, ${scenario.directUsageReference.scoredAttempts} scored attempts, ${scenario.directUsageReference.runs} runs); it is not the target AA run.`
               : ' The AA source metric is pooled across DeepSWE, Terminal-Bench 4.0, and SWE-Atlas-QnA, with no DeepSWE-only allocation.'
             const timeNote = xMetric === 'time' ? ' Timer boundaries are unspecified for the Datacurve mean; this is not a verified end-to-end duration.' : ''
-            const detail = `Estimated usage scenario — not a DeepSWE measurement. ${observation.model.reportedName}, ${observation.effort.reportedLabel ?? 'effort unreported'}, ${observation.series.harness ?? 'harness unknown'}; source score ${score.reportedText} (${score.metricLabel}); ${estimate}. Evidence quality: ${scenario.confidence === 'low' ? 'low' : 'very low'}, qualitative and not probabilistic. Method: ${method}.${sensitivity}${tokenNote}${directNote}${timeNote} Evidence: ${sourceNotes}.`
+            const scenarioLead = scenario.costScenarioType === 'source-reported-cost'
+              ? 'Source-reported cost scenario — not a normalized DeepSWE measurement.'
+              : scenario.costScenarioType === 'aa-suite-proxy'
+                ? 'Estimated suite-cost proxy — not a DeepSWE-only measurement.'
+                : 'Estimated usage scenario — not a DeepSWE measurement.'
+            const detail = `${scenarioLead} ${observation.model.reportedName}, ${observation.effort.reportedLabel ?? 'effort unreported'}, ${observation.series.harness ?? 'harness unknown'}; source score ${score.reportedText} (${score.metricLabel}); ${estimate}. Evidence quality: ${scenario.confidence === 'low' ? 'low' : 'very low'}, qualitative and not probabilistic. Method: ${method}.${sensitivity}${tokenNote}${directNote}${timeNote} Evidence: ${sourceNotes}.`
             const onKeyDown = (event: React.KeyboardEvent<SVGGElement>) => {
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault()
@@ -526,7 +565,7 @@ export function ExplorerChart({
               {selectedGuide.xValue !== null && <line className="selected-guide-line selected-guide-x" x1={selectedGuide.x} x2={selectedGuide.x} y1={selectedGuide.y} y2={PLOT.bottom} />}
               <text className="selected-guide-label selected-guide-y-label" data-guide-axis="y" x={selectedGuideScoreX} y={selectedGuideScoreY} textAnchor="start">{displayScoreValue(selectedGuide.score)}</text>
               {selectedGuide.xValue !== null
-                ? <text className="selected-guide-label selected-guide-x-label" data-guide-axis="x" x={selectedGuideLabelX} y={PLOT.bottom + 35} textAnchor={selectedGuideXAnchor}>{selectedGuide.estimated ? 'EST · ' : ''}{formatAxis(selectedGuide.xValue, xMetric)}</text>
+                ? <text className="selected-guide-label selected-guide-x-label" data-guide-axis="x" x={selectedGuideLabelX} y={PLOT.bottom + 35} textAnchor={selectedGuideXAnchor}>{selectedGuide.scenarioType === 'source-reported-cost' ? 'SRC · ' : selectedGuide.scenarioType === 'aa-suite-proxy' ? 'PROXY · ' : selectedGuide.estimated ? 'EST · ' : ''}{formatAxis(selectedGuide.xValue, xMetric)}</text>
                 : <text className="selected-guide-missing-label" data-guide-axis="x-missing" x={selectedGuideMissingX} y={selectedGuideMissingY} textAnchor={selectedGuideMissingAnchor}>{selectedGuideMissingLabel}</text>}
             </g>
           )}
@@ -574,9 +613,11 @@ export function ExplorerChart({
         </p>
       )}
       <div className="chart-caption-row">
-        <span>{plottedRows.length} measured · {estimatedPlotPoints.length} estimated · {noDataMarks.length} no-data. Hollow amber diamonds are standalone, mean-only scenarios and never join effort paths. The far-right no-data lane is outside the numeric X axis.</span>
-        <span>Source marks: ● organizer · ◆ developer · ▲ independent · ■ local evaluation · expand the no-data key for source, metric and omission notes.</span>
+          <span>{plottedRows.length} measured · {estimatedPlotPoints.length} scenario · {noDataMarks.length} no-data. Hollow amber diamonds are standalone cost/usage scenarios and never join effort paths; task-cost source statistics remain point-specific. The far-right no-data lane is outside the numeric X axis.</span>
+          <span>Source marks: ● organizer · ◆ developer · ▲ independent · ■ local evaluation · expand the no-data key for source, metric and omission notes.</span>
       </div>
+      {suppressedCount > 0 && <p className="chart-footnote chart-precedence-note" role="status">{suppressedCount} matching non-Datacurve report{suppressedCount === 1 ? ' is' : 's are'} retained in the evidence table and exports but omitted from this chart by display precedence. An unspecified source version is not treated as a version conflict; known model, version, scope, and score-metric conflicts remain separate. Source rows are not merged.</p>}
+      {selectedSuppression && <p className="chart-footnote chart-precedence-note" role="status" data-suppressed-selection={selectedObservationId}>The selected report is not plotted: {selectedSuppression[0]?.publisher} has a DeepSWE v{selectedSuppression[0]?.benchmark.version} result for this model{selectedSuppression[0]?.benchmark.version && ' while no different benchmark version is established'}. This is chart precedence, not a data merge; no chart position or guide is assigned.</p>}
     </div>
   )
 }

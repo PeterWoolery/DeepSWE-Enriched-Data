@@ -3,6 +3,9 @@ import type { Observation } from './schema'
 import type { Statistic, XMetric } from './comparison'
 
 type ResearchScenario = typeof research.scenarios[number]
+type ResearchCostOnlyScenario = typeof research.costOnlyScenarios[number]
+
+export type CostScenarioType = 'datacurve-usage-reference' | 'cross-platform-transfer' | 'aa-suite-proxy' | 'source-reported-cost'
 
 export interface UsageScenarioSource {
   id: string
@@ -15,25 +18,27 @@ export interface UsageScenarioSource {
 export interface UsageScenario {
   id: string
   model: string
-  effort: string
+  effort: string | null
   targetObservationId: string
   targetReportedName: string
   targetPublisher: string
-  targetHarness: string
+  targetHarness: string | null
   targetSourceCategory: string
-  targetBenchmarkVersion: string
+  targetBenchmarkVersion: string | null
   targetScoreMetric: string
   targetScoreReportedText: string
+  costScenarioType: CostScenarioType
   confidence: 'low' | 'very-low'
   confidenceNote: string
-  aaCodingSuiteCostUsdPerTask: number
-  aaCodingSuiteTimeSecondsPerTask: number
-  aaCodingSuiteMixedTokensPerTask: number
-  outputTokensPerScoredAttempt: number
+  aaCodingSuiteCostUsdPerTask: number | null
+  aaCodingSuiteTimeSecondsPerTask: number | null
+  aaCodingSuiteMixedTokensPerTask: number | null
+  outputTokensPerScoredAttempt: number | null
   outputTokenSensitivityRange: [number, number] | null
-  costUsdPerScoredAttempt: number
+  costUsd: number
+  costUnit: string
   costSensitivityRange: [number, number] | null
-  timeSecondsPerScoredAttempt: number
+  timeSecondsPerScoredAttempt: number | null
   timeSensitivityRange: [number, number] | null
   outputCalibrationMethod: string
   costCalibrationMethod: string
@@ -50,7 +55,7 @@ export interface UsageScenario {
   directUsageReference: { configurationId: string; model: string; effort: string; harness: string; scoredAttempts: number; runs: number; costBasis: string | null } | null
   sensitivityNote: string
   sources: UsageScenarioSource[]
-  meanOnly: true
+  scenarioStatistic: 'mean-only' | 'pooled-suite-average' | 'source-statistic-unspecified'
 }
 
 function sourceReference(id: string, evidenceLocator: string): UsageScenarioSource {
@@ -226,7 +231,7 @@ function buildScenario(input: ResearchScenario): UsageScenario {
     ? [Math.min(...outputFactors) * input.aaIntelligenceIndexOutputTokensPerTaskApprox, Math.max(...outputFactors) * input.aaIntelligenceIndexOutputTokensPerTaskApprox] as [number, number]
     : null
 
-  const costUsdPerScoredAttempt = input.costCalibrationMethod === 'openai-max-through-origin-proportional-fit'
+  const costUsd = input.costCalibrationMethod === 'openai-max-through-origin-proportional-fit'
     ? throughOriginSlope(costCalibrationRows) * targetVariant.pooledCostPerTask.usd
     : direct
       ? direct.meanCostUsdPerScoredAttempt
@@ -286,6 +291,7 @@ function buildScenario(input: ResearchScenario): UsageScenario {
     targetBenchmarkVersion: input.targetBenchmarkVersion,
     targetScoreMetric: input.targetObservation.scoreMetric,
     targetScoreReportedText: input.aaDeepSWEv1_1Score,
+    costScenarioType: direct ? 'datacurve-usage-reference' : 'cross-platform-transfer',
     confidence: input.evidenceQuality === 'low' ? 'low' : 'very-low',
     confidenceNote,
     aaCodingSuiteCostUsdPerTask: targetVariant.pooledCostPerTask.usd,
@@ -293,7 +299,8 @@ function buildScenario(input: ResearchScenario): UsageScenario {
     aaCodingSuiteMixedTokensPerTask: targetVariant.pooledTokenUsagePerTask.tokens,
     outputTokensPerScoredAttempt,
     outputTokenSensitivityRange,
-    costUsdPerScoredAttempt,
+    costUsd,
+    costUnit: 'USD per scored rollout attempt',
     costSensitivityRange,
     timeSecondsPerScoredAttempt,
     timeSensitivityRange,
@@ -320,11 +327,74 @@ function buildScenario(input: ResearchScenario): UsageScenario {
     } : null,
     sensitivityNote: 'Observed small-sample transfer-factor envelopes are not confidence or prediction intervals. Exact-row matches and one-pair transfers have no defensible interval.',
     sources: [aaComparison, aaOutput, datacurve],
-    meanOnly: true,
+    scenarioStatistic: 'mean-only',
   }
 }
 
-export const usageScenarios: UsageScenario[] = research.scenarios.map(buildScenario)
+function buildCostOnlyScenario(input: ResearchCostOnlyScenario): UsageScenario {
+  if (input.evidenceQuality !== 'low' && input.evidenceQuality !== 'very-low') throw new Error(`Unsupported evidence quality for ${input.model}`)
+  if (input.costScenarioType !== 'aa-suite-proxy' && input.costScenarioType !== 'source-reported-cost') throw new Error(`Unsupported cost scenario type for ${input.model}`)
+  if (!Number.isFinite(input.costUsd) || input.costUsd < 0) throw new Error(`Invalid source cost scenario for ${input.model}`)
+
+  const targetVariant = input.costScenarioType === 'aa-suite-proxy'
+    ? research.aaCodingAgentVariants.find((variant) =>
+      variant.model === input.model && variant.effort === input.effort && variant.harness === input.targetObservation.harness)
+    : null
+  if (input.costScenarioType === 'aa-suite-proxy' && (!targetVariant
+    || targetVariant.deepSWEv1_1Score !== input.targetObservation.scoreReportedText
+    || targetVariant.pooledCostPerTask.usd !== input.costUsd)) {
+    throw new Error(`Suite-cost proxy does not match its exact AA result row for ${input.model}`)
+  }
+
+  const source = sourceReference(input.sourceId, input.evidenceLocator)
+  return {
+    id: input.id,
+    model: input.model,
+    effort: input.effort,
+    targetObservationId: input.targetObservation.observationId,
+    targetReportedName: input.targetObservation.reportedName,
+    targetPublisher: input.targetObservation.publisher,
+    targetHarness: input.targetObservation.harness,
+    targetSourceCategory: input.targetSourceCategory,
+    targetBenchmarkVersion: input.targetBenchmarkVersion,
+    targetScoreMetric: input.targetObservation.scoreMetric,
+    targetScoreReportedText: input.targetObservation.scoreReportedText,
+    costScenarioType: input.costScenarioType,
+    confidence: input.evidenceQuality,
+    confidenceNote: input.confidenceNote,
+    aaCodingSuiteCostUsdPerTask: targetVariant?.pooledCostPerTask.usd ?? null,
+    aaCodingSuiteTimeSecondsPerTask: targetVariant?.pooledExecutionTimePerTask.seconds ?? null,
+    aaCodingSuiteMixedTokensPerTask: targetVariant?.pooledTokenUsagePerTask.tokens ?? null,
+    outputTokensPerScoredAttempt: null,
+    outputTokenSensitivityRange: null,
+    costUsd: input.costUsd,
+    costUnit: input.costUnit,
+    costSensitivityRange: null,
+    timeSecondsPerScoredAttempt: null,
+    timeSensitivityRange: null,
+    outputCalibrationMethod: 'not-estimated',
+    costCalibrationMethod: input.costMethod,
+    timeCalibrationMethod: 'not-estimated',
+    outputCalibrationDescription: 'No output-token estimate is attached to this cost-only scenario.',
+    costCalibrationDescription: input.costDescription,
+    timeCalibrationDescription: 'No time estimate is attached to this cost-only scenario.',
+    outputCalibrationRows: [],
+    costCalibrationRows: [],
+    timeCalibrationRows: [],
+    outputLeaveOneOutMapePercent: null,
+    costLeaveOneOutMapePercent: null,
+    timeLeaveOneOutMapePercent: null,
+    directUsageReference: null,
+    sensitivityNote: 'No cost sensitivity range or prediction interval is supported for this cost-only scenario.',
+    sources: [source],
+    scenarioStatistic: input.costScenarioType === 'aa-suite-proxy' ? 'pooled-suite-average' : 'source-statistic-unspecified',
+  }
+}
+
+export const usageScenarios: UsageScenario[] = [
+  ...research.scenarios.map(buildScenario),
+  ...research.costOnlyScenarios.map(buildCostOnlyScenario),
+]
 
 /** Exact Artificial Analysis observation identity is required; aliases and other harness reports never inherit a scenario. */
 export function usageScenarioForObservation(observation: Observation): UsageScenario | null {
@@ -339,23 +409,23 @@ export function usageScenarioForObservation(observation: Observation): UsageScen
     || observation.benchmark.version !== scenario.targetBenchmarkVersion
     || observation.result.metric !== scenario.targetScoreMetric
     || observation.result.reportedText !== scenario.targetScoreReportedText) return null
+  if (scenario.costScenarioType === 'source-reported-cost' && observation.pricing.asReportedCost !== scenario.costUsd) return null
   return scenario
 }
 
-/** Scenarios are mean-only X coordinates and are never part of a strict comparison. */
+/** Scenarios are shown only with the Mean control and are never part of a strict comparison. Source-statistic gaps remain explicit. */
 export function usageScenarioForComparison(
   observation: Observation,
-  metric: XMetric,
+  _metric: XMetric,
   statistic: Statistic,
   strict: boolean,
 ): UsageScenario | null {
   if (strict || statistic !== 'mean') return null
-  const scenario = usageScenarioForObservation(observation)
-  return scenario && Number.isFinite(scenarioXValue(scenario, metric)) ? scenario : null
+  return usageScenarioForObservation(observation)
 }
 
-export function scenarioXValue(scenario: UsageScenario, metric: XMetric): number {
-  if (metric === 'cost') return scenario.costUsdPerScoredAttempt
+export function scenarioXValue(scenario: UsageScenario, metric: XMetric): number | null {
+  if (metric === 'cost') return scenario.costUsd
   if (metric === 'outputTokens') return scenario.outputTokensPerScoredAttempt
   return scenario.timeSecondsPerScoredAttempt
 }

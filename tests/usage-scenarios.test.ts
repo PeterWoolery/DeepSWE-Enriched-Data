@@ -20,7 +20,7 @@ describe('cross-platform mean usage scenarios', () => {
       / costPairs.reduce((sum, pair) => sum + pair.aaPooledUsdPerTask ** 2, 0)
 
     expect(lunaScenario.outputTokensPerScoredAttempt).toBeCloseTo(51_000 * outputMean, 7)
-    expect(lunaScenario.costUsdPerScoredAttempt).toBeCloseTo(0.18 * costSlope, 12)
+    expect(lunaScenario.costUsd).toBeCloseTo(0.18 * costSlope, 12)
     expect(lunaScenario.outputTokensPerScoredAttempt).toBeCloseTo(98_421.65603779937, 7)
     expect(lunaScenario.outputTokenSensitivityRange).toEqual([91_302.07529398955, 105_541.2367816092])
     expect(lunaScenario.costSensitivityRange).toEqual([0.18067055413690158, 1.2387750587459414])
@@ -32,9 +32,9 @@ describe('cross-platform mean usage scenarios', () => {
     expect(opusOutputPair.calibrationModel).toBe('Opus 5')
     expect(opusCostPair.ratio).toBe(opusCostPair.deepSWEUsdPerScoredAttempt / opusCostPair.aaPooledUsdPerTask)
     expect(opusScenario.outputTokensPerScoredAttempt).toBeCloseTo(119_000 * (opusOutputPair.deepSWEOutputTokensPerScoredAttempt / opusOutputPair.aaIntelligenceIndexOutput.approxTokens), 7)
-    expect(opusScenario.costUsdPerScoredAttempt).toBeCloseTo(13.04 * (opusCostPair.deepSWEUsdPerScoredAttempt / opusCostPair.aaPooledUsdPerTask), 12)
+    expect(opusScenario.costUsd).toBeCloseTo(13.04 * (opusCostPair.deepSWEUsdPerScoredAttempt / opusCostPair.aaPooledUsdPerTask), 12)
     expect(opusScenario.outputTokensPerScoredAttempt).toBeCloseTo(191_648.18561026783, 7)
-    expect(opusScenario.costUsdPerScoredAttempt).toBeCloseTo(14.306032053661632, 11)
+    expect(opusScenario.costUsd).toBeCloseTo(14.306032053661632, 11)
     expect(opusScenario.outputTokenSensitivityRange).toBeNull()
     expect(opusScenario.costSensitivityRange).toBeNull()
     expect(opusScenario.outputLeaveOneOutMapePercent).toBeNull()
@@ -93,7 +93,7 @@ describe('cross-platform mean usage scenarios', () => {
   })
 
   it('excludes strict and median scenarios while supporting calibrated mean time', () => {
-    expect(usageScenarioForComparison(luna, 'cost', 'mean', false)?.costUsdPerScoredAttempt).toBeCloseTo(0.20668317244049378, 12)
+    expect(usageScenarioForComparison(luna, 'cost', 'mean', false)?.costUsd).toBeCloseTo(0.20668317244049378, 12)
     expect(usageScenarioForComparison(luna, 'outputTokens', 'mean', false)?.outputTokensPerScoredAttempt).toBeCloseTo(98_421.65603779937, 7)
     expect(usageScenarioForComparison(luna, 'time', 'mean', false)?.timeSecondsPerScoredAttempt).toBeCloseTo(1097.5267854181109, 7)
     expect(usageScenarioForComparison(luna, 'cost', 'median', false)).toBeNull()
@@ -104,7 +104,11 @@ describe('cross-platform mean usage scenarios', () => {
     expect(scenarioXValue(usageScenarioForObservation(luna)!, 'cost')).toBeCloseTo(0.20668317244049378, 12)
     expect(scenarioXValue(usageScenarioForObservation(opus)!, 'outputTokens')).toBeCloseTo(191_648.18561026783, 7)
     expect(scenarioXValue(usageScenarioForObservation(luna)!, 'time')).toBeCloseTo(1097.5267854181109, 7)
-    expect(usageScenarios.map((scenario) => scenario.model)).toEqual(['GPT-6 Luna', 'Opus 5.5', 'GPT-6 Astra', 'GPT-6 Sol', 'Opus 5', 'GPT-5.6 Sol', 'GPT-5.6 Luna'])
+    expect(usageScenarios.map((scenario) => scenario.model)).toEqual([
+      'GPT-6 Luna', 'Opus 5.5', 'GPT-6 Astra', 'GPT-6 Sol', 'Opus 5', 'GPT-5.6 Sol', 'GPT-5.6 Luna',
+      'Fable 5.1 (max) (with fallback)', 'DeepSeek V4 Pro 0813', 'DeepSeek V4 Flash 0731',
+      'DeepSeek V4.1-Flash', 'GPT-6-Astra', 'Gemini 3.8 Flash', 'Claude Opus 5',
+    ])
   })
 
   it('uses exact-model/max DeepSWE rows for the additional AA scenarios', () => {
@@ -118,7 +122,7 @@ describe('cross-platform mean usage scenarios', () => {
       const scenario = usageScenarioForObservation(dataset.observations.find((row) => row.id === targetId)!)!
       const direct = research.datacurveDirectMatches.find((row: { configurationId: string }) => row.configurationId === configurationId)!
       expect(scenario.directUsageReference?.configurationId).toBe(configurationId)
-      expect(scenario.costUsdPerScoredAttempt).toBe(direct.meanCostUsdPerScoredAttempt)
+      expect(scenario.costUsd).toBe(direct.meanCostUsdPerScoredAttempt)
       expect(scenario.outputTokensPerScoredAttempt).toBe(direct.meanOutputTokensPerScoredAttempt)
       expect(scenario.timeSecondsPerScoredAttempt).toBe(direct.meanDurationSecondsPerScoredAttempt)
       expect(scenario.costSensitivityRange).toBeNull()
@@ -139,13 +143,51 @@ describe('cross-platform mean usage scenarios', () => {
     const unscaledIds = new Set(audit.unscaledNoDataScoreObservationIds as string[])
     expect(missing).toHaveLength(58)
     expect(scenarioIds.size).toBe(usageScenarios.length)
-    expect(noDataIds.size).toBe(51)
-    expect(chartNoDataIds.size).toBe(39)
+    expect(noDataIds.size).toBe(44)
+    expect(chartNoDataIds.size).toBe(24)
     expect(unscaledIds.size).toBe(12)
     expect(new Set([...scenarioIds, ...noDataIds]).size).toBe(missing.length)
     expect(missing.every((row) => scenarioIds.has(row.id) || noDataIds.has(row.id))).toBe(true)
     expect([...chartNoDataIds].every((id) => noDataIds.has(id) && ['%', 'fraction'].includes(dataset.observations.find((row) => row.id === id)!.result.reportedUnit))).toBe(true)
     expect([...unscaledIds].every((id) => noDataIds.has(id) && !chartNoDataIds.has(id))).toBe(true)
-    expect(usageScenarios.every((scenario) => scenario.timeSecondsPerScoredAttempt > 0)).toBe(true)
+    expect(usageScenarios.filter((scenario) => scenario.timeSecondsPerScoredAttempt !== null).every((scenario) => scenario.timeSecondsPerScoredAttempt! > 0)).toBe(true)
+  })
+
+  it('adds same-row suite-cost proxies and source-reported cost-only scenarios without inventing other metrics', () => {
+    const costOnly = usageScenarios.filter((scenario) => scenario.costScenarioType === 'aa-suite-proxy' || scenario.costScenarioType === 'source-reported-cost')
+    expect(costOnly).toHaveLength(7)
+    expect(costOnly.every((scenario) => scenario.outputTokensPerScoredAttempt === null && scenario.timeSecondsPerScoredAttempt === null)).toBe(true)
+    expect(costOnly.every((scenario) => scenario.costSensitivityRange === null)).toBe(true)
+
+    const aaCosts = costOnly.filter((scenario) => scenario.costScenarioType === 'aa-suite-proxy')
+    expect(aaCosts.map((scenario) => [scenario.targetObservationId, scenario.costUsd])).toEqual([
+      ['aa-claude-code-fable-5.1-max-v1.1', 12.39],
+      ['aa-codex-deepseek-v4-pro-0813-max-v1.1', 0.24],
+      ['aa-codex-deepseek-v4-flash-0731-max-v1.1', 0.09],
+    ])
+    expect(aaCosts.every((scenario) => scenario.costUnit.includes('three-benchmark suite proxy'))).toBe(true)
+    expect(aaCosts.every((scenario) => scenario.scenarioStatistic === 'pooled-suite-average')).toBe(true)
+
+    const fireworksCosts = costOnly.filter((scenario) => scenario.costScenarioType === 'source-reported-cost')
+    expect(fireworksCosts.map((scenario) => [scenario.targetObservationId, scenario.costUsd])).toEqual([
+      ['fireworks-deepswe-deepseek-v4.1-flash-max', 0.43],
+      ['fireworks-deepswe-gpt-6-astra-xhigh', 6.524],
+      ['fireworks-deepswe-gemini-3.8-flash-high', 2.362],
+      ['fireworks-deepswe-claude-opus-5-max', 11.838],
+    ])
+    for (const scenario of fireworksCosts) {
+      const target = dataset.observations.find((row) => row.id === scenario.targetObservationId)!
+      expect(usageScenarioForObservation(target)?.costUsd).toBe(target.pricing.asReportedCost)
+      expect(scenario.scenarioStatistic).toBe('source-statistic-unspecified')
+      expect(target.metrics.cost.value).toBeNull()
+      expect(target.metrics.outputTokens.value).toBeNull()
+      expect(target.metrics.time.value).toBeNull()
+    }
+
+    const firework = usageScenarioForObservation(dataset.observations.find((row) => row.id === 'fireworks-deepswe-gpt-6-astra-xhigh')!)!
+    expect(scenarioXValue(firework, 'cost')).toBe(6.524)
+    expect(scenarioXValue(firework, 'outputTokens')).toBeNull()
+    expect(scenarioXValue(firework, 'time')).toBeNull()
+    expect(research.coverageAudit.costOnlyScenarioObservationIds).toHaveLength(7)
   })
 })

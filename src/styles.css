@@ -243,6 +243,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .chart-empty p { max-width: 510px; color: var(--ink-soft); font-size: 12px; line-height: 1.6; }
 .empty-index { color: var(--amber); font: 10px var(--mono); letter-spacing: .12em; }
 .chart-footnote { margin: 0; padding: 6px 8px; color: var(--amber); font-size: 10px; line-height: 1.5; }
+.chart-precedence-note { border-left: 2px solid var(--amber); background: var(--amber-soft); }
 .chart-caption-row { display: flex; justify-content: space-between; gap: 15px; border-top: 1px solid var(--line); padding: 11px 5px 13px; color: var(--ink-faint); font: 9px/1.5 var(--mono); }
 .chart-side-rail { display: grid; gap: 14px; }
 .legend-card { min-height: 210px; padding: 15px; }
@@ -280,6 +281,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .evidence-metrics dt.selected-evidence-metric { color: var(--teal); font-weight: 700; }
 .evidence-metrics dd { margin: 4px 0 0; font: 400 13px var(--serif); overflow-wrap: anywhere; }
 .usage-evidence { margin: 8px 0 12px; border: 1px dashed var(--amber); padding: 10px; background: var(--amber-soft); }
+.chart-suppression-detail { margin: 8px 0; border-left: 2px solid var(--amber); padding: 7px 9px; background: var(--amber-soft); color: var(--ink-soft); font-size: 8px; line-height: 1.5; }
+.chart-suppression-detail strong { color: var(--ink); }
 .scenario-label { color: var(--amber); font: 8px/1.4 var(--mono); letter-spacing: .07em; }
 .usage-evidence dl { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0; }
 .usage-evidence dl div { display: grid; gap: 3px; }
@@ -346,6 +349,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .table-usage-scenario { display: grid; gap: 4px; margin-top: 8px; border-left: 2px dashed var(--amber); padding: 6px 7px; background: var(--amber-soft); color: var(--ink-soft); font-size: 8px; line-height: 1.4; }
 .table-usage-scenario strong { color: var(--amber); font: 8px/1.4 var(--mono); }
 .table-usage-scenario small { color: var(--ink-faint); font: 7px/1.4 var(--mono); }
+.table-chart-suppression { display: block; margin-top: 5px; border-left: 2px solid var(--amber); padding: 4px 6px; background: var(--amber-soft); color: var(--ink-soft); font-size: 7px; line-height: 1.45; }
 .unknown-value { color: var(--ink-faint); font-style: italic; }
 .table-actions { display: flex; gap: 9px; white-space: nowrap; }
 .row-evidence { max-width: 210px; margin-top: 7px; color: var(--ink-faint); font-size: 8px; }

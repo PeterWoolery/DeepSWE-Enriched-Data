@@ -1,11 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { displayModelName, displayScoreResult, filterObservations, getEfficiencyCoverage, metricObservation, modelKey, projectBest, scoreResult, strictExclusionReason, strictProtocolGroups, type SourceCategory } from '../src/lib/comparison'
+import { datacurveChartPrecedence, displayModelName, displayScoreResult, filterObservations, getEfficiencyCoverage, metricObservation, modelKey, projectBest, scoreResult, strictExclusionReason, strictProtocolGroups, type SourceCategory } from '../src/lib/comparison'
 import { normalizeOfficialFeed } from '../src/lib/normalize'
-import { ObservationSchema } from '../src/lib/schema'
+import { DatasetSchema, ObservationSchema } from '../src/lib/schema'
 
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/official-feed-small.json', import.meta.url), 'utf8'))
 const effortOrder = JSON.parse(readFileSync(new URL('../data/sources/effort-order.json', import.meta.url), 'utf8'))
+const approvedDataset = DatasetSchema.parse(JSON.parse(readFileSync(new URL('../data/approved/dataset.json', import.meta.url), 'utf8')))
 const retrieval = { retrievedAt: '2026-09-26T17:00:00.000Z', contentSha256: 'b'.repeat(64), httpStatus: 200 as const, etag: null, lastModified: null }
 const fixtureObservations = normalizeOfficialFeed(fixture, retrieval, effortOrder).observations
 
@@ -57,6 +58,132 @@ describe('comparison projections', () => {
     expect(displayModelName('claude-opus-4-8')).toBe('Claude Opus 4.8')
     expect(modelKey(observation)).toBe('gpt-6-astra')
     expect(observation.model.reportedName).toBe('gpt-6-astra')
+  })
+
+  it('applies Datacurve chart precedence before source filters while preserving distinct reports', () => {
+    const official = structuredClone(fixtureObservations[0]!)
+    official.id = 'fixture-datacurve-astra'
+    official.publisher = 'Datacurve'
+    official.provenance.sourceId = 'fixture-datacurve'
+
+    const report = structuredClone(official)
+    report.id = 'fixture-aa-astra-max'
+    report.model.reportedName = 'GPT-6 Astra (max)'
+    report.model.canonicalId = null
+    report.publisher = 'Artificial Analysis'
+    report.sourceCategory = 'independent'
+    report.provenance.sourceId = 'fixture-aa'
+    report.effort.reportedLabel = 'max'
+    report.effort.rawSetting = 'max'
+    report.series.harness = 'Codex'
+    report.result.metric = 'reported_score_unspecified'
+    report.additionalResults = []
+
+    const precedence = datacurveChartPrecedence([official, report], 'fixture-datacurve')
+    expect(precedence.get(report.id)).toEqual([official])
+
+    const filteredAfterPrecedence = filterObservations(
+      [official, report].filter((observation) => !precedence.has(observation.id)),
+      {
+        view: 'combined', query: '', selectedModels: [], sources: ['independent'], version: 'all', harness: 'all', publisher: 'all',
+        strict: false, strictGroup: '', statistic: 'mean', scoreMetric: 'pass_at_1',
+      },
+      'cost',
+    )
+    expect(filteredAfterPrecedence).toEqual([])
+
+    const versionUnknownPaper = structuredClone(report)
+    versionUnknownPaper.id = 'fixture-paper-astra-unknown-version'
+    versionUnknownPaper.publisher = 'Datacurve'
+    versionUnknownPaper.sourceCategory = 'organizer'
+    versionUnknownPaper.provenance.sourceId = 'fixture-datacurve-paper'
+    versionUnknownPaper.benchmark.version = null
+    const versionUnknownSupplemental = structuredClone(report)
+    versionUnknownSupplemental.id = 'fixture-fireworks-astra-unknown-version'
+    versionUnknownSupplemental.publisher = 'Fireworks AI'
+    versionUnknownSupplemental.provenance.sourceId = 'fixture-fireworks'
+    versionUnknownSupplemental.series.harness = null
+    versionUnknownSupplemental.benchmark.version = null
+    const unknownVersionPrecedence = datacurveChartPrecedence([official, versionUnknownSupplemental], 'fixture-datacurve')
+    const filteredAfterSourceAndHarness = filterObservations(
+      [official, versionUnknownSupplemental].filter((observation) => !unknownVersionPrecedence.has(observation.id)),
+      {
+        view: 'combined', query: '', selectedModels: [], sources: ['independent'], version: 'all', harness: 'unknown', publisher: 'Fireworks AI',
+        strict: false, strictGroup: '', statistic: 'mean', scoreMetric: 'pass_at_1',
+      },
+      'cost',
+    )
+    expect(filteredAfterSourceAndHarness).toEqual([])
+    official.additionalResults = []
+    const differentSnapshot = structuredClone(report)
+    differentSnapshot.id = 'fixture-astra-different-snapshot'
+    official.model.canonicalId = 'datacurve:gpt-6-astra'
+    official.model.snapshot = 'astra-snapshot-a'
+    differentSnapshot.model.snapshot = 'astra-snapshot-b'
+    const differentVersion = structuredClone(report)
+    differentVersion.id = 'fixture-astra-v1.0'
+    differentVersion.benchmark.version = '1.0'
+    const previewModel = structuredClone(report)
+    previewModel.id = 'fixture-astra-preview'
+    previewModel.model.reportedName = 'GPT-6 Astra Preview'
+    const differentModelVersion = structuredClone(report)
+    differentModelVersion.id = 'fixture-gpt-56-astra'
+    differentModelVersion.model.reportedName = 'GPT-56 Astra'
+    const conflictingCanonicalId = structuredClone(report)
+    conflictingCanonicalId.id = 'fixture-astra-conflicting-canonical-id'
+    conflictingCanonicalId.model.canonicalId = 'another-model-id'
+    const incompatibleMetric = structuredClone(report)
+    incompatibleMetric.id = 'fixture-astra-pass-at-four'
+    incompatibleMetric.result.metric = 'pass_at_4'
+    incompatibleMetric.additionalResults = []
+    const incompatibleScope = structuredClone(report)
+    incompatibleScope.id = 'fixture-astra-different-task-count'
+    incompatibleScope.benchmark.taskCount = 112
+
+    const distinct = datacurveChartPrecedence(
+      [official, versionUnknownPaper, versionUnknownSupplemental, differentSnapshot, differentVersion, previewModel, differentModelVersion, conflictingCanonicalId, incompatibleMetric, incompatibleScope],
+      'fixture-datacurve',
+    )
+    expect(distinct.has(versionUnknownPaper.id)).toBe(false)
+    expect(distinct.has(versionUnknownSupplemental.id)).toBe(true)
+    expect(distinct.has(differentSnapshot.id)).toBe(false)
+    expect(distinct.has(differentVersion.id)).toBe(false)
+    expect(distinct.has(previewModel.id)).toBe(false)
+    expect(distinct.has(differentModelVersion.id)).toBe(false)
+    expect(distinct.has(conflictingCanonicalId.id)).toBe(false)
+    expect(distinct.has(incompatibleMetric.id)).toBe(false)
+    expect(distinct.has(incompatibleScope.id)).toBe(false)
+  })
+
+  it('suppresses only the compatible current-snapshot reports and leaves their source rows untouched', () => {
+    const suppressed = datacurveChartPrecedence(approvedDataset.observations, approvedDataset.sourceRetrieval.sourceId)
+    const researchAudit = JSON.parse(readFileSync(new URL('../data/research/usage-proxy-cross-platform-20260927.json', import.meta.url), 'utf8'))
+    expect([...suppressed.keys()].sort()).toEqual([
+      'aa-claude-code-opus-5-max-v1.1',
+      'aa-claude-code-qwen3.8-max-v1.1',
+      'aa-codex-gpt-5.6-luna-max-v1.1',
+      'aa-codex-gpt-5.6-sol-max-v1.1',
+      'aa-codex-gpt-6-astra-max-v1.1',
+      'aa-kimi-code-cli-kimi-k3-v1.1',
+      'anthropic-claude-opus-5-high-v1.1',
+      'anthropic-claude-opus-5-low-v1.1',
+      'anthropic-claude-opus-5-max-v1.1',
+      'anthropic-claude-opus-5-medium-v1.1',
+      'anthropic-claude-opus-5-xhigh-v1.1',
+      'fireworks-deepswe-claude-opus-5-max',
+      'fireworks-deepswe-gemini-3.8-flash-high',
+      'fireworks-deepswe-gpt-6-astra-xhigh',
+      'google-gemini-3.8-flash-high-v1.1',
+    ].sort())
+    expect([...suppressed.keys()].sort()).toEqual([...researchAudit.coverageAudit.chartPrecedenceSuppressedObservationIds].sort())
+    expect(approvedDataset.observations).toHaveLength(128)
+    expect(approvedDataset.observations.some((observation) => observation.id === 'datacurve-paper-gpt-5.5-xhigh-version-unknown')).toBe(true)
+    expect(suppressed.has('datacurve-paper-gpt-5.5-xhigh-version-unknown')).toBe(false)
+    expect(suppressed.has('meta-muse-spark-1.3-v1.1-max')).toBe(false)
+    expect(suppressed.has('fireworks-deepswe-gpt-6-astra-xhigh')).toBe(true)
+    expect(suppressed.has('fireworks-deepswe-gemini-3.8-flash-high')).toBe(true)
+    expect(suppressed.has('fireworks-deepswe-claude-opus-5-max')).toBe(true)
+    expect(approvedDataset.observations.find((observation) => observation.id === 'fireworks-deepswe-gpt-6-astra-xhigh')?.benchmark.version).toBeNull()
   })
 
   it('selects best per exact source series using full precision before display rounding', () => {

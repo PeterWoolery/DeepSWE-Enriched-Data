@@ -6,7 +6,7 @@ export type ScoreMetric = 'pass_at_1' | 'pass_at_4' | 'reported_score_unspecifie
 export type SourceCategory = Observation['sourceCategory']
 
 export const xMetricLabels: Record<XMetric, { label: string; mean: string; median: string; axis: string; shortUnit: string }> = {
-  cost: { label: 'Cost per task', mean: 'Mean cost per task', median: 'Median cost per task', axis: 'USD per scored rollout attempt', shortUnit: 'USD' },
+  cost: { label: 'Cost per task', mean: 'Mean cost per task', median: 'Median cost per task', axis: 'USD per scored rollout attempt; task-scenario units labeled by point', shortUnit: 'USD' },
   outputTokens: { label: 'Output tokens per task', mean: 'Mean output tokens per task', median: 'Median output tokens per task', axis: 'output tokens per scored rollout attempt', shortUnit: 'tokens' },
   time: { label: 'Time per task', mean: 'Reported mean time per task', median: 'Reported median time per task', axis: 'reported seconds per scored rollout attempt · timer boundaries unspecified', shortUnit: 'seconds' },
 }
@@ -152,6 +152,69 @@ export function strictProtocolGroups(
 
 export function modelKey(observation: Observation): string {
   return observation.model.canonicalId ?? observation.model.reportedName
+}
+
+function normalizedChartModelIdentity(observation: Observation): string {
+  const name = observation.model.reportedName
+    .replace(/\s*\((?:low|medium|high|xhigh|max)\)\s*$/i, '')
+    .replace(/^claude[\s._-]+(?=(?:opus|sonnet|haiku|fable)\b)/i, '')
+  return name.toLowerCase()
+    .replace(/(\d)\.(\d)/g, '$1-$2')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
+function chartModelIdentityMatches(left: Observation, right: Observation): boolean {
+  if (left.model.canonicalId && right.model.canonicalId && left.model.canonicalId !== right.model.canonicalId) return false
+  if (left.model.snapshot && right.model.snapshot && left.model.snapshot !== right.model.snapshot) return false
+  return normalizedChartModelIdentity(left) === normalizedChartModelIdentity(right)
+}
+
+function chartBenchmarkContextMatches(left: Observation, right: Observation): boolean {
+  if (left.benchmark.version && right.benchmark.version && left.benchmark.version !== right.benchmark.version) return false
+  if (left.benchmark.scope !== 'unknown' && right.benchmark.scope !== 'unknown' && left.benchmark.scope !== right.benchmark.scope) return false
+  if (left.benchmark.taskCount !== null && right.benchmark.taskCount !== null && left.benchmark.taskCount !== right.benchmark.taskCount) return false
+  if (left.benchmark.taskSetRevision && right.benchmark.taskSetRevision && left.benchmark.taskSetRevision !== right.benchmark.taskSetRevision) return false
+  return true
+}
+
+const recognizedScoreMetrics = new Set(['pass_at_1', 'pass_at_4', 'task_pass_rate'])
+
+function chartScoreMetrics(observation: Observation): Set<string> {
+  return new Set([observation.result, ...observation.additionalResults]
+    .map((result) => result.metric)
+    .filter((metric) => recognizedScoreMetrics.has(metric)))
+}
+
+function chartScoreMetricCompatible(left: Observation, right: Observation): boolean {
+  const leftMetrics = chartScoreMetrics(left)
+  const rightMetrics = chartScoreMetrics(right)
+  if (!leftMetrics.size || !rightMetrics.size) return true
+  return [...leftMetrics].some((metric) => rightMetrics.has(metric))
+}
+
+/**
+ * Non-Datacurve reports with an applicable live Datacurve result stay in the
+ * evidence table and exports, but do not compete for a second chart mark.
+ * Effort and harness are intentionally not identity keys; known model,
+ * snapshot, version, task-scope, or score-metric conflicts remain separate.
+ */
+export function datacurveChartPrecedence(observations: Observation[], datacurveSourceId: string): Map<string, Observation[]> {
+  const datacurveRows = observations.filter((observation) =>
+    observation.sourceCategory === 'organizer' && observation.publisher === 'Datacurve' && observation.provenance.sourceId === datacurveSourceId,
+  )
+  const suppressed = new Map<string, Observation[]>()
+  for (const observation of observations) {
+    if (observation.provenance.sourceId === datacurveSourceId
+      || observation.sourceCategory === 'organizer' && observation.publisher === 'Datacurve') continue
+    const matches = datacurveRows.filter((official) =>
+      chartModelIdentityMatches(observation, official)
+      && chartBenchmarkContextMatches(observation, official)
+      && chartScoreMetricCompatible(observation, official),
+    )
+    if (matches.length) suppressed.set(observation.id, matches)
+  }
+  return suppressed
 }
 
 function titleModelWords(value: string): string {

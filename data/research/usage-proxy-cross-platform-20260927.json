@@ -53,14 +53,14 @@
       "id": "aa-claude-code-vs-codex",
       "publisher": "Artificial Analysis",
       "url": "https://artificialanalysis.ai/agents/coding-agents/comparisons/claude-code-vs-codex",
-      "retrievedOn": "2026-09-27",
+      "retrievedOn": "2026-09-28",
       "evidenceLocator": "Model Variants table"
     },
     {
       "id": "aa-codex-vs-kimi-code-cli",
       "publisher": "Artificial Analysis",
       "url": "https://artificialanalysis.ai/agents/coding-agents/comparisons/codex-vs-kimi-code-cli",
-      "retrievedOn": "2026-09-27",
+      "retrievedOn": "2026-09-28",
       "evidenceLocator": "Model Variants table"
     },
     {
@@ -92,7 +92,7 @@
       "publisher": "Fireworks AI",
       "url": "https://fireworks.ai/blog/DeepSeek-V4.1-Flash-Astra",
       "publicationDate": "2026-09-14",
-      "retrievedOn": "2026-09-26",
+      "retrievedOn": "2026-09-28",
       "evidenceLocator": "DeepSeek on the DeepSWE Pareto Frontier table",
       "excludedBecause": "The publisher's DeepSWE-labeled Cost/Task values have unknown benchmark version, harness, task/attempt denominator, run identity, and cost accounting basis; no output-token counts are given."
     }
@@ -187,6 +187,36 @@
       "pooledCostPerTask": { "reportedText": "$13.04", "usd": 13.04, "displayPrecision": "cents" },
       "pooledExecutionTimePerTask": { "reportedText": "1.1h", "seconds": 3960, "displayPrecision": "0.1 hour" },
       "pooledTokenUsagePerTask": { "reportedText": "15.6M", "tokens": 15600000, "displayPrecision": "one decimal million", "outputOnly": false }
+    },
+    {
+      "model": "Fable 5.1 (max) (with fallback)",
+      "effort": "max",
+      "harness": "Claude Code",
+      "codingAgentIndex": 62,
+      "deepSWEv1_1Score": "64%",
+      "pooledCostPerTask": { "reportedText": "$12.39", "usd": 12.39, "displayPrecision": "cents" },
+      "pooledExecutionTimePerTask": { "reportedText": "34.8m", "seconds": 2088, "displayPrecision": "0.1 minute" },
+      "pooledTokenUsagePerTask": { "reportedText": "5.7M", "tokens": 5700000, "displayPrecision": "one decimal million", "outputOnly": false }
+    },
+    {
+      "model": "DeepSeek V4 Pro 0813",
+      "effort": "max",
+      "harness": "Codex",
+      "codingAgentIndex": 43,
+      "deepSWEv1_1Score": "57%",
+      "pooledCostPerTask": { "reportedText": "$0.24", "usd": 0.24, "displayPrecision": "cents" },
+      "pooledExecutionTimePerTask": { "reportedText": "40.3m", "seconds": 2418, "displayPrecision": "0.1 minute" },
+      "pooledTokenUsagePerTask": { "reportedText": "24.2M", "tokens": 24200000, "displayPrecision": "one decimal million", "outputOnly": false }
+    },
+    {
+      "model": "DeepSeek V4 Flash 0731",
+      "effort": "max",
+      "harness": "Codex",
+      "codingAgentIndex": 39,
+      "deepSWEv1_1Score": "54%",
+      "pooledCostPerTask": { "reportedText": "$0.09", "usd": 0.09, "displayPrecision": "cents" },
+      "pooledExecutionTimePerTask": { "reportedText": "18.3m", "seconds": 1098, "displayPrecision": "0.1 minute" },
+      "pooledTokenUsagePerTask": { "reportedText": "15.4M", "tokens": 15400000, "displayPrecision": "one decimal million", "outputOnly": false }
     }
   ],
   "datacurveDirectMatches": [
@@ -623,12 +653,133 @@
       "intervalsAreConfidenceIntervals": false
     }
   ],
+  "costOnlyScenarios": [
+    {
+      "id": "aa-claude-code-fable-5.1-max-v1.1:cost-proxy",
+      "model": "Fable 5.1 (max) (with fallback)",
+      "effort": "max",
+      "targetObservation": { "observationId": "aa-claude-code-fable-5.1-max-v1.1", "reportedName": "Fable 5.1 (max) (with fallback)", "publisher": "Artificial Analysis", "harness": "Claude Code", "scoreMetric": "pass_at_1", "scoreReportedText": "64%" },
+      "targetBenchmarkVersion": "1.1",
+      "targetSourceCategory": "independent",
+      "costScenarioType": "aa-suite-proxy",
+      "costUsd": 12.39,
+      "costUnit": "USD per task · AA three-benchmark suite proxy",
+      "costMethod": "same-row-aa-coding-agent-suite-cost-proxy",
+      "costDescription": "The exact Artificial Analysis Claude Code / Fable 5.1 max-with-fallback row reports $12.39/task across the pooled DeepSWE v1.1, Terminal-Bench 4.0, and SWE-Atlas-QnA suite. Carried unchanged as a same-row proxy; it is not a DeepSWE-only allocation or a measured DeepSWE cost.",
+      "evidenceQuality": "very-low",
+      "confidenceNote": "Very low qualitative evidence, not a probability: model, harness, effort, and score row match exactly, but the source cost pools three benchmarks and publishes no DeepSWE-only cost allocation. No prediction interval is justified.",
+      "sourceId": "aa-claude-code-vs-codex",
+      "evidenceLocator": "Model Variants table, Claude Code / Fable 5.1 (max) (with fallback), Cost / Task cell"
+    },
+    {
+      "id": "aa-codex-deepseek-v4-pro-0813-max-v1.1:cost-proxy",
+      "model": "DeepSeek V4 Pro 0813",
+      "effort": "max",
+      "targetObservation": { "observationId": "aa-codex-deepseek-v4-pro-0813-max-v1.1", "reportedName": "DeepSeek V4 Pro 0813", "publisher": "Artificial Analysis", "harness": "Codex", "scoreMetric": "pass_at_1", "scoreReportedText": "57%" },
+      "targetBenchmarkVersion": "1.1",
+      "targetSourceCategory": "independent",
+      "costScenarioType": "aa-suite-proxy",
+      "costUsd": 0.24,
+      "costUnit": "USD per task · AA three-benchmark suite proxy",
+      "costMethod": "same-row-aa-coding-agent-suite-cost-proxy",
+      "costDescription": "The exact Artificial Analysis Codex / DeepSeek V4 Pro 0813 max row reports $0.24/task across the pooled DeepSWE v1.1, Terminal-Bench 4.0, and SWE-Atlas-QnA suite. Carried unchanged as a same-row proxy; the 0813 snapshot is not equated with Datacurve's distinct DeepSeek V4 Pro label.",
+      "evidenceQuality": "very-low",
+      "confidenceNote": "Very low qualitative evidence, not a probability: model snapshot, harness, effort, and score row match exactly, but the source cost pools three benchmarks and publishes no DeepSWE-only cost allocation. No prediction interval is justified.",
+      "sourceId": "aa-codex-vs-kimi-code-cli",
+      "evidenceLocator": "Model Variants table, Codex / DeepSeek V4 Pro 0813 (max), Cost / Task cell"
+    },
+    {
+      "id": "aa-codex-deepseek-v4-flash-0731-max-v1.1:cost-proxy",
+      "model": "DeepSeek V4 Flash 0731",
+      "effort": "max",
+      "targetObservation": { "observationId": "aa-codex-deepseek-v4-flash-0731-max-v1.1", "reportedName": "DeepSeek V4 Flash 0731", "publisher": "Artificial Analysis", "harness": "Codex", "scoreMetric": "pass_at_1", "scoreReportedText": "54%" },
+      "targetBenchmarkVersion": "1.1",
+      "targetSourceCategory": "independent",
+      "costScenarioType": "aa-suite-proxy",
+      "costUsd": 0.09,
+      "costUnit": "USD per task · AA three-benchmark suite proxy",
+      "costMethod": "same-row-aa-coding-agent-suite-cost-proxy",
+      "costDescription": "The exact Artificial Analysis Codex / DeepSeek V4 Flash 0731 max row reports $0.09/task across the pooled DeepSWE v1.1, Terminal-Bench 4.0, and SWE-Atlas-QnA suite. Carried unchanged as a same-row proxy; the 0731 snapshot is not equated with Datacurve's distinct DeepSeek V4 Flash label.",
+      "evidenceQuality": "very-low",
+      "confidenceNote": "Very low qualitative evidence, not a probability: model snapshot, harness, effort, and score row match exactly, but the source cost pools three benchmarks and publishes no DeepSWE-only cost allocation. No prediction interval is justified.",
+      "sourceId": "aa-codex-vs-kimi-code-cli",
+      "evidenceLocator": "Model Variants table, Codex / DeepSeek V4 Flash 0731 (max), Cost / Task cell"
+    },
+    {
+      "id": "fireworks-deepswe-deepseek-v4.1-flash-max:cost-reported",
+      "model": "DeepSeek V4.1-Flash",
+      "effort": "max",
+      "targetObservation": { "observationId": "fireworks-deepswe-deepseek-v4.1-flash-max", "reportedName": "DeepSeek V4.1-Flash", "publisher": "Fireworks AI", "harness": null, "scoreMetric": "pass_at_1", "scoreReportedText": "74.34%" },
+      "targetBenchmarkVersion": null,
+      "targetSourceCategory": "independent",
+      "costScenarioType": "source-reported-cost",
+      "costUsd": 0.43,
+      "costUnit": "source-reported USD per task · accounting basis unspecified",
+      "costMethod": "same-row-source-reported-cost-task",
+      "costDescription": "Fireworks reports $0.430/Task on this same DeepSWE-labeled table row. Shown only on the Fireworks observation; benchmark version, harness, denominator, run identity, and cost accounting basis are unspecified. It is not normalized as a mean/median cost per scored attempt.",
+      "evidenceQuality": "very-low",
+      "confidenceNote": "Very low scope confidence, not a probability: this is the publisher's cost figure for the same row, but its aggregation, billing basis, task denominator, benchmark version, harness, and run identity are unspecified. No interval or transfer is justified.",
+      "sourceId": "fireworks-deepswe-comparison",
+      "evidenceLocator": "DeepSeek on the DeepSWE Pareto Frontier table, DeepSeek V4.1-Flash / max row, Cost/Task"
+    },
+    {
+      "id": "fireworks-deepswe-gpt-6-astra-xhigh:cost-reported",
+      "model": "GPT-6-Astra",
+      "effort": "xhigh",
+      "targetObservation": { "observationId": "fireworks-deepswe-gpt-6-astra-xhigh", "reportedName": "GPT-6-Astra", "publisher": "Fireworks AI", "harness": null, "scoreMetric": "pass_at_1", "scoreReportedText": "74.12%" },
+      "targetBenchmarkVersion": null,
+      "targetSourceCategory": "independent",
+      "costScenarioType": "source-reported-cost",
+      "costUsd": 6.524,
+      "costUnit": "source-reported USD per task · accounting basis unspecified",
+      "costMethod": "same-row-source-reported-cost-task",
+      "costDescription": "Fireworks reports $6.524/Task on this same DeepSWE-labeled table row. Shown only on the Fireworks observation; benchmark version, harness, denominator, run identity, and cost accounting basis are unspecified. It is not normalized as a mean/median cost per scored attempt.",
+      "evidenceQuality": "very-low",
+      "confidenceNote": "Very low scope confidence, not a probability: this is the publisher's cost figure for the same row, but its aggregation, billing basis, task denominator, benchmark version, harness, and run identity are unspecified. No interval or transfer is justified.",
+      "sourceId": "fireworks-deepswe-comparison",
+      "evidenceLocator": "DeepSeek on the DeepSWE Pareto Frontier table, GPT-6-Astra / xhigh row, Cost/Task"
+    },
+    {
+      "id": "fireworks-deepswe-gemini-3.8-flash-high:cost-reported",
+      "model": "Gemini 3.8 Flash",
+      "effort": "high",
+      "targetObservation": { "observationId": "fireworks-deepswe-gemini-3.8-flash-high", "reportedName": "Gemini 3.8 Flash", "publisher": "Fireworks AI", "harness": null, "scoreMetric": "pass_at_1", "scoreReportedText": "73.83%" },
+      "targetBenchmarkVersion": null,
+      "targetSourceCategory": "independent",
+      "costScenarioType": "source-reported-cost",
+      "costUsd": 2.362,
+      "costUnit": "source-reported USD per task · accounting basis unspecified",
+      "costMethod": "same-row-source-reported-cost-task",
+      "costDescription": "Fireworks reports $2.362/Task on this same DeepSWE-labeled table row. Shown only on the Fireworks observation; benchmark version, harness, denominator, run identity, and cost accounting basis are unspecified. It is not normalized as a mean/median cost per scored attempt.",
+      "evidenceQuality": "very-low",
+      "confidenceNote": "Very low scope confidence, not a probability: this is the publisher's cost figure for the same row, but its aggregation, billing basis, task denominator, benchmark version, harness, and run identity are unspecified. No interval or transfer is justified.",
+      "sourceId": "fireworks-deepswe-comparison",
+      "evidenceLocator": "DeepSeek on the DeepSWE Pareto Frontier table, Gemini 3.8 Flash / high row, Cost/Task"
+    },
+    {
+      "id": "fireworks-deepswe-claude-opus-5-max:cost-reported",
+      "model": "Claude Opus 5",
+      "effort": "max",
+      "targetObservation": { "observationId": "fireworks-deepswe-claude-opus-5-max", "reportedName": "Claude Opus 5", "publisher": "Fireworks AI", "harness": null, "scoreMetric": "pass_at_1", "scoreReportedText": "73.65%" },
+      "targetBenchmarkVersion": null,
+      "targetSourceCategory": "independent",
+      "costScenarioType": "source-reported-cost",
+      "costUsd": 11.838,
+      "costUnit": "source-reported USD per task · accounting basis unspecified",
+      "costMethod": "same-row-source-reported-cost-task",
+      "costDescription": "Fireworks reports $11.838/Task on this same DeepSWE-labeled table row. Shown only on the Fireworks observation; benchmark version, harness, denominator, run identity, and cost accounting basis are unspecified. It is not normalized as a mean/median cost per scored attempt.",
+      "evidenceQuality": "very-low",
+      "confidenceNote": "Very low scope confidence, not a probability: this is the publisher's cost figure for the same row, but its aggregation, billing basis, task denominator, benchmark version, harness, and run identity are unspecified. No interval or transfer is justified.",
+      "sourceId": "fireworks-deepswe-comparison",
+      "evidenceLocator": "DeepSeek on the DeepSWE Pareto Frontier table, Claude Opus 5 / max row, Cost/Task"
+    }
+  ],
   "notEstimated": [
     "The incomplete local GLM run was excluded and was not used as a calibration point.",
-    "Fireworks' DeepSWE-labeled cost figures were excluded from calibration because harness, denominator, run identity, and billing basis are unspecified; they provide no output-token usage.",
+    "Fireworks' DeepSWE-labeled costs are retained only as exact-row source-reported cost scenarios; they remain excluded from calibration and provide no output-token usage.",
     "No DeepSWE output-token projection from AA Coding Agent total-token counts: those totals combine input, cache, cache-write, reasoning, and output and have no per-benchmark split.",
     "No cost derived from output tokens or score; exact input/cache/output mix and per-target price basis are not available for the target benchmark.",
-    "The remaining score-only targets have no matched source/evaluation row with compatible model, effort, benchmark, and usage evidence. Suite averages, unknown effort labels, unknown harnesses, older benchmark versions, and other model variants are not silently transferred."
+    "The remaining score-only targets have no matched source/evaluation row with compatible model, effort, benchmark, and usage evidence. AA suite-cost proxies are used only for their exact AA rows; Fireworks cost values are used only on their own rows. Unknown effort labels, unknown harnesses, older benchmark versions, and other model variants are not silently transferred."
   ],
   "coverageAudit": {
     "researchDate": "2026-09-28",
@@ -636,8 +787,26 @@
     "baselineMissingAllThreeMetricsCount": 58,
     "baselineDistinctReportedModelLabelCount": 43,
     "baselineMissingMetrics": ["cost", "outputTokens", "time"],
-    "outcomeRule": "Every listed target had null source-reported mean cost, mean output tokens, and mean time. Only exact targetObservationId entries in scenarioObservationIds receive separate mean scenarios, and only when scenarios are enabled outside strict mode. Their approved measurement fields remain null. Every remaining ID is a no-data outcome for all three metrics. Only percentage-scale score rows can be placed in the chart's no-data lane; raw scores with unspecified units remain outside the percentage plot and in the score-only list.",
-    "chartNoDataLaneCount": 39,
+    "outcomeRule": "Every listed target had null source-reported mean cost, mean output tokens, and mean time. Exact targetObservationId entries in scenarioObservationIds receive separate scenarios outside strict mode; costOnlyScenarioObservationIds have a cost scenario only and no inferred tokens or time. Approved measurement fields remain null. Chart-precedence suppression is applied before chart filters and is listed separately because suppressed reports remain in the evidence table and exports. Unknown benchmark version alone is not a conflict; this is display precedence, not a merge or equivalence claim.",
+    "chartNoDataLaneCount": 24,
+    "chartPrecedenceSuppressedCount": 15,
+    "chartPrecedenceSuppressedObservationIds": [
+      "aa-claude-code-opus-5-max-v1.1",
+      "aa-claude-code-qwen3.8-max-v1.1",
+      "aa-codex-gpt-5.6-luna-max-v1.1",
+      "aa-codex-gpt-5.6-sol-max-v1.1",
+      "aa-codex-gpt-6-astra-max-v1.1",
+      "aa-kimi-code-cli-kimi-k3-v1.1",
+      "anthropic-claude-opus-5-high-v1.1",
+      "anthropic-claude-opus-5-low-v1.1",
+      "anthropic-claude-opus-5-max-v1.1",
+      "anthropic-claude-opus-5-medium-v1.1",
+      "anthropic-claude-opus-5-xhigh-v1.1",
+      "fireworks-deepswe-claude-opus-5-max",
+      "fireworks-deepswe-gemini-3.8-flash-high",
+      "fireworks-deepswe-gpt-6-astra-xhigh",
+      "google-gemini-3.8-flash-high-v1.1"
+    ],
     "unscaledNoDataScoreCount": 12,
     "scenarioObservationIds": [
       "aa-codex-gpt-6-luna-max-v1.1",
@@ -646,7 +815,23 @@
       "aa-codex-gpt-6-sol-max-v1.1",
       "aa-claude-code-opus-5-max-v1.1",
       "aa-codex-gpt-5.6-sol-max-v1.1",
-      "aa-codex-gpt-5.6-luna-max-v1.1"
+      "aa-codex-gpt-5.6-luna-max-v1.1",
+      "aa-claude-code-fable-5.1-max-v1.1",
+      "aa-codex-deepseek-v4-pro-0813-max-v1.1",
+      "aa-codex-deepseek-v4-flash-0731-max-v1.1",
+      "fireworks-deepswe-deepseek-v4.1-flash-max",
+      "fireworks-deepswe-gpt-6-astra-xhigh",
+      "fireworks-deepswe-gemini-3.8-flash-high",
+      "fireworks-deepswe-claude-opus-5-max"
+    ],
+    "costOnlyScenarioObservationIds": [
+      "aa-claude-code-fable-5.1-max-v1.1",
+      "aa-codex-deepseek-v4-pro-0813-max-v1.1",
+      "aa-codex-deepseek-v4-flash-0731-max-v1.1",
+      "fireworks-deepswe-deepseek-v4.1-flash-max",
+      "fireworks-deepswe-gpt-6-astra-xhigh",
+      "fireworks-deepswe-gemini-3.8-flash-high",
+      "fireworks-deepswe-claude-opus-5-max"
     ],
     "noDataObservationIds": [
       "openai-gpt-6-sol-v1.1-max",
@@ -674,10 +859,7 @@
       "google-gemini-3.8-flash-high-v1.1",
       "xai-grok-4.7-high-v1.1",
       "badtheorylabs-tinfield-1-v1.1",
-      "aa-claude-code-fable-5.1-max-v1.1",
       "aa-claude-code-qwen3.8-max-v1.1",
-      "aa-codex-deepseek-v4-pro-0813-max-v1.1",
-      "aa-codex-deepseek-v4-flash-0731-max-v1.1",
       "aa-kimi-code-cli-kimi-k3-v1.1",
       "datacurve-paper-gpt-5.5-xhigh-version-unknown",
       "datacurve-paper-gemini-3.5-flash-medium-version-unknown",
@@ -695,31 +877,16 @@
       "datacurve-paper-glm-5.1-default-version-unknown",
       "datacurve-paper-gemini-3.1-pro-default-version-unknown",
       "datacurve-paper-deepseek-v4-pro-default-version-unknown",
-      "fireworks-deepswe-deepseek-v4.1-flash-max",
-      "fireworks-deepswe-gpt-6-astra-xhigh",
-      "fireworks-deepswe-gemini-3.8-flash-high",
-      "fireworks-deepswe-claude-opus-5-max",
       "meta-muse-spark-1.3-v1.1-max"
     ],
     "chartNoDataLaneObservationIds": [
       "openai-gpt-6-sol-v1.1-max",
       "openai-gpt-6-luna-v1.1-max",
       "anthropic-claude-opus-5.5-v1.1",
-      "anthropic-claude-opus-5-low-v1.1",
-      "anthropic-claude-opus-5-medium-v1.1",
-      "anthropic-claude-opus-5-high-v1.1",
-      "anthropic-claude-opus-5-xhigh-v1.1",
-      "anthropic-claude-opus-5-max-v1.1",
       "anthropic-claude-fable-5.1-v1.1",
       "xiaomi-mimo-v2.6-pro-average-at-3-endpoint-v1.1",
       "xiaomi-mimo-v2.6-flash-average-at-3-endpoint-v1.1",
-      "google-gemini-3.8-flash-high-v1.1",
       "xai-grok-4.7-high-v1.1",
-      "aa-claude-code-fable-5.1-max-v1.1",
-      "aa-claude-code-qwen3.8-max-v1.1",
-      "aa-codex-deepseek-v4-pro-0813-max-v1.1",
-      "aa-codex-deepseek-v4-flash-0731-max-v1.1",
-      "aa-kimi-code-cli-kimi-k3-v1.1",
       "datacurve-paper-gpt-5.5-xhigh-version-unknown",
       "datacurve-paper-gemini-3.5-flash-medium-version-unknown",
       "datacurve-paper-claude-opus-4.6-max-version-unknown",
@@ -736,10 +903,6 @@
       "datacurve-paper-glm-5.1-default-version-unknown",
       "datacurve-paper-gemini-3.1-pro-default-version-unknown",
       "datacurve-paper-deepseek-v4-pro-default-version-unknown",
-      "fireworks-deepswe-deepseek-v4.1-flash-max",
-      "fireworks-deepswe-gpt-6-astra-xhigh",
-      "fireworks-deepswe-gemini-3.8-flash-high",
-      "fireworks-deepswe-claude-opus-5-max",
       "meta-muse-spark-1.3-v1.1-max"
     ],
     "unscaledNoDataScoreObservationIds": [
@@ -767,7 +930,7 @@
           "https://artificialanalysis.ai/articles/claude-opus-5-5",
           "https://artificialanalysis.ai/articles/benchmarking-gpt-6-astra"
         ],
-        "finding": "The 12 variant rows provide suite-pooled cost, time, and mixed-category tokens, without DeepSWE efficiency allocation. Exact-model/max rows with direct Datacurve matches or output-only calibration support seven separate scenarios. Remaining variants lack matching calibration rows; Qwen3.8 Max and Kimi K3 have unspecified effort."
+        "finding": "The 12 variant rows provide suite-pooled cost, time, and mixed-category tokens, without DeepSWE efficiency allocation. Seven exact AA targets have full usage scenarios; three other model targets (Fable 5.1 and DeepSeek V4 Pro 0813 / V4 Flash 0731) use only their exact row's pooled suite cost as a proxy. AA Qwen3.8 Max and Kimi K3 were not given proxies because applicable Datacurve v1.1 results take chart precedence; Kimi's AA effort is unspecified."
       },
       {
         "sourceIds": ["datacurve-v1.1-json"],
@@ -780,7 +943,7 @@
       },
       {
         "sourceIds": ["fireworks-deepswe-comparison", "datacurve-paper-arxiv-pdf"],
-        "finding": "Fireworks Cost/Task is retained outside normalized mean cost because its aggregation and billing basis are unspecified and it supplies no output/time values. Older Datacurve paper rows are version-unknown and have no matching efficiency data; no current feed usage is joined to them."
+        "finding": "Fireworks Cost/Task remains outside normalized mean cost because its aggregation and billing basis are unspecified and it supplies no output/time values. Its four values appear only as same-row source-reported cost scenarios without transfers. Older Datacurve paper rows are version-unknown and have no matching efficiency data; no current feed usage is joined to them."
       },
       {
         "sourceIds": ["meta-muse-spark-1.3-model-page", "meta-muse-spark-1.3-evaluation-methodology", "meta-muse-spark-1.3-announcement"],

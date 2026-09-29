@@ -5,7 +5,7 @@ import { MethodologyPage } from './components/MethodologyPage'
 import { ResultsTable } from './components/ResultsTable'
 import { ReviewQueue } from './components/ReviewQueue'
 import { SourcesPage } from './components/SourcesPage'
-import { displayModelName, displayScoreResult, displayScoreValue, filterObservations, getEfficiencyCoverage, hasPercentageScoreScale, modelKey, projectBest, scoreMetricLabels, scoreResult, strictExclusionReason, strictProtocolGroups, xMetricLabels, type ScoreMetric, type SourceCategory, type XMetric } from './lib/comparison'
+import { datacurveChartPrecedence, displayModelName, displayScoreResult, displayScoreValue, filterObservations, getEfficiencyCoverage, hasPercentageScoreScale, modelKey, projectBest, scoreMetricLabels, scoreResult, strictExclusionReason, strictProtocolGroups, xMetricLabels, type ScoreMetric, type SourceCategory, type XMetric } from './lib/comparison'
 import { downloadText, filteredCsvExport, filteredJsonExport, usageScenarioCsvExport, usageScenarioJsonExport } from './lib/exports'
 import { CandidateQueueSchema, DatasetSchema, type Candidate, type Dataset, type Observation } from './lib/schema'
 import { defaultExplorerState, parseExplorerUrl, serializeExplorerUrl, type ExplorerUrlState, type ExplorerView } from './lib/url-state'
@@ -96,6 +96,10 @@ function App() {
       ? dataset.observations.filter((observation) => observation.provenance.sourceId === dataset.sourceRetrieval.sourceId)
       : dataset.observations
   }, [dataset, state.view])
+  const chartPrecedence = useMemo(() => dataset
+    ? datacurveChartPrecedence(dataset.observations, dataset.sourceRetrieval.sourceId)
+    : new Map(), [dataset])
+  const chartCandidateObservations = useMemo(() => pageObservations.filter((observation) => !chartPrecedence.has(observation.id)), [pageObservations, chartPrecedence])
 
   const availableModels = useMemo(() => {
     const seen = new Map<string, Observation>()
@@ -135,11 +139,16 @@ function App() {
     scoreMetric: state.scoreMetric,
   }), [state])
   const unstrictObservations = useMemo(() => filterObservations(pageObservations, filterState, state.xMetric), [pageObservations, filterState, state.xMetric])
-  const strictGroups = useMemo(() => strictProtocolGroups(unstrictObservations, state.xMetric, state.statistic, state.scoreMetric), [unstrictObservations, state.xMetric, state.statistic, state.scoreMetric])
+  const chartUnstrictObservations = useMemo(() => filterObservations(chartCandidateObservations, filterState, state.xMetric), [chartCandidateObservations, filterState, state.xMetric])
+  const strictGroups = useMemo(() => strictProtocolGroups(chartUnstrictObservations, state.xMetric, state.statistic, state.scoreMetric), [chartUnstrictObservations, state.xMetric, state.statistic, state.scoreMetric])
   const filteredObservations = useMemo(() => state.strict
     ? filterObservations(pageObservations, { ...filterState, strict: true, strictGroup: state.strictGroup }, state.xMetric)
     : unstrictObservations,
   [pageObservations, filterState, unstrictObservations, state.strict, state.strictGroup, state.xMetric])
+  const chartFilteredObservations = useMemo(() => state.strict
+    ? filterObservations(chartCandidateObservations, { ...filterState, strict: true, strictGroup: state.strictGroup }, state.xMetric)
+    : chartUnstrictObservations,
+  [chartCandidateObservations, filterState, chartUnstrictObservations, state.strict, state.strictGroup, state.xMetric])
 
   const scoreMetrics = useMemo(() => [...new Set((dataset?.observations ?? []).flatMap((observation) => [observation.result.metric, ...observation.additionalResults.map((result) => result.metric)]))] as ScoreMetric[], [dataset])
   const displayedObservations = useMemo(() => {
@@ -148,22 +157,32 @@ function App() {
     const bestIds = new Set(best.map((observation) => observation.id))
     return filteredObservations.filter((observation) => !scoreResult(observation, state.scoreMetric) || bestIds.has(observation.id))
   }, [filteredObservations, state.effortMode, state.scoreMetric])
+  const displayedChartObservations = useMemo(() => {
+    if (state.effortMode === 'all') return chartFilteredObservations
+    const best = projectBest(chartFilteredObservations, state.scoreMetric)
+    const bestIds = new Set(best.map((observation) => observation.id))
+    return chartFilteredObservations.filter((observation) => !scoreResult(observation, state.scoreMetric) || bestIds.has(observation.id))
+  }, [chartFilteredObservations, state.effortMode, state.scoreMetric])
+  const visibleChartSuppressions = useMemo(() => new Map(displayedObservations.flatMap((observation) => {
+    const matches = chartPrecedence.get(observation.id)
+    return matches ? [[observation.id, matches] as const] : []
+  })), [displayedObservations, chartPrecedence])
 
   const visibleUsageScenarios = useMemo(() => {
     if (!state.includeUsageScenarios) return []
-    return displayedObservations.flatMap((observation) => {
+    return displayedChartObservations.flatMap((observation) => {
       const scenario = usageScenarioForComparison(observation, state.xMetric, state.statistic, state.strict)
       return scenario ? [{ observation, scenario }] : []
     })
-  }, [displayedObservations, state.includeUsageScenarios, state.xMetric, state.statistic, state.strict])
+  }, [displayedChartObservations, state.includeUsageScenarios, state.xMetric, state.statistic, state.strict])
   const usageScenariosByObservationId = useMemo(() => new Map(visibleUsageScenarios.map(({ observation, scenario }) => [observation.id, scenario])), [visibleUsageScenarios])
 
-  const chartScoreDetails = useMemo(() => displayedObservations.map((observation) => ({ observation, score: displayScoreResult(observation, state.scoreMetric) })), [displayedObservations, state.scoreMetric])
+  const chartScoreDetails = useMemo(() => displayedChartObservations.map((observation) => ({ observation, score: displayScoreResult(observation, state.scoreMetric) })), [displayedChartObservations, state.scoreMetric])
   const chartScoreMetrics = new Set(chartScoreDetails.filter(({ score }) => hasPercentageScoreScale(score)).map(({ score }) => score.metric))
   const chartHasMixedDefinitions = chartScoreMetrics.size > 1 || chartScoreDetails.some(({ score }) => score.metric !== state.scoreMetric && hasPercentageScoreScale(score))
   const chartHasUnscaledScores = chartScoreDetails.some(({ score }) => !hasPercentageScoreScale(score))
   const chartableObservations = useMemo(() => chartScoreDetails.filter(({ score }) => hasPercentageScoreScale(score)).map(({ observation }) => observation), [chartScoreDetails])
-  const scoreCompatible = useMemo(() => displayedObservations.filter((observation) => scoreResult(observation, state.scoreMetric)), [displayedObservations, state.scoreMetric])
+  const scoreCompatible = useMemo(() => displayedChartObservations.filter((observation) => scoreResult(observation, state.scoreMetric)), [displayedChartObservations, state.scoreMetric])
   const coverage = useMemo(() => getEfficiencyCoverage(scoreCompatible, state.xMetric, state.statistic), [scoreCompatible, state.xMetric, state.statistic])
   const scoreOnly = useMemo(() => chartScoreDetails.filter(({ observation }) => {
     const metric = state.xMetric === 'cost'
@@ -186,9 +205,9 @@ function App() {
 
   const selectedObservation = dataset?.observations.find((observation) => observation.id === state.selectedObservationId) ?? null
   const sourceFreshness = dataset ? freshness(dataset.lastSuccessfulCheckAt) : null
-  const strictIncomplete = state.strict ? unstrictObservations.filter((observation) => strictExclusionReason(observation, state.xMetric, state.statistic, state.scoreMetric)).length : 0
-  const strictExcluded = unstrictObservations.length - filteredObservations.length
-  const strictReasons = state.strict ? unstrictObservations.reduce<Record<string, number>>((counts, observation) => {
+  const strictIncomplete = state.strict ? chartUnstrictObservations.filter((observation) => strictExclusionReason(observation, state.xMetric, state.statistic, state.scoreMetric)).length : 0
+  const strictExcluded = chartUnstrictObservations.length - chartFilteredObservations.length
+  const strictReasons = state.strict ? chartUnstrictObservations.reduce<Record<string, number>>((counts, observation) => {
     const reason = strictExclusionReason(observation, state.xMetric, state.statistic, state.scoreMetric)
     if (reason) counts[reason] = (counts[reason] ?? 0) + 1
     return counts
@@ -349,7 +368,7 @@ function App() {
           <div className="hero-layout">
             <div className="hero-copy">
               <p className="hero-deck">A field guide to reported DeepSWE scores and the resources behind them. Follow each model’s own effort path—cost, output tokens, and reported time—without blending experiments.</p>
-      <div className="hero-note"><span aria-hidden="true">↳</span><span>Measured curves connect only reported configurations. Hollow diamonds, when enabled, are separate usage scenarios—not measurements or interpolated effort levels.</span></div>
+      <div className="hero-note"><span aria-hidden="true">↳</span><span>Measured curves connect only reported configurations. Hollow diamonds, when enabled, are separately labeled cost/usage scenarios—not normalized measurements or interpolated effort levels.</span></div>
             </div>
             <div className="hero-aside">
               <span className="side-index">01 / MEASUREMENT ATLAS</span>
@@ -411,29 +430,29 @@ function App() {
                 <div className="metric-toggle" role="group" aria-label="Efficiency statistic"><button type="button" className={state.statistic === 'mean' ? 'selected' : ''} aria-pressed={state.statistic === 'mean'} onClick={() => update({ statistic: 'mean' })}>Mean</button><button type="button" className={state.statistic === 'median' ? 'selected' : ''} aria-pressed={state.statistic === 'median'} onClick={() => update({ statistic: 'median' })}>Median</button></div>
                 <div className="metric-toggle" role="group" aria-label="Horizontal axis scale"><button type="button" className={state.scale === 'linear' ? 'selected' : ''} aria-pressed={state.scale === 'linear'} onClick={() => update({ scale: 'linear' })}>Linear</button><button type="button" className={state.scale === 'log' ? 'selected' : ''} aria-pressed={state.scale === 'log'} onClick={() => update({ scale: 'log' })}>Log</button></div>
                 <label className="line-toggle"><input type="checkbox" checked={connections} onChange={(event) => { setConnections(event.target.checked); update({ connections: event.target.checked }) }} /> Connect levels</label>
-                <label className="scenario-toggle"><input type="checkbox" checked={state.includeUsageScenarios} onChange={(event) => update({ includeUsageScenarios: event.target.checked })} /><span><strong>Include usage scenarios</strong><small>Estimated · low / very low evidence quality · not measured</small></span></label>
+                <label className="scenario-toggle"><input type="checkbox" checked={state.includeUsageScenarios} onChange={(event) => update({ includeUsageScenarios: event.target.checked })} /><span><strong>Include usage scenarios</strong><small>Cost and usage proxies · qualitative evidence · separate from measurements</small></span></label>
               </div>
             </div>
 
             {state.xMetric === 'time' && <div className="timing-scope-note"><strong>Reported time, scope incomplete.</strong> Measured values are source-reported seconds per scored rollout attempt; timer boundaries and duration-specific sample counts are not reported. Strict timing comparison excludes these rows. Optional scenarios are separate and are not verified end-to-end durations.</div>}
             {state.xMetric === 'outputTokens' && <div className="timing-scope-note token-scope-note"><strong>Output-token semantics are not fully matched.</strong> Reasoning-token inclusion is unknown for most configurations; strict comparisons require it to be known.</div>}
             {state.includeUsageScenarios && state.strict && <div className="usage-scenario-note" role="note"><strong>Strict comparison excludes usage scenarios.</strong> Only source-reported measurements are considered in strict groups.</div>}
-            {state.includeUsageScenarios && !state.strict && state.statistic === 'median' && <div className="usage-scenario-note" role="note"><strong>Scenarios are mean-only.</strong> Median remains limited to source-reported measurements; scenario targets without median values are listed in the no-data gutter.</div>}
+            {state.includeUsageScenarios && !state.strict && state.statistic === 'median' && <div className="usage-scenario-note" role="note"><strong>Scenarios are shown only with the Mean control.</strong> Median remains limited to source-reported measurements. Fireworks source Cost/Task rows do not publish a mean/median statistic and keep that limitation in their scenario label.</div>}
             {state.includeUsageScenarios && !state.strict && state.statistic === 'mean' && visibleUsageScenarios.length > 0 && <div className="usage-scenario-note" role="note">
-              <strong>Estimated usage scenarios · not DeepSWE measurements.</strong> Hollow diamonds are standalone, mean-only scenarios for exact Artificial Analysis model/effort observations. The separate developer reports do not inherit them when their evaluation harness/protocol is unknown.
+              <strong>Mean-only cost and usage scenarios · separate from measurements.</strong> Hollow diamonds are standalone. Cross-platform scenarios stay anchored to exact Artificial Analysis rows; cost-only proxies are not populated as measured cost, output-token, or time values.
               <ul>{visibleUsageScenarios.map(({ observation, scenario }) => {
                 const value = state.xMetric === 'cost'
-                  ? `$${scenario.costUsdPerScoredAttempt.toFixed(2)}/attempt`
+                  ? `$${scenario.costUsd.toFixed(2)} · ${scenario.costUnit}`
                   : state.xMetric === 'outputTokens'
-                    ? `${new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(scenario.outputTokensPerScoredAttempt)} output tokens/attempt`
-                    : `${new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(scenario.timeSecondsPerScoredAttempt / 60)} min/attempt`
+                    ? scenario.outputTokensPerScoredAttempt === null ? `cost-only $${scenario.costUsd.toFixed(2)} · no output-token estimate` : `${new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(scenario.outputTokensPerScoredAttempt)} output tokens/attempt`
+                    : scenario.timeSecondsPerScoredAttempt === null ? `cost-only $${scenario.costUsd.toFixed(2)} · no time estimate` : `${new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(scenario.timeSecondsPerScoredAttempt / 60)} min/attempt`
                 const range = state.xMetric === 'cost' ? scenario.costSensitivityRange : state.xMetric === 'outputTokens' ? scenario.outputTokenSensitivityRange : scenario.timeSensitivityRange
                 return <li key={scenario.id}>{observation.model.reportedName}: {scenario.confidence === 'low' ? 'low' : 'very low'} qualitative evidence; {value}{range ? ' · observed small-sample sensitivity only, not a confidence interval' : ' · no defensible range or prediction interval'}.</li>
               })}</ul>
               {state.xMetric === 'outputTokens'
                 ? <p>Only output-only Intelligence Index counts or exact-model/effort DeepSWE measurements support output scenarios. Coding Agent suite totals mix input, cache, cache-write, reasoning, and output; they are never displayed as output tokens.</p>
                 : state.xMetric === 'cost'
-                  ? <p>Cost scenarios use separate source-reported DeepSWE rows or calibrated suite-cost transfer. Cost is not derived from scores, output counts, or current rate cards; source price-basis gaps make the sensitivity envelope especially wide.</p>
+                   ? <p>Costs are either Datacurve per-attempt references, same-row Artificial Analysis three-benchmark suite proxies, or exact-row Fireworks Cost/Task reports whose accounting basis is unknown. The latter two are not DeepSWE-only mean-cost measurements and are not transferred to other experiments. No cost is derived from scores, token counts, or current rate cards.</p>
                   : <p>Time scenarios use measured per-task wall-clock pairs or an exact-model/effort DeepSWE reference. AA pools multiple benchmarks and Datacurve timer boundaries are unspecified; these are reported-time scenarios, not verified end-to-end durations.</p>}
               <p>Evidence grades are qualitative, not probabilities. Sensitivity envelopes are observed sample ranges, not confidence or prediction intervals. Strict comparisons exclude scenarios.</p>
             </div>}
@@ -441,17 +460,19 @@ function App() {
               {state.strict && <div className="strict-note" role="status">
                 <div className="strict-note-copy"><strong>Strict mode groups exact known protocols.</strong><span>Protocol, task scope, score definition, population, and metric-specific scope must match. Incompatible groups are never overlaid; select one group explicitly.</span></div>
                 <label className="strict-group-picker"><span>Compatible protocol group</span><select value={selectedStrictGroupAvailable ? state.strictGroup : ''} onChange={(event) => update({ strictGroup: event.target.value })}><option value="">{strictGroups.length ? 'Choose a protocol group' : 'No fully specified groups available'}</option>{strictGroups.map((group) => <option value={group.key} key={group.key}>{group.label}</option>)}</select></label>
-                <p>{strictGroups.length === 0 ? 'No complete groups match the current filters. Unknown protocol fields fail closed.' : !selectedStrictGroupAvailable ? `${strictGroups.length} compatible group${strictGroups.length === 1 ? '' : 's'} available. Select a group to compare; no group is selected automatically.` : `${filteredObservations.length} observations in the selected protocol group; ${strictExcluded - strictIncomplete} selected rows belong to another incompatible group.`}</p>
+               <p>{strictGroups.length === 0 ? 'No complete groups match the current filters. Unknown protocol fields fail closed.' : !selectedStrictGroupAvailable ? `${strictGroups.length} compatible group${strictGroups.length === 1 ? '' : 's'} available. Select a group to compare; no group is selected automatically.` : `${chartFilteredObservations.length} observations in the selected protocol group; ${strictExcluded - strictIncomplete} selected rows belong to another incompatible group.`}</p>
                 {Object.entries(strictReasons).length > 0 && <small>{Object.entries(strictReasons).slice(0, 3).map(([reason, count]) => `${count} excluded: ${reason}`).join(' · ')}</small>}
               </div>}
-            <div className="coverage-row" role="status"><span className="coverage-big">{coverage.available}<i> / {coverage.total}</i></span><span>Source-reported {state.statistic} {xMetricLabels[state.xMetric].axis} values among observations reporting {scoreMetricLabels[state.scoreMetric]}.</span><span className="omission-count">{coverage.missing} without source value{visibleUsageScenarios.length ? ` · ${visibleUsageScenarios.length} scenario${visibleUsageScenarios.length === 1 ? '' : 's'} active` : ''}</span></div>
+            <div className="coverage-row" role="status"><span className="coverage-big">{coverage.available}<i> / {coverage.total}</i></span><span>{state.xMetric === 'cost' ? `Source-reported ${state.statistic} USD per scored-attempt measurements among observations reporting ${scoreMetricLabels[state.scoreMetric]}; separately labeled task-cost scenarios do not increase coverage.` : `Source-reported ${state.statistic} ${xMetricLabels[state.xMetric].axis} values among observations reporting ${scoreMetricLabels[state.scoreMetric]}.`}</span><span className="omission-count">{coverage.missing} without source value{visibleUsageScenarios.length ? ` · ${visibleUsageScenarios.length} scenario record${visibleUsageScenarios.length === 1 ? '' : 's'}` : ''}</span></div>
 
             <div className="analysis-grid">
               <div className="chart-card">
                 <div className="chart-card-head"><div><strong>{scoreMetricLabels[state.scoreMetric]}</strong><span>Score axis · explicit percentage/fraction values; reference key gives each source metric</span></div><button className="icon-action" type="button" aria-label="Download current chart as SVG" onClick={exportChartSvg}>↓ SVG</button></div>
                 <ExplorerChart
-                  observations={displayedObservations}
+                  observations={displayedChartObservations}
                   usageScenarios={visibleUsageScenarios}
+                  chartSuppressions={visibleChartSuppressions}
+                  suppressedCount={visibleChartSuppressions.size}
                   xMetric={state.xMetric}
                   statistic={state.statistic}
                   strict={state.strict}
@@ -482,7 +503,7 @@ function App() {
                     {legendSeries.length === 0 && <li className="legend-empty">No explicit percentage/fraction score marks match these filters.</li>}
                   </ul>
                 </section>
-                <EvidencePanel observation={selectedObservation} xMetric={state.xMetric} statistic={state.statistic} scoreMetric={state.scoreMetric} usageScenario={selectedObservation ? usageScenariosByObservationId.get(selectedObservation.id) ?? null : null} />
+                <EvidencePanel observation={selectedObservation} xMetric={state.xMetric} statistic={state.statistic} scoreMetric={state.scoreMetric} usageScenario={selectedObservation ? usageScenariosByObservationId.get(selectedObservation.id) ?? null : null} chartSuppression={selectedObservation ? visibleChartSuppressions.get(selectedObservation.id) ?? null : null} />
               </aside>
             </div>
           </section>
@@ -520,7 +541,7 @@ function App() {
                 </div></details>
               </div>
             </div>
-            <ResultsTable observations={displayedObservations} xMetric={state.xMetric} statistic={state.statistic} scoreMetric={state.scoreMetric} selectedId={state.selectedObservationId} usageScenarios={usageScenariosByObservationId} onSelect={selectObservation} onIsolate={isolateModel} />
+            <ResultsTable observations={displayedObservations} xMetric={state.xMetric} statistic={state.statistic} scoreMetric={state.scoreMetric} selectedId={state.selectedObservationId} usageScenarios={usageScenariosByObservationId} chartSuppressions={visibleChartSuppressions} onSelect={selectObservation} onIsolate={isolateModel} />
           </section>
 
           <section className="share-strip">

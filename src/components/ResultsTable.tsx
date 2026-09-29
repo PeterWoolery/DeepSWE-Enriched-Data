@@ -9,6 +9,7 @@ export interface ResultsTableProps {
   scoreMetric: ScoreMetric
   selectedId: string | null
   usageScenarios: ReadonlyMap<string, UsageScenario>
+  chartSuppressions: ReadonlyMap<string, Observation[]>
   onSelect: (id: string) => void
   onIsolate: (modelId: string) => void
 }
@@ -32,7 +33,7 @@ function categoryClass(category: Observation['sourceCategory']) {
   return `source-mark source-${category}`
 }
 
-export function ResultsTable({ observations, xMetric, statistic, scoreMetric, selectedId, usageScenarios, onSelect, onIsolate }: ResultsTableProps) {
+export function ResultsTable({ observations, xMetric, statistic, scoreMetric, selectedId, usageScenarios, chartSuppressions, onSelect, onIsolate }: ResultsTableProps) {
   const sorted = [...observations].sort((left, right) => {
     const modelOrder = left.model.reportedName.localeCompare(right.model.reportedName)
     return modelOrder || (left.effort.order ?? Number.MAX_SAFE_INTEGER) - (right.effort.order ?? Number.MAX_SAFE_INTEGER)
@@ -67,7 +68,7 @@ export function ResultsTable({ observations, xMetric, statistic, scoreMetric, se
             const scenarioValue = scenarioMetricValue === null
               ? null
               : xMetric === 'cost'
-                ? `$${scenarioMetricValue.toFixed(2)} / scored attempt`
+                ? `$${scenarioMetricValue.toFixed(2)} · ${scenario!.costUnit}`
                 : xMetric === 'outputTokens'
                   ? `${new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(scenarioMetricValue)} output tokens / scored attempt`
                   : `${displayDuration(scenarioMetricValue)} reported time / scored attempt`
@@ -77,6 +78,12 @@ export function ResultsTable({ observations, xMetric, statistic, scoreMetric, se
             const calibrationDescription = !scenario
               ? ''
               : xMetric === 'cost' ? scenario.costCalibrationDescription : xMetric === 'outputTokens' ? scenario.outputCalibrationDescription : scenario.timeCalibrationDescription
+            const chartPrecedence = chartSuppressions.get(observation.id)
+            const chartSuppressionReason = !chartPrecedence
+              ? null
+              : observation.benchmark.version === null
+                ? `this report does not specify its benchmark version; Datacurve has a DeepSWE v${chartPrecedence[0]?.benchmark.version} result for the same model`
+                : `Datacurve has an applicable DeepSWE v${chartPrecedence[0]?.benchmark.version} result for the same model`
             const isSelected = selectedId === observation.id
             return (
               <tr key={observation.id} className={isSelected ? 'selected-row' : ''} data-observation-id={observation.id}>
@@ -86,6 +93,7 @@ export function ResultsTable({ observations, xMetric, statistic, scoreMetric, se
                   </button>
                   <span className="table-subline">Reported: {observation.model.reportedName}</span>
                   <span className="table-subline">{observation.publisher}</span>
+                  {chartSuppressionReason && <span className="table-chart-suppression">Not charted: {chartSuppressionReason}. Chart precedence does not merge results; this source report remains in the table and exports.</span>}
                 </th>
                 <td>{observation.benchmark.version === null ? <span className="unknown-value">unspecified</span> : `v${observation.benchmark.version}`}</td>
                 <td>{observation.effort.reportedLabel ?? <span className="unknown-value">not reported</span>}</td>
@@ -98,16 +106,16 @@ export function ResultsTable({ observations, xMetric, statistic, scoreMetric, se
                 <td>
                   {sourceReportedCostText ? <><span className="unknown-value">Not a mean/median metric</span><span className="table-subline">Source-reported Cost/Task {sourceReportedCostText}</span></> : display(metric.value, metric.unit)}
                   {metric.value === null && <span className="table-subline">{metric.missingReason}</span>}
-                  {scenarioValue && scenario && <span className="table-usage-scenario">
-                    <strong>Estimated scenario · {scenario.confidence === 'low' ? 'low' : 'very low'} qualitative confidence · not measured</strong>
+                  {scenario && <span className="table-usage-scenario">
+                    <strong>{scenario.costScenarioType === 'source-reported-cost' ? 'Source-reported cost scenario · scope incomplete' : `Estimated scenario · ${scenario.confidence === 'low' ? 'low' : 'very low'} qualitative confidence · not measured`}</strong>
                     <small>Qualitative evidence grade, not a probability.</small>
-                    <span>{scenarioValue}</span>
+                    {scenarioValue ? <span>{scenarioValue}</span> : <span>Cost-only: ${scenario.costUsd.toFixed(2)} · {scenario.costUnit}. No estimate for the selected X metric.</span>}
                     {scenarioRange
                       ? <small>Sensitivity envelope {xMetric === 'cost' ? `$${scenarioRange[0].toFixed(2)}–$${scenarioRange[1].toFixed(2)}` : xMetric === 'outputTokens' ? `${new Intl.NumberFormat('en').format(scenarioRange[0])}–${new Intl.NumberFormat('en').format(scenarioRange[1])} tokens` : `${displayDuration(scenarioRange[0])}–${displayDuration(scenarioRange[1])}`}; not a confidence interval.</small>
                       : <small>No defensible range or prediction interval is available.</small>}
                     <small>{calibrationDescription}</small>
-                    {xMetric === 'outputTokens' && <small>{new Intl.NumberFormat('en').format(scenario.aaCodingSuiteMixedTokensPerTask)} AA suite total tokens/task mixes categories and is not used as output; cost is not converted into tokens.</small>}
-                    {xMetric === 'time' && <small>{displayDuration(scenario.aaCodingSuiteTimeSecondsPerTask)} AA pooled suite time/task is contextual only; timer boundaries are not fully matched, so this is not an end-to-end duration.</small>}
+                    {xMetric === 'outputTokens' && scenario.aaCodingSuiteMixedTokensPerTask !== null && <small>{new Intl.NumberFormat('en').format(scenario.aaCodingSuiteMixedTokensPerTask)} AA suite total tokens/task mixes categories and is not used as output; cost is not converted into tokens.</small>}
+                    {xMetric === 'time' && scenario.aaCodingSuiteTimeSecondsPerTask !== null && <small>{displayDuration(scenario.aaCodingSuiteTimeSecondsPerTask)} AA pooled suite time/task is contextual only; timer boundaries are not fully matched, so this is not an end-to-end duration.</small>}
                     <small>Evidence: {scenario.sources.map((source, index) => <span key={source.id}>{index ? ' · ' : ''}<a href={source.url} target="_blank" rel="noreferrer">{source.publisher} ({source.accessedOn})</a></span>)}</small>
                   </span>}
                 </td>

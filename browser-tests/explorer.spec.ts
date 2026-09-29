@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
+import { datacurveChartPrecedence, getEfficiencyCoverage, scoreResult } from '../src/lib/comparison'
 import type { Dataset } from '../src/lib/schema'
 
 interface ExportedObservation {
@@ -197,10 +198,63 @@ test('default view surfaces supplemental reports with their reported score metri
   await expect(page.locator('.results-table tbody tr')).toHaveCount(approvedCount)
 })
 
+test('Datacurve precedence removes duplicate chart marks without hiding source rows or restoring them through filters', async ({ page }) => {
+  await page.goto('?view=combined')
+  const dataset = JSON.parse(await readFile(new URL('../data/approved/dataset.json', import.meta.url), 'utf8')) as Dataset
+  const precedence = datacurveChartPrecedence(dataset.observations, dataset.sourceRetrieval.sourceId)
+  const chartRows = dataset.observations.filter((observation) =>
+    !precedence.has(observation.id) && ['organizer', 'developer', 'independent', 'local'].includes(observation.sourceCategory),
+  )
+  const expectedCoverage = getEfficiencyCoverage(chartRows.filter((observation) => scoreResult(observation, 'pass_at_1')), 'cost', 'mean')
+  await expect(page.locator('.coverage-big')).toHaveText(`${expectedCoverage.available} / ${expectedCoverage.total}`)
+  const reportId = 'aa-claude-code-opus-5-max-v1.1'
+  const reportRow = page.locator(`.results-table tbody tr[data-observation-id="${reportId}"]`)
+  const fireworksId = 'fireworks-deepswe-gpt-6-astra-xhigh'
+  const fireworksRow = page.locator(`.results-table tbody tr[data-observation-id="${fireworksId}"]`)
+  await expect(reportRow).toHaveCount(1)
+  await expect(reportRow.locator('.table-chart-suppression')).toContainText('Datacurve has an applicable DeepSWE v1.1 result for the same model')
+  await expect(fireworksRow).toHaveCount(1)
+  await expect(fireworksRow.locator('td').nth(0)).toContainText('unspecified')
+  await expect(fireworksRow.locator('.table-chart-suppression')).toContainText('does not specify its benchmark version')
+  await expect(fireworksRow.locator('.table-chart-suppression')).toContainText('Datacurve has a DeepSWE v1.1 result for the same model')
+  await expect(page.locator(`.estimated-point[data-observation-id="${fireworksId}"]`)).toHaveCount(0)
+  await expect(page.locator(`.plot-point[data-observation-id="${reportId}"]`)).toHaveCount(0)
+  await expect(page.locator(`.no-data-point[data-observation-id="${reportId}"]`)).toHaveCount(0)
+  await expect(page.locator('.chart-precedence-note')).toContainText('15 matching non-Datacurve reports')
+
+  await reportRow.locator('.table-model-button').click()
+  await expect(page.locator('.selected-guide')).toHaveCount(0)
+  await expect(page.locator(`[data-suppressed-selection="${reportId}"]`)).toContainText('no chart position or guide is assigned')
+  await expect(page.locator('.evidence-panel .chart-suppression-detail')).toContainText('Not plotted in the combined chart')
+
+  await page.locator('.source-toggle-organizer input').uncheck()
+  await expect(reportRow).toHaveCount(1)
+  await expect(page.locator(`.plot-point[data-observation-id="${reportId}"], .no-data-point[data-observation-id="${reportId}"]`)).toHaveCount(0)
+  await expect(page.locator(`[data-suppressed-selection="${reportId}"]`)).toBeVisible()
+
+  await page.getByRole('combobox', { name: /^Publisher \/ source$/ }).selectOption('Fireworks AI')
+  await page.getByRole('combobox', { name: /^Harness \/ protocol$/ }).selectOption('unknown')
+  await expect(page.locator('.results-table tbody tr')).toHaveCount(4)
+  await expect(fireworksRow.locator('.table-chart-suppression')).toContainText('does not specify its benchmark version')
+  await expect(page.locator(`.estimated-point[data-observation-id="${fireworksId}"], .plot-point[data-observation-id="${fireworksId}"], .no-data-point[data-observation-id="${fireworksId}"]`)).toHaveCount(0)
+  await expect(page.locator('.chart-precedence-note')).toContainText('3 matching non-Datacurve reports')
+  await fireworksRow.locator('.table-model-button').click()
+  await expect(page.locator('.selected-guide')).toHaveCount(0)
+  await expect(page.locator(`[data-suppressed-selection="${fireworksId}"]`)).toBeVisible()
+  await expect(page.locator('.evidence-panel .chart-suppression-detail')).toContainText('does not specify its benchmark version')
+
+  const allJsonDownload = page.waitForEvent('download')
+  await page.getByRole('link', { name: 'All JSON' }).click()
+  const path = await (await allJsonDownload).path()
+  const exported = JSON.parse(await readFile(path!, 'utf8')) as ExportedDataset
+  expect(exported.observations.some((row) => row.id === reportId)).toBe(true)
+  expect(exported.observations.some((row) => row.id === fireworksId)).toBe(true)
+})
+
 test('no-data marks use a separate gutter through X/statistic/scale changes', async ({ page }) => {
   await page.goto('./')
-  await expect(page.locator('.no-data-point')).toHaveCount(39)
-  await expect(page.locator('.no-data-lane-count')).toHaveText('39')
+  await expect(page.locator('.no-data-point')).toHaveCount(24)
+  await expect(page.locator('.no-data-lane-count')).toHaveText('24')
   expect(await noDataSymbolOverlaps(page)).toEqual([])
   const lunaReference = page.locator('.no-data-point[data-observation-id="openai-gpt-6-luna-v1.1-max"]')
   const opusReference = page.locator('.no-data-point[data-observation-id="anthropic-claude-opus-5.5-v1.1"]')
@@ -301,12 +355,12 @@ test('publisher/model filters and strict mode do not combine unknown protocol gr
   const versionUnknownPaperRow = page.locator('.results-table tbody tr').filter({ hasText: '70.0%' })
   await expect(versionUnknownPaperRow.locator('td').nth(0)).toContainText('unspecified')
 
-  await page.getByLabel('Benchmark version').selectOption('1.1')
+  await page.getByRole('combobox', { name: /^Benchmark version$/ }).selectOption('1.1')
   await expect(page).toHaveURL(/version=1.1/)
   await expect(page.locator('.results-table tbody tr')).toHaveCount(108)
-  await page.getByLabel('Harness / protocol').selectOption('mini-swe-agent')
+  await page.getByRole('combobox', { name: /^Harness \/ protocol$/ }).selectOption('mini-swe-agent')
   await expect(page.locator('.results-table tbody tr')).toHaveCount(72)
-  await page.getByLabel('Harness / protocol').selectOption('all')
+  await page.getByRole('combobox', { name: /^Harness \/ protocol$/ }).selectOption('all')
 
   const sourceToggles = page.locator('.source-filter input[type="checkbox"]')
   await sourceToggles.nth(0).uncheck()
@@ -396,13 +450,13 @@ test('score-only reports, reviewed evidence and all/filtered downloads keep attr
   await page.goto('?view=combined&score=reported_score_unspecified')
   const approved = await loadDataset(page)
   const approvedCount = approved.observations.length
-  const scoreOnlyCount = approved.observations.filter((row) => row.metrics.cost.value === null).length
+  const scoreOnlyCount = approved.observations.filter((row) => row.metrics.cost.value === null).length - 15
   await expect(page.locator('.results-table tbody tr')).toHaveCount(approvedCount)
   await expect(page.locator('.score-only-list li')).toHaveCount(scoreOnlyCount)
   await expect(page.locator('.metric-warning')).toContainText('unspecified units')
   await expect(page.locator('.metric-chart-warning')).toContainText('raw values with unspecified units are omitted')
-  await expect(page.locator('.legend-symbol.source-developer')).toHaveCount(10)
-  await expect(page.locator('.legend-symbol.source-independent')).toHaveCount(16)
+  await expect(page.locator('.legend-symbol.source-developer')).toHaveCount(8)
+  await expect(page.locator('.legend-symbol.source-independent')).toHaveCount(7)
 
   const rawTableRow = page.locator('.results-table tbody tr').filter({ hasText: 'DeepSeek-V4.1-Flash' }).filter({ hasText: '74.2' })
   const explicitPercentRow = page.locator('.results-table tbody tr').filter({ hasText: 'Claude Opus 5.5' }).filter({ hasText: '74.2%' })
@@ -412,7 +466,7 @@ test('score-only reports, reviewed evidence and all/filtered downloads keep attr
   await expect(rawTableRow.locator('td').nth(2)).not.toContainText('74.2%')
   expect(rawObservationId).not.toBeNull()
   await expect(page.locator(`.no-data-point[data-observation-id="${rawObservationId}"]`)).toHaveCount(0)
-  await expect(page.locator('.chart-footnote')).toContainText('source score unit not established for the percentage axis')
+  await expect(page.locator('.chart-footnote:not(.chart-precedence-note)')).toContainText('source score unit not established for the percentage axis')
   await expect(explicitPercentRow.locator('td').nth(2)).toHaveText('74.2%')
   await rawTableRow.getByRole('button', { name: 'Details' }).click()
   await expect(page.locator('.evidence-score strong')).toHaveText('74.2')
@@ -496,7 +550,33 @@ test('SVG export, submission draft, methodology/source pages, and mobile layout 
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.width)
 })
 
-test('usage scenarios stay separate from measurements, are mean-only, and export independently', async ({ page }) => {
+test('cost-only source scenarios preserve their basis and leave unsupported X metrics without numeric guides', async ({ page }) => {
+  await page.goto('?view=combined&q=Fireworks')
+  const reportId = 'fireworks-deepswe-deepseek-v4.1-flash-max'
+  const point = page.locator(`.estimated-point[data-observation-id="${reportId}"]`)
+  await expect(point).toHaveCount(1)
+  await expect(point).toHaveAttribute('aria-label', /Source-reported cost scenario/)
+  await expect(point).toHaveAttribute('aria-label', /\$0\.43.*source-reported USD per task.*accounting basis unspecified/)
+  await point.click()
+  await expect(page.locator('.selected-guide[data-selected-guide-type="estimated"] .selected-guide-x-label')).toContainText('SRC ·')
+  const evidence = page.locator('.usage-evidence')
+  await expect(evidence).toContainText('SOURCE-REPORTED COST SCENARIO')
+  await expect(evidence).toContainText('not normalized as a mean/median cost per scored attempt')
+  await expect(evidence).not.toContainText('Mean output tokens')
+  await expect(evidence).not.toContainText('Mean reported time')
+
+  const missingOutput = page.locator(`.no-data-point[data-observation-id="${reportId}"]`)
+  await page.getByRole('button', { name: 'Output tokens per task', exact: true }).click()
+  await expect(page.locator(`.estimated-point[data-observation-id="${reportId}"]`)).toHaveCount(0)
+  await expect(missingOutput).toHaveAttribute('aria-label', /cost-only scenario exists.*no output tokens per task estimate is available/)
+  await missingOutput.click()
+  const noDataGuide = page.locator(`.selected-guide[data-selected-guide-for="${reportId}"]`)
+  await expect(noDataGuide).toHaveAttribute('data-selected-guide-type', 'no-data')
+  await expect(noDataGuide.locator('.selected-guide-x')).toHaveCount(0)
+  await expect(noDataGuide.locator('[data-guide-axis="x-missing"]')).toHaveText('NO OUTPUT-TOKEN DATA')
+})
+
+test('usage scenarios stay separate from measurements and export independently', async ({ page }) => {
   await page.goto('?view=combined')
   const scenarioToggle = page.getByRole('checkbox', { name: /Include usage scenarios/ })
   await expect(scenarioToggle).toBeChecked()
@@ -508,18 +588,18 @@ test('usage scenarios stay separate from measurements, are mean-only, and export
   const opusEstimate = page.locator(`.estimated-point[data-observation-id="${opusId}"]`)
   await expect(lunaEstimate).toHaveAttribute('aria-label', /Estimated usage scenario — not a DeepSWE measurement/)
   await expect(lunaEstimate).toHaveAttribute('aria-label', /64%.*pass@1/)
-  await expect(lunaEstimate).toHaveAttribute('aria-label', /\$0\.21 per scored attempt/)
+  await expect(lunaEstimate).toHaveAttribute('aria-label', /\$0\.21.*USD per scored rollout attempt/)
   await expect(lunaEstimate).toHaveAttribute('aria-label', /sensitivity envelope.*not a confidence interval/)
   await expect(opusEstimate).toHaveAttribute('aria-label', /Very low|very low/)
   await expect(opusEstimate).toHaveAttribute('aria-label', /No defensible sensitivity range/)
-  await expect(page.locator('.usage-scenario-note')).toContainText('not DeepSWE measurements')
-  await expect(page.locator('.usage-scenario-note')).toContainText('Cost scenarios use separate source-reported DeepSWE rows')
+  await expect(page.locator('.usage-scenario-note')).toContainText('separate from measurements')
+  await expect(page.locator('.usage-scenario-note')).toContainText('same-row Artificial Analysis three-benchmark suite proxies')
   await expect(page.locator(`.no-data-point[data-observation-id="${lunaId}"]`)).toHaveCount(0)
 
   const lunaRow = page.locator(`.results-table tr[data-observation-id="${lunaId}"]`)
   await expect(lunaRow.locator('td').nth(3)).toContainText('Mean task cost is not inferred')
   await expect(lunaRow.locator('td').nth(3)).toContainText('Estimated scenario')
-  await expect(lunaRow.locator('td').nth(3)).toContainText('$0.21 / scored attempt')
+  await expect(lunaRow.locator('td').nth(3)).toContainText('$0.21 · USD per scored rollout attempt')
   await expect(lunaRow.locator('td').nth(3)).toContainText('not a confidence interval')
   await lunaEstimate.click()
   await expect(page.locator('.evidence-panel .evidence-score strong')).toHaveText('64%')
@@ -533,14 +613,14 @@ test('usage scenarios stay separate from measurements, are mean-only, and export
   await expect(page).toHaveURL(/scenarios=0/)
   await expect(page.locator('.estimated-point')).toHaveCount(0)
   await expect(page.locator(`.no-data-point[data-observation-id="${lunaId}"]`)).toHaveCount(1)
-  await expect(page.locator('.no-data-lane-count')).toHaveText('46')
+  await expect(page.locator('.no-data-lane-count')).toHaveText('31')
   expect(await noDataSymbolOverlaps(page)).toEqual([])
   await page.reload()
   await expect(scenarioToggle).not.toBeChecked()
 
   await page.goto('?view=combined&x=outputTokens')
-  await expect(page.locator('.estimated-point')).toHaveCount(7)
-  await expect(page.locator('.estimated-point[data-x-metric="outputTokens"]')).toHaveCount(7)
+  await expect(page.locator('.estimated-point')).toHaveCount(3)
+  await expect(page.locator('.estimated-point[data-x-metric="outputTokens"]')).toHaveCount(3)
   await expect(page.locator('.x-tick-label')).not.toHaveCount(0)
   await expect(page.locator('.usage-scenario-note')).toContainText('Coding Agent suite totals mix input, cache, cache-write, reasoning, and output')
   await expect(lunaEstimate).toHaveAttribute('aria-label', /98,422 output tokens per scored attempt/)
@@ -548,11 +628,11 @@ test('usage scenarios stay separate from measurements, are mean-only, and export
   await expect(opusEstimate).toHaveAttribute('aria-label', /No defensible sensitivity range or prediction interval/)
 
   await page.getByRole('button', { name: 'Time per task', exact: true }).click()
-  await expect(page.locator('.estimated-point')).toHaveCount(7)
+  await expect(page.locator('.estimated-point')).toHaveCount(3)
   await expect(page.locator('.usage-scenario-note')).toContainText('Time scenarios use measured per-task wall-clock pairs')
   await page.getByRole('button', { name: 'Median', exact: true }).click()
   await expect(page.locator('.estimated-point')).toHaveCount(0)
-  await expect(page.locator('.usage-scenario-note')).toContainText('Scenarios are mean-only')
+  await expect(page.locator('.usage-scenario-note')).toContainText('Scenarios are shown only with the Mean control')
   await expect(page.locator(`.no-data-point[data-observation-id="${lunaId}"]`)).toHaveCount(1)
   await page.getByRole('button', { name: 'Cost per task', exact: true }).click()
   await page.getByRole('button', { name: 'Median', exact: true }).click()
@@ -569,7 +649,8 @@ test('usage scenarios stay separate from measurements, are mean-only, and export
   await page.getByRole('button', { name: 'All scenarios JSON' }).click()
   const scenarioPath = await (await scenarioDownload).path()
   const scenarioExport = JSON.parse(await readFile(scenarioPath!, 'utf8'))
-  expect(scenarioExport.exportMetadata.exportType).toBe('estimated-usage-scenarios-only')
-  expect(scenarioExport.scenarios).toHaveLength(7)
-  expect(scenarioExport.scenarios.every((item: { recordType: string; measurement: { meanCostUsd: number | null }; scenario: { meanCostUsdPerScoredAttempt: number } }) => item.recordType === 'estimated_usage_scenario' && item.measurement.meanCostUsd === null && item.scenario.meanCostUsdPerScoredAttempt > 0)).toBe(true)
+  expect(scenarioExport.exportMetadata.exportType).toBe('usage-scenarios-only')
+  expect(scenarioExport.scenarios).toHaveLength(14)
+  expect(scenarioExport.scenarios.every((item: { recordType: string; measurement: { meanCostUsd: number | null }; scenario: { costUsd: number; costUnit: string } }) => ['estimated_usage_scenario', 'source_reported_cost_scenario'].includes(item.recordType) && item.measurement.meanCostUsd === null && item.scenario.costUsd > 0 && item.scenario.costUnit.length > 0)).toBe(true)
+  expect(scenarioExport.scenarios.filter((item: { recordType: string }) => item.recordType === 'source_reported_cost_scenario')).toHaveLength(4)
 })
