@@ -15,7 +15,7 @@ concurrency:
 jobs:
   refresh:
     if: github.ref_name == github.event.repository.default_branch
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
       pull-requests: write
@@ -23,12 +23,12 @@ jobs:
       DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
     steps:
       - name: Check out the default branch
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.repository.default_branch }}
           fetch-depth: 0
       - name: Set up Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
       - name: Choose or create the one open refresh branch
@@ -38,16 +38,16 @@ jobs:
         run: |
           set -euo pipefail
           open_branch="$(gh pr list --state open --json headRefName --jq '[.[] | select(.headRefName | startswith("automation/deepswe-refresh"))] | sort_by(.headRefName) | last | .headRefName // empty')"
+          open_branch="${open_branch:-automation/deepswe-refresh-${GITHUB_RUN_ID}}"
           git fetch origin "$DEFAULT_BRANCH"
-          if [[ -n "$open_branch" ]] && git ls-remote --exit-code --heads origin "$open_branch" >/dev/null 2>&1; then
+          if git ls-remote --exit-code --heads origin "$open_branch" >/dev/null 2>&1; then
             git fetch origin "$open_branch"
             git switch --create "$open_branch" --track "origin/$open_branch"
             git merge --no-edit "origin/$DEFAULT_BRANCH"
             echo "REFRESH_BRANCH=$open_branch" >> "$GITHUB_ENV"
           else
-            branch="automation/deepswe-refresh-${GITHUB_RUN_ID}"
-            git switch --create "$branch" "origin/$DEFAULT_BRANCH"
-            echo "REFRESH_BRANCH=$branch" >> "$GITHUB_ENV"
+            git switch --create "$open_branch" "origin/$DEFAULT_BRANCH"
+            echo "REFRESH_BRANCH=$open_branch" >> "$GITHUB_ENV"
           fi
       - name: Install locked dependencies
         run: npm ci
@@ -104,6 +104,21 @@ jobs:
             gh pr edit "$existing" --title "$title" --body "$body"
             echo "Updated refresh PR #$existing" >> "$GITHUB_STEP_SUMMARY"
           else
-            gh pr create --base "$DEFAULT_BRANCH" --head "$REFRESH_BRANCH" --title "$title" --body "$body"
+            if output="$(gh pr create --base "$DEFAULT_BRANCH" --head "$REFRESH_BRANCH" --title "$title" --body "$body" 2>&1)"; then
+              printf '%s\n' "$output"
+            else
+              exit_code=$?
+              printf '%s\n' "$output" >&2
+              if [[ "$output" == *"GitHub Actions is not permitted to create or approve pull requests"* ]]; then
+                echo "::error::Repository policy blocks PR creation. An owner must enable Settings > Actions > General > Workflow permissions > Allow GitHub Actions to create and approve pull requests."
+                {
+                  echo "### Source review PR blocked by repository policy"
+                  echo "An owner must enable **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests**, then save. An overriding organization/enterprise policy may require its administrator."
+                  echo "The review branch \`$REFRESH_BRANCH\` was pushed and retained. Its changes are not published; the default branch and live approved dataset are unaffected."
+                  echo "After enabling the setting, manually open a review PR from the retained branch to \`$DEFAULT_BRANCH\`, or run the refresh again. The workflow does not approve or merge PRs."
+                } >> "$GITHUB_STEP_SUMMARY"
+              fi
+              exit "$exit_code"
+            fi
             echo "Opened a source-review PR from $REFRESH_BRANCH" >> "$GITHUB_STEP_SUMMARY"
           fi
