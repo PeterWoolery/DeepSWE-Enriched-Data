@@ -403,6 +403,47 @@ test('publisher/model filters and strict mode do not combine unknown protocol gr
 
 })
 
+test('Models & sources checkboxes keep all models available through multiselect, deselection and reload', async ({ page }) => {
+  await page.goto('?view=combined')
+  await expect(page.getByRole('heading', { name: 'Models & sources' })).toBeVisible()
+  const options = page.locator('.legend-list input[type="checkbox"]')
+  const initialCount = await options.count()
+  expect(initialCount).toBeGreaterThan(2)
+  const first = options.nth(0)
+  const second = options.nth(1)
+  await expect(first).toBeVisible()
+  await expect(first).toHaveAccessibleName(/\S/)
+  await first.check()
+  await expect(options).toHaveCount(initialCount)
+  const firstKey = new URL(page.url()).searchParams.getAll('model')[0]
+  await second.check()
+  await expect(options).toHaveCount(initialCount)
+  await expect(first).toBeChecked()
+  await expect(second).toBeChecked()
+  const selected = new URL(page.url()).searchParams.getAll('model')
+  expect(selected).toHaveLength(2)
+
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'Models & sources' })).toBeVisible()
+  await expect(options).toHaveCount(initialCount)
+  await expect(first).toBeChecked()
+  await expect(second).toBeChecked()
+  await first.focus()
+  await first.press('Space')
+  await expect(first).not.toBeChecked()
+  await expect(options).toHaveCount(initialCount)
+  await expect(second).toBeChecked()
+  expect(new URL(page.url()).searchParams.getAll('model')).toEqual(selected.filter((key) => key !== firstKey))
+  await second.uncheck()
+  await expect(options).toHaveCount(initialCount)
+  expect(new URL(page.url()).searchParams.getAll('model')).toEqual([])
+
+  await page.setViewportSize({ width: 375, height: 820 })
+  await options.nth(2).check()
+  await expect(options).toHaveCount(initialCount)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375)
+})
+
 test('strict mode explicitly selects one compatible protocol group and reloads that choice', async ({ page }) => {
   const source = JSON.parse(await readFile(new URL('../data/approved/dataset.json', import.meta.url), 'utf8')) as Dataset
   const configs = [
@@ -455,8 +496,9 @@ test('score-only reports, reviewed evidence and all/filtered downloads keep attr
   await expect(page.locator('.score-only-list li')).toHaveCount(scoreOnlyCount)
   await expect(page.locator('.metric-warning')).toContainText('unspecified units')
   await expect(page.locator('.metric-chart-warning')).toContainText('raw values with unspecified units are omitted')
-  await expect(page.locator('.legend-symbol.source-developer')).toHaveCount(8)
-  await expect(page.locator('.legend-symbol.source-independent')).toHaveCount(7)
+  await expect(page.locator('.legend-symbol.source-developer').first()).toBeVisible()
+  await expect(page.locator('.legend-symbol.source-independent').first()).toBeVisible()
+  await expect(page.locator('.legend-card .count-stamp')).toHaveText(String(await page.locator('.legend-list input[type="checkbox"]').count()))
 
   const rawTableRow = page.locator('.results-table tbody tr').filter({ hasText: 'DeepSeek-V4.1-Flash' }).filter({ hasText: '74.2' })
   const explicitPercentRow = page.locator('.results-table tbody tr').filter({ hasText: 'Claude Opus 5.5' }).filter({ hasText: '74.2%' })

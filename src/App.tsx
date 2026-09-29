@@ -116,6 +116,7 @@ function App() {
     for (const model of models) labelCounts.set(model.label, (labelCounts.get(model.label) ?? 0) + 1)
     return models.map(({ key, observation, label }) => ({
       key,
+      observation,
       label: labelCounts.get(label)! > 1
         ? `${label} — ${observation.publisher} · ${observation.series.harness ?? 'harness unknown'}`
         : label,
@@ -185,7 +186,6 @@ function App() {
   const chartScoreMetrics = new Set(chartScoreDetails.filter(({ score }) => hasPercentageScoreScale(score)).map(({ score }) => score.metric))
   const chartHasMixedDefinitions = chartScoreMetrics.size > 1 || chartScoreDetails.some(({ score }) => score.metric !== state.scoreMetric && hasPercentageScoreScale(score))
   const chartHasUnscaledScores = chartScoreDetails.some(({ score }) => !hasPercentageScoreScale(score))
-  const chartableObservations = useMemo(() => chartScoreDetails.filter(({ score }) => hasPercentageScoreScale(score)).map(({ observation }) => observation), [chartScoreDetails])
   const scoreCompatible = useMemo(() => displayedChartObservations.filter((observation) => scoreResult(observation, state.scoreMetric)), [displayedChartObservations, state.scoreMetric])
   const coverage = useMemo(() => getEfficiencyCoverage(scoreCompatible, state.xMetric, state.statistic), [scoreCompatible, state.xMetric, state.statistic])
   const scoreOnly = useMemo(() => chartScoreDetails.filter(({ observation }) => {
@@ -196,17 +196,6 @@ function App() {
         : state.statistic === 'mean' ? observation.metrics.time : observation.metrics.medianTime
     return metric.value === null
   }), [chartScoreDetails, state.xMetric, state.statistic])
-  const legendSeries = useMemo(() => {
-    const groups = new Map<string, Observation[]>()
-    for (const observation of chartableObservations) {
-      const series = groups.get(observation.series.id) ?? []
-      series.push(observation)
-      groups.set(observation.series.id, series)
-    }
-    return [...groups.entries()].map(([id, rows]) => ({ id, first: rows[0]!, count: rows.length }))
-      .sort((a, b) => displayModelName(a.first.model.reportedName).localeCompare(displayModelName(b.first.model.reportedName)))
-  }, [chartableObservations])
-
   const selectedObservation = dataset?.observations.find((observation) => observation.id === state.selectedObservationId) ?? null
   const sourceFreshness = dataset ? freshness(dataset.lastSuccessfulCheckAt) : null
   const strictIncomplete = state.strict ? chartUnstrictObservations.filter((observation) => strictExclusionReason(observation, state.xMetric, state.statistic, state.scoreMetric)).length : 0
@@ -494,17 +483,17 @@ function App() {
               </div>
               <aside className="chart-side-rail">
                 <section className="legend-card" aria-labelledby="legend-title">
-                  <div className="side-card-head"><div><span className="section-kicker">SERIES INDEX</span><h3 id="legend-title">Models &amp; sources</h3></div><span className="count-stamp">{legendSeries.length}</span></div>
-                  <p className="legend-note">Filled markers and paths are measured source rows; hollow amber diamonds are unconnected usage scenarios. No-data marks sit in a separate gutter outside the numeric X scale. Select a name to isolate its source series.</p>
+                  <div className="side-card-head"><div><span className="section-kicker">MODEL SELECTION</span><h3 id="legend-title">Models &amp; sources</h3></div><span className="count-stamp">{availableModels.length}</span></div>
+                  <p className="legend-note">Check models to compare; when none are checked, all models are shown. Filled markers and paths are measured source rows; hollow amber diamonds are unconnected usage scenarios. No-data marks sit outside the numeric X scale.</p>
                   <ul className="legend-list">
-                    {legendSeries.map(({ id, first, count }) => <li key={id}>
-                      <button type="button" className="legend-item" onClick={() => isolateModel(modelKey(first))} onMouseEnter={() => setActiveSeriesId(id)} onMouseLeave={() => setActiveSeriesId(null)} onFocus={() => setActiveSeriesId(id)} onBlur={() => setActiveSeriesId(null)}>
-                        <span className={`legend-symbol source-${first.sourceCategory}`} aria-hidden="true">{first.sourceCategory === 'organizer' ? '●' : first.sourceCategory === 'developer' ? '◆' : first.sourceCategory === 'local' ? '■' : '▲'}</span>
-                        <span className="legend-name">{displayModelName(first.model.reportedName)}<small>{first.publisher} · {first.series.harness ?? 'harness unknown'}</small></span>
-                        <span className="legend-count">{count}</span>
-                      </button>
+                    {availableModels.map(({ key, observation, label }) => <li key={key}>
+                      <label className="legend-item" onMouseEnter={() => setActiveSeriesId(observation.series.id)} onMouseLeave={() => setActiveSeriesId(null)}>
+                        <input type="checkbox" checked={state.selectedModels.includes(key)} onChange={() => toggleModel(key)} onFocus={() => setActiveSeriesId(observation.series.id)} onBlur={() => setActiveSeriesId(null)} />
+                        <span className={`legend-symbol source-${observation.sourceCategory}`} aria-hidden="true">{observation.sourceCategory === 'organizer' ? '●' : observation.sourceCategory === 'developer' ? '◆' : observation.sourceCategory === 'local' ? '■' : '▲'}</span>
+                        <span className="legend-name">{label}<small>{observation.publisher} · {observation.series.harness ?? 'harness unknown'}</small></span>
+                      </label>
                     </li>)}
-                    {legendSeries.length === 0 && <li className="legend-empty">No explicit percentage/fraction score marks match these filters.</li>}
+                    {availableModels.length === 0 && <li className="legend-empty">No models in the selected source types.</li>}
                   </ul>
                 </section>
                 <EvidencePanel observation={selectedObservation} xMetric={state.xMetric} statistic={state.statistic} scoreMetric={state.scoreMetric} usageScenario={selectedObservation ? usageScenariosByObservationId.get(selectedObservation.id) ?? null : null} chartSuppression={selectedObservation ? visibleChartSuppressions.get(selectedObservation.id) ?? null : null} />
