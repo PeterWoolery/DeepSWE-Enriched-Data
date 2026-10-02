@@ -1,6 +1,6 @@
 {
   "status": "checked-unchanged-recorded",
-  "checkedAt": "2026-10-01T21:59:21.364Z",
+  "checkedAt": "2026-10-02T21:26:24.148Z",
   "sourceId": "datacurve-v1.1-json",
   "url": "https://deepswe.datacurve.ai/artifacts/v1.1/leaderboard-live.json",
   "contentSha256": "a7c15d66288fd249c020b9931c017b92d1a3b90e480b3ff34974b752bd030019",
@@ -9,7 +9,7 @@
   "lastModified": null,
   "message": "Conditional request returned 304; approved observations were not modified.",
   "approvedSnapshotModified": true,
-  "recordedAt": "2026-10-01T21:59:31.779Z",
+  "recordedAt": "2026-10-02T21:26:33.670Z",
   "reviewer": "scheduled source check",
   "numericObservationsChanged": false
 }
