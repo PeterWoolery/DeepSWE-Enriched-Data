@@ -521,7 +521,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .analysis-grid { grid-template-columns: 1fr; }
   .chart-side-rail { grid-template-columns: 1fr; }
   .legend-list { max-height: 270px; }
-  .chart-card-head { align-items: flex-start; }
+  .chart-card-head { align-items: flex-start; flex-direction: column; }
   .chart-card-head span { max-width: 230px; line-height: 1.4; }
   .chart-frame { padding: 6px 2px 0; }
   .chart-caption-row { flex-direction: column; }

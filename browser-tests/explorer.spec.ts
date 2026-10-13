@@ -715,11 +715,11 @@ test('fullscreen request failures are reported to the user', async ({ page }) =>
     document.querySelector<HTMLElement>('.analysis-grid')!.requestFullscreen = () => Promise.reject(new Error('Browser denied fullscreen'))
   })
   await page.getByRole('button', { name: 'Enter chart fullscreen', exact: true }).click()
-  await expect(page.locator('.chart-card [role="status"]')).toContainText('The browser could not change fullscreen mode')
+  await expect(page.locator('.chart-card > [role="status"]')).toContainText('The browser could not change fullscreen mode')
   await expect(page.getByRole('button', { name: 'Enter chart fullscreen', exact: true })).toBeVisible()
   await page.evaluate(() => Object.defineProperty(document, 'fullscreenEnabled', { configurable: true, value: false }))
   await page.getByRole('button', { name: 'Enter chart fullscreen', exact: true }).click()
-  await expect(page.locator('.chart-card [role="status"]')).toContainText('Fullscreen is unavailable in this browser')
+  await expect(page.locator('.chart-card > [role="status"]')).toContainText('Fullscreen is unavailable in this browser')
 })
 
 test('SVG export, submission draft, methodology/source pages, and mobile layout work', async ({ page }) => {
