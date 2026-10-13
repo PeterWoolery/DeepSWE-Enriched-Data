@@ -404,7 +404,7 @@ test('publisher/model filters and strict mode do not combine unknown protocol gr
   const sourceToggles = page.locator('.source-filter input[type="checkbox"]')
   await sourceToggles.nth(0).uncheck()
   await expect(page).toHaveURL(/sources=/)
-  await expect(page.locator('.results-table tbody tr')).toHaveCount(43)
+  await expect(page.locator('.results-table tbody tr')).toHaveCount(45)
   await sourceToggles.nth(0).check()
 
   await page.getByRole('searchbox', { name: 'Search models / publishers' }).fill('Astra')
