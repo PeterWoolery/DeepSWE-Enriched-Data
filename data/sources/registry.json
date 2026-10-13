@@ -387,6 +387,23 @@
       "sha256": "33bc6221b61a6b40caf8ee043609f22b36563099fe15e8ff2459c7eb8de45627",
       "accessAndReuse": "Attributed publication date and release facts only; the article text and scorecard image are not copied.",
       "notes": ["Meta article metadata gives publication date 2026-09-02 and links to the evaluation methodology report.", "The numeric DeepSWE v1.1 result is transcribed from the linked Meta model-and-benchmarks page, not inferred from the scorecard image."]
+    },
+    {
+      "id": "meta-muse-wonder-model-page",
+      "publisher": "Meta",
+      "title": "Muse Wonder and Muse Wonder Full model benchmarks",
+      "url": "https://developer.meta.com/ai/models/muse-wonder/",
+      "category": "developer",
+      "status": "source-reviewed",
+      "lastObservedDate": "2026-10-13",
+      "sha256": "7a7541d0e7f6a36f27a81509bb8a356003715dadce25ee1db5f36785c3e40533",
+      "accessAndReuse": "Attributed model and benchmark result facts and evidence locators only; no source page, image or task material is redistributed.",
+      "notes": [
+        "Muse Wonder and Muse Wonder Full benchmarks → Coding → DeepSWE 1.1 (Long horizon coding) row: Muse Wonder Full (max) 79.0 in the first model column and Muse Wonder (max) 78.8 in the second.",
+        "The official table corroborates the user-supplied image https://pbs.twimg.com/media/HUcMBSQacAAvLlw?format=jpg&name=4096x4096; original X-post attribution and byte-identical image provenance are not established. The SHA-256 identifies the fetched official model-page response.",
+        "The table leaves score unit, statistic, denominator, evaluator, harness, run count and confidence interval unspecified. Scores are retained as raw table values, not converted to pass@1 or asserted percentages; DeepSWE cost, output-token usage and duration remain unknown.",
+        "Meta's launch announcement https://about.fb.com/news/2026/10/introducing-muse-wonder-models/ is dated October 12, 2026. Retrieval and transcription review occurred October 13, 2026."
+      ]
     }
   ]
 }

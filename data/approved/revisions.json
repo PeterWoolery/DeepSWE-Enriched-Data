@@ -89318,7 +89318,20 @@
         "additionalResults": [],
         "meanCostUsd": null,
         "approximateSourceChartCostUsd": 0.2,
-        "approximation": {"method":"Visual digitization of the 400×329 supplied screenshot: horizontal ticks $0 at x≈61, $2 at x≈134; vertical ticks 0% at y≈280 and 80% at y≈61. Rounded costs to $0.1 and scores to whole percentage points; point centers visually estimated.","imageFile":"Screenshot_2026-09-29_10-23-46.png","imageSha256":"2cac9bafeea62d03972bfc721c1131734616a720c61753f1f0e305c40e94ef29","costBoundsUsd":[0.1,0.3],"scoreBoundsPercent":[63,65],"boundsNote":"Reading/rounding bounds only (roughly ±$0.1–0.2 and ±1 percentage point), not a statistical confidence interval."},
+        "approximation": {
+          "method": "Visual digitization of the 400×329 supplied screenshot: horizontal ticks $0 at x≈61, $2 at x≈134; vertical ticks 0% at y≈280 and 80% at y≈61. Rounded costs to $0.1 and scores to whole percentage points; point centers visually estimated.",
+          "imageFile": "Screenshot_2026-09-29_10-23-46.png",
+          "imageSha256": "2cac9bafeea62d03972bfc721c1131734616a720c61753f1f0e305c40e94ef29",
+          "costBoundsUsd": [
+            0.1,
+            0.3
+          ],
+          "scoreBoundsPercent": [
+            63,
+            65
+          ],
+          "boundsNote": "Reading/rounding bounds only (roughly ±$0.1–0.2 and ±1 percentage point), not a statistical confidence interval."
+        },
         "medianCostUsd": null,
         "meanOutputTokens": null,
         "medianOutputTokens": null,
@@ -89475,7 +89488,20 @@
         "additionalResults": [],
         "meanCostUsd": null,
         "approximateSourceChartCostUsd": 0.4,
-        "approximation": {"method":"Visual digitization of the 400×329 supplied screenshot: horizontal ticks $0 at x≈61, $2 at x≈134; vertical ticks 0% at y≈280 and 80% at y≈61. Rounded costs to $0.1 and scores to whole percentage points; point centers visually estimated.","imageFile":"Screenshot_2026-09-29_10-23-46.png","imageSha256":"2cac9bafeea62d03972bfc721c1131734616a720c61753f1f0e305c40e94ef29","costBoundsUsd":[0.3,0.5],"scoreBoundsPercent":[71,73],"boundsNote":"Reading/rounding bounds only (roughly ±$0.1–0.2 and ±1 percentage point), not a statistical confidence interval."},
+        "approximation": {
+          "method": "Visual digitization of the 400×329 supplied screenshot: horizontal ticks $0 at x≈61, $2 at x≈134; vertical ticks 0% at y≈280 and 80% at y≈61. Rounded costs to $0.1 and scores to whole percentage points; point centers visually estimated.",
+          "imageFile": "Screenshot_2026-09-29_10-23-46.png",
+          "imageSha256": "2cac9bafeea62d03972bfc721c1131734616a720c61753f1f0e305c40e94ef29",
+          "costBoundsUsd": [
+            0.3,
+            0.5
+          ],
+          "scoreBoundsPercent": [
+            71,
+            73
+          ],
+          "boundsNote": "Reading/rounding bounds only (roughly ±$0.1–0.2 and ±1 percentage point), not a statistical confidence interval."
+        },
         "medianCostUsd": null,
         "meanOutputTokens": null,
         "medianOutputTokens": null,
@@ -89632,7 +89658,20 @@
         "additionalResults": [],
         "meanCostUsd": null,
         "approximateSourceChartCostUsd": 0.7,
-        "approximation": {"method":"Visual digitization of the 400×329 supplied screenshot: horizontal ticks $0 at x≈61, $2 at x≈134; vertical ticks 0% at y≈280 and 80% at y≈61. Rounded costs to $0.1 and scores to whole percentage points; point centers visually estimated.","imageFile":"Screenshot_2026-09-29_10-23-46.png","imageSha256":"2cac9bafeea62d03972bfc721c1131734616a720c61753f1f0e305c40e94ef29","costBoundsUsd":[0.6,0.8],"scoreBoundsPercent":[74,76],"boundsNote":"Reading/rounding bounds only (roughly ±$0.1–0.2 and ±1 percentage point), not a statistical confidence interval."},
+        "approximation": {
+          "method": "Visual digitization of the 400×329 supplied screenshot: horizontal ticks $0 at x≈61, $2 at x≈134; vertical ticks 0% at y≈280 and 80% at y≈61. Rounded costs to $0.1 and scores to whole percentage points; point centers visually estimated.",
+          "imageFile": "Screenshot_2026-09-29_10-23-46.png",
+          "imageSha256": "2cac9bafeea62d03972bfc721c1131734616a720c61753f1f0e305c40e94ef29",
+          "costBoundsUsd": [
+            0.6,
+            0.8
+          ],
+          "scoreBoundsPercent": [
+            74,
+            76
+          ],
+          "boundsNote": "Reading/rounding bounds only (roughly ±$0.1–0.2 and ±1 percentage point), not a statistical confidence interval."
+        },
         "medianCostUsd": null,
         "meanOutputTokens": null,
         "medianOutputTokens": null,
@@ -89789,7 +89828,20 @@
         "additionalResults": [],
         "meanCostUsd": null,
         "approximateSourceChartCostUsd": 0.8,
-        "approximation": {"method":"Visual digitization of the 400×329 supplied screenshot: horizontal ticks $0 at x≈61, $2 at x≈134; vertical ticks 0% at y≈280 and 80% at y≈61. Rounded costs to $0.1 and scores to whole percentage points; point centers visually estimated.","imageFile":"Screenshot_2026-09-29_10-23-46.png","imageSha256":"2cac9bafeea62d03972bfc721c1131734616a720c61753f1f0e305c40e94ef29","costBoundsUsd":[0.7,0.9],"scoreBoundsPercent":[71,73],"boundsNote":"Reading/rounding bounds only (roughly ±$0.1–0.2 and ±1 percentage point), not a statistical confidence interval."},
+        "approximation": {
+          "method": "Visual digitization of the 400×329 supplied screenshot: horizontal ticks $0 at x≈61, $2 at x≈134; vertical ticks 0% at y≈280 and 80% at y≈61. Rounded costs to $0.1 and scores to whole percentage points; point centers visually estimated.",
+          "imageFile": "Screenshot_2026-09-29_10-23-46.png",
+          "imageSha256": "2cac9bafeea62d03972bfc721c1131734616a720c61753f1f0e305c40e94ef29",
+          "costBoundsUsd": [
+            0.7,
+            0.9
+          ],
+          "scoreBoundsPercent": [
+            71,
+            73
+          ],
+          "boundsNote": "Reading/rounding bounds only (roughly ±$0.1–0.2 and ±1 percentage point), not a statistical confidence interval."
+        },
         "medianCostUsd": null,
         "meanOutputTokens": null,
         "medianOutputTokens": null,
@@ -89946,7 +89998,20 @@
         "additionalResults": [],
         "meanCostUsd": null,
         "approximateSourceChartCostUsd": 1.6,
-        "approximation": {"method":"Visual digitization of the 400×329 supplied screenshot: horizontal ticks $0 at x≈61, $2 at x≈134; vertical ticks 0% at y≈280 and 80% at y≈61. Rounded costs to $0.1 and scores to whole percentage points; point centers visually estimated.","imageFile":"Screenshot_2026-09-29_10-23-46.png","imageSha256":"2cac9bafeea62d03972bfc721c1131734616a720c61753f1f0e305c40e94ef29","costBoundsUsd":[1.4,1.8],"scoreBoundsPercent":[70,72],"boundsNote":"Reading/rounding bounds only (roughly ±$0.1–0.2 and ±1 percentage point), not a statistical confidence interval."},
+        "approximation": {
+          "method": "Visual digitization of the 400×329 supplied screenshot: horizontal ticks $0 at x≈61, $2 at x≈134; vertical ticks 0% at y≈280 and 80% at y≈61. Rounded costs to $0.1 and scores to whole percentage points; point centers visually estimated.",
+          "imageFile": "Screenshot_2026-09-29_10-23-46.png",
+          "imageSha256": "2cac9bafeea62d03972bfc721c1131734616a720c61753f1f0e305c40e94ef29",
+          "costBoundsUsd": [
+            1.4,
+            1.8
+          ],
+          "scoreBoundsPercent": [
+            70,
+            72
+          ],
+          "boundsNote": "Reading/rounding bounds only (roughly ±$0.1–0.2 and ±1 percentage point), not a statistical confidence interval."
+        },
         "medianCostUsd": null,
         "meanOutputTokens": null,
         "medianOutputTokens": null,
@@ -90026,6 +90091,316 @@
           "id": "openai-gpt-6.1-sol-deepswe-figure",
           "connectionEvidence": "Five marks are visibly linked in the GPT-6.1 Sol path of the same DeepSWE figure; order is chart path order only. No thinking-setting names or protocol are specified.",
           "connectable": true,
+          "harness": null,
+          "harnessRevision": null,
+          "provider": null,
+          "evaluationPolicy": null,
+          "deployment": null,
+          "servingEndpoint": null,
+          "timingScope": null,
+          "pricingBasis": null
+        },
+        "benchmarkRuns": null,
+        "attemptCount": null,
+        "scoredAttemptCount": null
+      }
+    },
+    {
+      "eventId": "9b00f05e7aa3508c:new-configuration:meta-muse-wonder-v1.1-max",
+      "observedAt": "2026-10-13T13:18:08.455Z",
+      "observationId": "meta-muse-wonder-v1.1-max",
+      "kind": "new-configuration",
+      "sourceId": "meta-muse-wonder-model-page",
+      "previous": null,
+      "current": {
+        "publisher": "Meta",
+        "evaluator": null,
+        "sourceCategory": "developer",
+        "model": {
+          "reportedName": "Muse Wonder",
+          "canonicalId": null,
+          "snapshot": null,
+          "aliasEvidence": null
+        },
+        "benchmark": {
+          "version": "1.1",
+          "scope": "unknown",
+          "taskSetRevision": null,
+          "taskCount": null,
+          "tasksAttempted": null,
+          "attempts": null,
+          "scoredAttempts": null,
+          "runs": null,
+          "excludedPolicy": null
+        },
+        "scoreMetric": "reported_score_unspecified",
+        "resultDetails": {
+          "metric": "reported_score_unspecified",
+          "metricLabel": "DeepSWE 1.1 reported table score; unit, statistic and denominator unspecified",
+          "value": 0.788,
+          "unit": "normalized numeric value (raw source unit unspecified)",
+          "reportedValue": 78.8,
+          "reportedUnit": "raw table value; unit unspecified",
+          "reportedText": "78.8",
+          "denominator": null,
+          "denominatorCount": null,
+          "confidenceInterval": {
+            "low": null,
+            "high": null,
+            "confidence": null,
+            "method": null,
+            "passed": null,
+            "attempted": null,
+            "missingReason": "The source does not report a confidence interval."
+          }
+        },
+        "score": 0.788,
+        "reportedScore": 78.8,
+        "confidenceInterval": {
+          "low": null,
+          "high": null,
+          "confidence": null,
+          "method": null,
+          "passed": null,
+          "attempted": null,
+          "missingReason": "The source does not report a confidence interval."
+        },
+        "additionalResults": [],
+        "meanCostUsd": null,
+        "medianCostUsd": null,
+        "meanOutputTokens": null,
+        "medianOutputTokens": null,
+        "meanDurationSeconds": null,
+        "medianDurationSeconds": null,
+        "pricing": {
+          "asReportedCost": null,
+          "currency": "USD",
+          "basis": null,
+          "repricedCost": null,
+          "repricingSource": null,
+          "repricedAt": null,
+          "renderedLeaderboardCost": null,
+          "renderedCostEvidence": null,
+          "renderedCostSourceTitle": null,
+          "renderedCostSourceUrl": null,
+          "renderedCostSourceRetrievedAt": null,
+          "renderedCostSourceSha256": null,
+          "reconciliationStatus": "not-reported"
+        },
+        "metricScopeDetails": {
+          "cost": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "medianCost": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "outputTokens": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "medianOutputTokens": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "time": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "medianTime": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          }
+        },
+        "contentSha256": "7a7541d0e7f6a36f27a81509bb8a356003715dadce25ee1db5f36785c3e40533",
+        "sourceId": "meta-muse-wonder-model-page",
+        "sourceTitle": "Muse Wonder and Muse Wonder Full model benchmarks",
+        "sourceUrl": "https://developer.meta.com/ai/models/muse-wonder/",
+        "evidenceLocator": "Muse Wonder and Muse Wonder Full benchmarks → Coding → DeepSWE 1.1 (Long horizon coding) row; second model column ‘Muse Wonder (max)’; 78.8",
+        "reviewStatus": "source-reviewed",
+        "independentReplication": "not-independently-reproduced",
+        "effortLabel": "max",
+        "effortOrder": null,
+        "effortOrderEvidence": null,
+        "seriesId": "report:meta-muse-wonder-v1.1-max",
+        "protocol": {
+          "id": "report:meta-muse-wonder-v1.1-max",
+          "connectionEvidence": "Single source-attributed report; no other compatible effort configuration from this experiment is approved.",
+          "connectable": false,
+          "harness": null,
+          "harnessRevision": null,
+          "provider": null,
+          "evaluationPolicy": null,
+          "deployment": null,
+          "servingEndpoint": null,
+          "timingScope": null,
+          "pricingBasis": null
+        },
+        "benchmarkRuns": null,
+        "attemptCount": null,
+        "scoredAttemptCount": null
+      }
+    },
+    {
+      "eventId": "9b00f05e7aa3508c:new-configuration:meta-muse-wonder-full-v1.1-max",
+      "observedAt": "2026-10-13T13:18:08.455Z",
+      "observationId": "meta-muse-wonder-full-v1.1-max",
+      "kind": "new-configuration",
+      "sourceId": "meta-muse-wonder-model-page",
+      "previous": null,
+      "current": {
+        "publisher": "Meta",
+        "evaluator": null,
+        "sourceCategory": "developer",
+        "model": {
+          "reportedName": "Muse Wonder Full",
+          "canonicalId": null,
+          "snapshot": null,
+          "aliasEvidence": null
+        },
+        "benchmark": {
+          "version": "1.1",
+          "scope": "unknown",
+          "taskSetRevision": null,
+          "taskCount": null,
+          "tasksAttempted": null,
+          "attempts": null,
+          "scoredAttempts": null,
+          "runs": null,
+          "excludedPolicy": null
+        },
+        "scoreMetric": "reported_score_unspecified",
+        "resultDetails": {
+          "metric": "reported_score_unspecified",
+          "metricLabel": "DeepSWE 1.1 reported table score; unit, statistic and denominator unspecified",
+          "value": 0.79,
+          "unit": "normalized numeric value (raw source unit unspecified)",
+          "reportedValue": 79,
+          "reportedUnit": "raw table value; unit unspecified",
+          "reportedText": "79.0",
+          "denominator": null,
+          "denominatorCount": null,
+          "confidenceInterval": {
+            "low": null,
+            "high": null,
+            "confidence": null,
+            "method": null,
+            "passed": null,
+            "attempted": null,
+            "missingReason": "The source does not report a confidence interval."
+          }
+        },
+        "score": 0.79,
+        "reportedScore": 79,
+        "confidenceInterval": {
+          "low": null,
+          "high": null,
+          "confidence": null,
+          "method": null,
+          "passed": null,
+          "attempted": null,
+          "missingReason": "The source does not report a confidence interval."
+        },
+        "additionalResults": [],
+        "meanCostUsd": null,
+        "medianCostUsd": null,
+        "meanOutputTokens": null,
+        "medianOutputTokens": null,
+        "meanDurationSeconds": null,
+        "medianDurationSeconds": null,
+        "pricing": {
+          "asReportedCost": null,
+          "currency": "USD",
+          "basis": null,
+          "repricedCost": null,
+          "repricingSource": null,
+          "repricedAt": null,
+          "renderedLeaderboardCost": null,
+          "renderedCostEvidence": null,
+          "renderedCostSourceTitle": null,
+          "renderedCostSourceUrl": null,
+          "renderedCostSourceRetrievedAt": null,
+          "renderedCostSourceSha256": null,
+          "reconciliationStatus": "not-reported"
+        },
+        "metricScopeDetails": {
+          "cost": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "medianCost": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "outputTokens": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "medianOutputTokens": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "time": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "medianTime": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          }
+        },
+        "contentSha256": "7a7541d0e7f6a36f27a81509bb8a356003715dadce25ee1db5f36785c3e40533",
+        "sourceId": "meta-muse-wonder-model-page",
+        "sourceTitle": "Muse Wonder and Muse Wonder Full model benchmarks",
+        "sourceUrl": "https://developer.meta.com/ai/models/muse-wonder/",
+        "evidenceLocator": "Muse Wonder and Muse Wonder Full benchmarks → Coding → DeepSWE 1.1 (Long horizon coding) row; first model column ‘Muse Wonder Full (max)’; 79.0",
+        "reviewStatus": "source-reviewed",
+        "independentReplication": "not-independently-reproduced",
+        "effortLabel": "max",
+        "effortOrder": null,
+        "effortOrderEvidence": null,
+        "seriesId": "report:meta-muse-wonder-full-v1.1-max",
+        "protocol": {
+          "id": "report:meta-muse-wonder-full-v1.1-max",
+          "connectionEvidence": "Single source-attributed report; no other compatible effort configuration from this experiment is approved.",
+          "connectable": false,
           "harness": null,
           "harnessRevision": null,
           "provider": null,

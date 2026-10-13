@@ -783,9 +783,9 @@
   ],
   "coverageAudit": {
     "researchDate": "2026-09-28",
-    "baselineObservationCount": 128,
-    "baselineMissingAllThreeMetricsCount": 58,
-    "baselineDistinctReportedModelLabelCount": 43,
+    "baselineObservationCount": 135,
+    "baselineMissingAllThreeMetricsCount": 60,
+    "baselineDistinctReportedModelLabelCount": 45,
     "baselineMissingMetrics": ["cost", "outputTokens", "time"],
     "outcomeRule": "Every listed target had null source-reported mean cost, mean output tokens, and mean time. Exact targetObservationId entries in scenarioObservationIds receive separate scenarios outside strict mode; costOnlyScenarioObservationIds have a cost scenario only and no inferred tokens or time. Approved measurement fields remain null. Chart-precedence suppression is applied before chart filters and is listed separately because suppressed reports remain in the evidence table and exports. Unknown benchmark version alone is not a conflict; this is display precedence, not a merge or equivalence claim.",
     "chartNoDataLaneCount": 24,
@@ -807,7 +807,7 @@
       "fireworks-deepswe-gpt-6-astra-xhigh",
       "google-gemini-3.8-flash-high-v1.1"
     ],
-    "unscaledNoDataScoreCount": 12,
+    "unscaledNoDataScoreCount": 14,
     "scenarioObservationIds": [
       "aa-codex-gpt-6-luna-max-v1.1",
       "artificial-analysis-claude-code-opus-5.5-max-v1.1",
@@ -877,7 +877,9 @@
       "datacurve-paper-glm-5.1-default-version-unknown",
       "datacurve-paper-gemini-3.1-pro-default-version-unknown",
       "datacurve-paper-deepseek-v4-pro-default-version-unknown",
-      "meta-muse-spark-1.3-v1.1-max"
+      "meta-muse-spark-1.3-v1.1-max",
+      "meta-muse-wonder-v1.1-max",
+      "meta-muse-wonder-full-v1.1-max"
     ],
     "chartNoDataLaneObservationIds": [
       "openai-gpt-6-sol-v1.1-max",
@@ -917,7 +919,9 @@
       "xiaomi-mimo-v2.6-pro-table3-v1.1",
       "xiaomi-mimo-v2.6-flash-table3-v1.1",
       "qwen-qwen3.8-flash-next-v1.1",
-      "badtheorylabs-tinfield-1-v1.1"
+      "badtheorylabs-tinfield-1-v1.1",
+      "meta-muse-wonder-v1.1-max",
+      "meta-muse-wonder-full-v1.1-max"
     ],
     "sourceSearchGroups": [
       {
