@@ -292,8 +292,9 @@ test('Datacurve precedence removes duplicate chart marks without hiding source r
 
 test('no-data marks use a separate gutter through X/statistic/scale changes', async ({ page }) => {
   await page.goto('./')
-  await expect(page.locator('.no-data-point')).toHaveCount(22)
-  await expect(page.locator('.no-data-lane-count')).toHaveText('22')
+  await expect(page.locator('.no-data-point')).toHaveCount(23)
+  await expect(page.locator('.no-data-lane-count')).toHaveText('23')
+  await expect(page.locator('.no-data-point[data-observation-id="google-gemini-4-argon-v1.1"]')).toHaveCount(1)
   expect(await noDataSymbolOverlaps(page)).toEqual([])
   const lunaReference = page.locator('.no-data-point[data-observation-id="openai-gpt-6-luna-v1.1-max"]')
   const opusReference = page.locator('.no-data-point[data-observation-id="anthropic-claude-opus-5.5-v1.1"]')
@@ -677,7 +678,7 @@ test('whole-SVG zoom enlarges numeric and Muse-only charts, resets and exports i
   }
 })
 
-test('native chart fullscreen keeps evidence available and synchronizes Escape and exit focus', async ({ page }) => {
+test('native chart fullscreen keeps evidence available and synchronizes browser exit and button exit focus', async ({ page }) => {
   await page.goto('?q=Muse%20Wonder&scenarios=0')
   const enter = page.getByRole('button', { name: 'Enter chart fullscreen', exact: true })
   await enter.focus()
@@ -690,7 +691,9 @@ test('native chart fullscreen keeps evidence available and synchronizes Escape a
   const evidence = page.locator('.analysis-grid .evidence-panel')
   await evidence.locator('.evidence-score').scrollIntoViewIfNeeded()
   await expect(evidence.locator('.evidence-score')).toBeInViewport()
-  await page.keyboard.press('Escape')
+  // Synthetic Escape does not invoke browser-chrome fullscreen exit in headless Chromium.
+  // Exit through the native API to verify the same fullscreenchange synchronization.
+  await page.evaluate(() => document.exitFullscreen())
   await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true)
   await expect(enter).toBeFocused()
   await page.setViewportSize({ width: 375, height: 820 })
@@ -707,6 +710,7 @@ test('native chart fullscreen keeps evidence available and synchronizes Escape a
 
 test('fullscreen request failures are reported to the user', async ({ page }) => {
   await page.goto('?q=Muse%20Wonder')
+  await expect(page.locator('.analysis-grid')).toBeVisible()
   await page.evaluate(() => {
     document.querySelector<HTMLElement>('.analysis-grid')!.requestFullscreen = () => Promise.reject(new Error('Browser denied fullscreen'))
   })
@@ -827,7 +831,7 @@ test('usage scenarios stay separate from measurements and export independently',
   await expect(page).toHaveURL(/scenarios=0/)
   await expect(page.locator('.estimated-point')).toHaveCount(0)
   await expect(page.locator(`.no-data-point[data-observation-id="${lunaId}"]`)).toHaveCount(1)
-  await expect(page.locator('.no-data-lane-count')).toHaveText('31')
+  await expect(page.locator('.no-data-lane-count')).toHaveText('32')
   expect(await noDataSymbolOverlaps(page)).toEqual([])
   await page.reload()
   await expect(scenarioToggle).not.toBeChecked()
