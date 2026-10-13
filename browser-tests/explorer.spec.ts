@@ -396,7 +396,7 @@ test('publisher/model filters and strict mode do not combine unknown protocol gr
 
   await page.getByRole('combobox', { name: /^Benchmark version$/ }).selectOption('1.1')
   await expect(page).toHaveURL(/version=1.1/)
-  await expect(page.locator('.results-table tbody tr')).toHaveCount(113)
+  await expect(page.locator('.results-table tbody tr')).toHaveCount(115)
   await page.getByRole('combobox', { name: /^Harness \/ protocol$/ }).selectOption('mini-swe-agent')
   await expect(page.locator('.results-table tbody tr')).toHaveCount(72)
   await page.getByRole('combobox', { name: /^Harness \/ protocol$/ }).selectOption('all')
