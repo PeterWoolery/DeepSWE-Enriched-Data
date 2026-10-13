@@ -191,7 +191,7 @@ describe('comparison projections', () => {
       'google-gemini-3.8-flash-high-v1.1',
     ].sort())
     expect([...suppressed.keys()].sort()).toEqual([...researchAudit.coverageAudit.chartPrecedenceSuppressedObservationIds].sort())
-    expect(approvedDataset.observations).toHaveLength(135)
+    expect(approvedDataset.observations).toHaveLength(136)
     expect(approvedDataset.observations.some((observation) => observation.id === 'datacurve-paper-gpt-5.5-xhigh-version-unknown')).toBe(true)
     expect(suppressed.has('datacurve-paper-gpt-5.5-xhigh-version-unknown')).toBe(false)
     expect(suppressed.has('meta-muse-spark-1.3-v1.1-max')).toBe(false)

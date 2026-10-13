@@ -90414,6 +90414,161 @@
         "attemptCount": null,
         "scoredAttemptCount": null
       }
+    },
+    {
+      "eventId": "d7086c2e9c1ed6c3:new-configuration:google-gemini-4-argon-v1.1",
+      "observedAt": "2026-10-13T16:49:37.710Z",
+      "observationId": "google-gemini-4-argon-v1.1",
+      "kind": "new-configuration",
+      "sourceId": "google-gemini-4-argon-announcement",
+      "previous": null,
+      "current": {
+        "publisher": "Google DeepMind",
+        "evaluator": "Google DeepMind",
+        "sourceCategory": "developer",
+        "model": {
+          "reportedName": "Gemini 4 Argon",
+          "canonicalId": null,
+          "snapshot": null,
+          "aliasEvidence": null
+        },
+        "benchmark": {
+          "version": "1.1",
+          "scope": "unknown",
+          "taskSetRevision": null,
+          "taskCount": null,
+          "tasksAttempted": null,
+          "attempts": null,
+          "scoredAttempts": null,
+          "runs": null,
+          "excludedPolicy": null
+        },
+        "scoreMetric": "pass_at_1",
+        "resultDetails": {
+          "metric": "pass_at_1",
+          "metricLabel": "pass@1 — Google self-computed DeepSWE v1.1 result",
+          "value": 0.779,
+          "unit": "fraction (normalized from reported percentage)",
+          "reportedValue": 77.9,
+          "reportedUnit": "%",
+          "reportedText": "77.9%",
+          "denominator": "DeepSWE task pass@1; row-specific trial count and denominator not stated",
+          "denominatorCount": null,
+          "confidenceInterval": {
+            "low": null,
+            "high": null,
+            "confidence": null,
+            "method": null,
+            "passed": null,
+            "attempted": null,
+            "missingReason": "The source does not report a confidence interval."
+          }
+        },
+        "score": 0.779,
+        "reportedScore": 77.9,
+        "confidenceInterval": {
+          "low": null,
+          "high": null,
+          "confidence": null,
+          "method": null,
+          "passed": null,
+          "attempted": null,
+          "missingReason": "The source does not report a confidence interval."
+        },
+        "additionalResults": [],
+        "meanCostUsd": null,
+        "medianCostUsd": null,
+        "meanOutputTokens": null,
+        "medianOutputTokens": null,
+        "meanDurationSeconds": null,
+        "medianDurationSeconds": null,
+        "pricing": {
+          "asReportedCost": null,
+          "currency": "USD",
+          "basis": null,
+          "repricedCost": null,
+          "repricingSource": null,
+          "repricedAt": null,
+          "renderedLeaderboardCost": null,
+          "renderedCostEvidence": null,
+          "renderedCostSourceTitle": null,
+          "renderedCostSourceUrl": null,
+          "renderedCostSourceRetrievedAt": null,
+          "renderedCostSourceSha256": null,
+          "reconciliationStatus": "not-reported"
+        },
+        "metricScopeDetails": {
+          "cost": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "medianCost": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "outputTokens": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "medianOutputTokens": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "time": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          },
+          "medianTime": {
+            "scope": null,
+            "population": null,
+            "sampleCount": null,
+            "sampleCountMissingReason": null,
+            "definition": null
+          }
+        },
+        "contentSha256": "cf2ecb2c2a5b8aca96928e2af37db3f25e24695d59406fbd51942a43c5c1864d",
+        "sourceId": "google-gemini-4-argon-announcement",
+        "sourceTitle": "Gemini 4 Argon: our next era of frontier intelligence",
+        "sourceUrl": "https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-4-argon/",
+        "evidenceLocator": "Enabling coding and enterprise workflows across domains, first paragraph: DeepSWE v1.1 (77.9%); metric/protocol: google-gemini-4-argon-evaluation, Methodology first paragraph and Additional Details > Coding > DeepSWE v1.1",
+        "reviewStatus": "source-reviewed",
+        "independentReplication": "not-independently-reproduced",
+        "effortLabel": null,
+        "effortOrder": null,
+        "effortOrderEvidence": null,
+        "seriesId": "report:google-gemini-4-argon-v1.1",
+        "protocol": {
+          "id": "report:google-gemini-4-argon-v1.1",
+          "connectionEvidence": "Single source-attributed report; no other compatible effort configuration from this experiment is approved.",
+          "connectable": false,
+          "harness": "mini-swe agent harness",
+          "harnessRevision": null,
+          "provider": null,
+          "evaluationPolicy": null,
+          "deployment": null,
+          "servingEndpoint": null,
+          "timingScope": null,
+          "pricingBasis": null
+        },
+        "benchmarkRuns": null,
+        "attemptCount": null,
+        "scoredAttemptCount": null
+      }
     }
   ]
 }

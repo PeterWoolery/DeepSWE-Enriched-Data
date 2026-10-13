@@ -56,6 +56,38 @@ function App() {
   const [announcement, setAnnouncement] = useState('')
   const [modelMenuSearch, setModelMenuSearch] = useState('')
   const svgRef = useRef<SVGSVGElement>(null)
+  const analysisRef = useRef<HTMLDivElement>(null)
+  const fullscreenButtonRef = useRef<HTMLButtonElement>(null)
+  const [chartFullscreen, setChartFullscreen] = useState(false)
+  const [fullscreenStatus, setFullscreenStatus] = useState('')
+
+  useEffect(() => {
+    let wasFullscreen = false
+    const onFullscreenChange = () => {
+      const active = document.fullscreenElement === analysisRef.current && document.fullscreenElement !== null
+      setChartFullscreen(active)
+      if (wasFullscreen && !active) fullscreenButtonRef.current?.focus()
+      wasFullscreen = active
+    }
+    document.addEventListener('fullscreenchange', onFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
+  }, [])
+
+  async function toggleChartFullscreen() {
+    setFullscreenStatus('')
+    try {
+      if (document.fullscreenElement === analysisRef.current && document.fullscreenElement !== null) {
+        await document.exitFullscreen()
+      } else if (!document.fullscreenEnabled || !analysisRef.current?.requestFullscreen) {
+        setFullscreenStatus('Fullscreen is unavailable in this browser. You can still enlarge the chart with Zoom.')
+      } else {
+        await analysisRef.current.requestFullscreen()
+        fullscreenButtonRef.current?.focus()
+      }
+    } catch {
+      setFullscreenStatus('The browser could not change fullscreen mode. Try again, or enlarge the chart with Zoom.')
+    }
+  }
 
   useEffect(() => {
     let active = true
@@ -254,9 +286,11 @@ function App() {
     clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
     clone.setAttribute('width', String(svgRef.current.viewBox.baseVal.width))
     clone.setAttribute('height', String(svgRef.current.viewBox.baseVal.height))
+    clone.removeAttribute('style')
     const styles = document.createElementNS('http://www.w3.org/2000/svg', 'style')
     styles.textContent = ':root{--paper-strong:#fbf9f2;--ink:#1d2624;--ink-soft:#4d5b57;--ink-faint:#78817b;--line:#cfc8b9;--line-strong:#aaa493;--teal:#006d68;--amber:#bd661d;--teal-soft:#dce9e4}.grid-line{stroke:#cfc8b9;stroke-width:1;stroke-dasharray:2 5}.axis-line{stroke:#aaa493;stroke-width:1.2}.tick-label{fill:#78817b;font:10px monospace}.axis-title{fill:#4d5b57;font:9px monospace;letter-spacing:.11em}.curve-path{fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}.point-hit-area{fill:transparent;stroke:transparent}.no-data-lane{fill:#f4f0e5;stroke:#cfc8b9;stroke-dasharray:3 4}.no-data-lane-divider{stroke:#aaa493;stroke-width:1.2;stroke-dasharray:3 4}.no-data-lane-title,.no-data-lane-count{fill:#9a551d;font:10px monospace;letter-spacing:.08em}.no-data-lane-note{fill:#78817b;font:8px monospace}.confidence-mark line{stroke:#1d2624;stroke-width:1.25}.point-label{fill:#1d2624;font:10px monospace;paint-order:stroke;stroke:#fbf9f2;stroke-width:3px}.selected-guide{pointer-events:none}.selected-guide-line{fill:none;stroke:#006d68;stroke-width:1.5;stroke-dasharray:4 3}.selected-guide.is-estimated .selected-guide-line{stroke:#bd661d;stroke-dasharray:2 3}.selected-guide-label{fill:#006d68;font:10px monospace;font-weight:700;paint-order:stroke;stroke:#fbf9f2;stroke-width:4px;stroke-linejoin:round}.selected-guide.is-estimated .selected-guide-label{fill:#bd661d}.selected-guide-missing-label{fill:#bd661d;font:9px monospace;font-weight:700;paint-order:stroke;stroke:#fbf9f2;stroke-width:4px;stroke-linejoin:round}'
     styles.textContent += '.estimated-diamond{fill:#fbf9f2;stroke:#bd661d;stroke-width:2.4;stroke-dasharray:2 2}.estimated-label{fill:#bd661d;font:9px monospace;paint-order:stroke;stroke:#fbf9f2;stroke-width:3px}'
+    styles.textContent += '.raw-score-background{fill:#fbf9f2;stroke:#cfc8b9}.raw-score-title{fill:#006d68;font:10px monospace;letter-spacing:.08em}.raw-score-note{fill:#78817b;font:9px monospace}.raw-score-model{fill:#4d5b57;font:10px monospace}.raw-score-value{fill:#1d2624;font:bold 11px monospace}.raw-score-point.is-dimmed{opacity:.2}'
     clone.insertBefore(styles, clone.firstChild)
     const svg = new XMLSerializer().serializeToString(clone)
     downloadText(`deepswe-${state.xMetric}-${state.scoreMetric}-${dataset?.revisionId ?? 'snapshot'}.svg`, `<?xml version="1.0" encoding="UTF-8"?>\n${svg}\n`, 'image/svg+xml')
@@ -449,7 +483,7 @@ function App() {
                   : <p>Time scenarios use measured per-task wall-clock pairs or an exact-model/effort DeepSWE reference. AA pools multiple benchmarks and Datacurve timer boundaries are unspecified; these are reported-time scenarios, not verified end-to-end durations.</p>}
               <p>Evidence grades are qualitative, not probabilities. Sensitivity envelopes are observed sample ranges, not confidence or prediction intervals. Strict comparisons exclude scenarios.</p>
             </div>}
-            {(state.scoreMetric === 'reported_score_unspecified' || chartHasMixedDefinitions || chartHasUnscaledScores) && <div className="metric-chart-warning" role="note"><strong>Source scores retain their own definitions.</strong> Only explicit percentage/fraction values use the score axis; raw values with unspecified units are omitted. Each mark keeps its source metric and protocol—percent values alone do not make different evaluations comparable.</div>}
+            {(state.scoreMetric === 'reported_score_unspecified' || chartHasMixedDefinitions || chartHasUnscaledScores) && <div className="metric-chart-warning" role="note"><strong>Source scores retain their own definitions.</strong> Only explicit percentage/fraction values use the percentage axis; raw values with unspecified units appear on separate source-specific scales, with no efficiency coordinates or cross-source comparability. Each mark keeps its source metric and protocol—percent values alone do not make different evaluations comparable.</div>}
               {state.strict && <div className="strict-note" role="status">
                 <div className="strict-note-copy"><strong>Strict mode groups exact known protocols.</strong><span>Protocol, task scope, score definition, population, and metric-specific scope must match. Incompatible groups are never overlaid; select one group explicitly.</span></div>
                 <label className="strict-group-picker"><span>Compatible protocol group</span><select value={selectedStrictGroupAvailable ? state.strictGroup : ''} onChange={(event) => update({ strictGroup: event.target.value })}><option value="">{strictGroups.length ? 'Choose a protocol group' : 'No fully specified groups available'}</option>{strictGroups.map((group) => <option value={group.key} key={group.key}>{group.label}</option>)}</select></label>
@@ -458,9 +492,10 @@ function App() {
               </div>}
              <div className="coverage-row" role="status"><span className="coverage-big">{coverage.available}<i> / {coverage.total}</i></span><span>{state.xMetric === 'cost' ? `Source-reported cost coordinates among observations reporting ${scoreMetricLabels[state.scoreMetric]}; mean per scored attempt except screenshot-derived source-chart costs (aggregation unknown). Median view includes only reported medians. Scenarios do not increase source coverage.` : `Source-reported ${state.statistic} ${xMetricLabels[state.xMetric].axis} values among observations reporting ${scoreMetricLabels[state.scoreMetric]}.`}</span><span className="omission-count">{coverage.missing} without source value{visibleUsageScenarios.length ? ` · ${visibleScenarioMarks.length} scenario mark${visibleScenarioMarks.length === 1 ? '' : 's'} for selected X` : ''}</span></div>
 
-            <div className="analysis-grid">
+            <div className="analysis-grid" ref={analysisRef}>
               <div className="chart-card">
-                <div className="chart-card-head"><div><strong>{scoreMetricLabels[state.scoreMetric]}</strong><span>Score axis · explicit percentage/fraction values; reference key gives each source metric</span></div><button className="icon-action" type="button" aria-label="Download current chart as SVG" onClick={exportChartSvg}>↓ SVG</button></div>
+                <div className="chart-card-head"><div><strong>{scoreMetricLabels[state.scoreMetric]}</strong><span>Percentage axis · explicit units; raw source scores have separate scales</span></div><div className="chart-actions"><button className="icon-action" type="button" ref={fullscreenButtonRef} aria-label={chartFullscreen ? 'Exit chart fullscreen' : 'Enter chart fullscreen'} aria-pressed={chartFullscreen} onClick={toggleChartFullscreen}>{chartFullscreen ? 'Exit fullscreen' : 'Fullscreen'}</button><button className="icon-action" type="button" aria-label="Download current chart as SVG" onClick={exportChartSvg}>↓ SVG</button></div></div>
+                {fullscreenStatus && <p className="chart-footnote" role="status">{fullscreenStatus}</p>}
                 <ExplorerChart
                   observations={displayedChartObservations}
                   usageScenarios={visibleUsageScenarios}

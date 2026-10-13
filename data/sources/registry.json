@@ -281,6 +281,30 @@
       "notes": ["The report says its Gemini scores are pass@1; Gemini 3.8 Flash is a self-computed high-thinking mini-SWE-agent result.", "The separate Datacurve feed row remains separately attributed; no cost/token/time values are transferred."]
     },
     {
+      "id": "google-gemini-4-argon-announcement",
+      "publisher": "Google DeepMind",
+      "title": "Gemini 4 Argon: our next era of frontier intelligence",
+      "url": "https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-4-argon/",
+      "category": "developer",
+      "status": "source-reviewed",
+      "lastObservedDate": "2026-10-07",
+      "sha256": "cf2ecb2c2a5b8aca96928e2af37db3f25e24695d59406fbd51942a43c5c1864d",
+      "accessAndReuse": "Attributed benchmark result and publication date with section locator only; article text and assets are not copied.",
+      "notes": ["Published September 30, 2026. Enabling coding and enterprise workflows across domains, first paragraph, explicitly reports DeepSWE v1.1 at 77.9%.", "Metric and protocol facts are cross-referenced to google-gemini-4-argon-evaluation; this is Google's result, not an independent Datacurve measurement."]
+    },
+    {
+      "id": "google-gemini-4-argon-evaluation",
+      "publisher": "Google DeepMind",
+      "title": "Gemini 4 Argon Model evaluation: Approach, methodology & results",
+      "url": "https://deepmind.google/models/evals-methodology/gemini-4-argon",
+      "category": "developer",
+      "status": "source-reviewed",
+      "lastObservedDate": "2026-10-07",
+      "sha256": "ff1df6bdeddc4c0f48840c09a8a7813b10ae7ad9e053892da68dabf64f09bff7",
+      "accessAndReuse": "PDF inspected; retain attributed metric and protocol facts with section locators only. The PDF and task materials are not redistributed.",
+      "notes": ["URL redirects to https://storage.googleapis.com/deepmind-media/gemini/gemini_4_argon_model_evaluation.pdf; SHA-256 is of the retrieved PDF bytes.", "Methodology, first paragraph: Gemini 4 Argon scores are pass@1 unless otherwise noted, run via the Gemini API at the highest thinking settings. No exact named thinking setting is supplied for DeepSWE.", "Additional Details > Coding > DeepSWE v1.1: Gemini 4 Argon results are self computed using a mini-swe agent harness. Results introduction says as of October 2026; exact evaluation run date, API model snapshot, and row-specific trial count are not stated."]
+    },
+    {
       "id": "xai-grok-4-7-release",
       "publisher": "xAI / SpaceXAI",
       "title": "Introducing Grok 4.7",

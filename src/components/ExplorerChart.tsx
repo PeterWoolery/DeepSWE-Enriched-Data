@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { RefObject } from 'react'
 import { displayModelName, displayScoreResult, displayScoreValue, hasPercentageScoreScale, metricObservation, modelKey, scoreMetricLabels, xMetricLabels, type ScoreMetric, type Statistic, type XMetric } from '../lib/comparison'
 import { segmentXY, type AxisScale, type XYObservation } from '../lib/xy'
@@ -146,6 +146,7 @@ export function ExplorerChart({
   onIsolate,
   svgRef,
 }: ExplorerChartProps) {
+  const [zoomPercent, setZoomPercent] = useState(100)
   const plotSeries = useMemo(() => {
     const grouped = new Map<string, Observation[]>()
     for (const observation of observations) {
@@ -253,7 +254,30 @@ export function ExplorerChart({
       : plottedMetricIds.size === 1 && plottedMetricIds.has('task_pass_rate')
         ? 'TASK PASS RATE (%)'
       : 'SCORE (%)'
-  const hasChartMarks = plottedRows.length > 0 || estimatedPlotPoints.length > 0 || noDataMarks.length > 0
+  const hasPercentageMarks = plottedRows.length > 0 || estimatedPlotPoints.length > 0 || noDataMarks.length > 0
+  const rawGroups = (() => {
+    const groups = new Map<string, { observation: Observation; score: ReturnType<typeof displayScoreResult> }[]>()
+    for (const observation of observations) {
+      const score = displayScoreResult(observation, scoreMetric)
+      if (hasPercentageScoreScale(score) || !Number.isFinite(score.reportedValue)) continue
+      const key = JSON.stringify([observation.provenance.sourceId, observation.benchmark.version, score.metricLabel, score.reportedUnit])
+      const rows = groups.get(key) ?? []
+      rows.push({ observation, score })
+      groups.set(key, rows)
+    }
+    let top = hasPercentageMarks ? HEIGHT + 24 : 44
+    return [...groups.entries()].map(([key, rows]) => {
+      const values = rows.map(({ score }) => score.reportedValue)
+      const min = Math.min(...values)
+      const max = Math.max(...values)
+      const padding = max === min ? Math.max(1, Math.abs(min) * 0.01) : (max - min) * 0.15
+      const group = { key, rows, top, min: min - padding, max: max + padding, height: 122 + rows.length * 34 }
+      top += group.height + 24
+      return group
+    })
+  })()
+  const chartHeight = rawGroups.length ? rawGroups.at(-1)!.top + rawGroups.at(-1)!.height + 20 : HEIGHT
+  const hasChartMarks = hasPercentageMarks || rawGroups.length > 0
   const selectedGuide: SelectedGuideMark | null = (() => {
     if (!selectedObservationId) return null
     const measured = plottedRows.find(({ observation }) => observation.id === selectedObservationId)
@@ -345,6 +369,12 @@ export function ExplorerChart({
 
   return (
     <div className="chart-frame">
+      {hasChartMarks && <div className="chart-zoom-toolbar" role="group" aria-label="Chart magnification">
+        <span>Zoom <output aria-live="polite">{zoomPercent}%</output></span>
+        <button className="icon-action" type="button" aria-label="Zoom chart in" disabled={zoomPercent >= 300} onClick={() => setZoomPercent((value) => Math.min(300, value + 25))}>+</button>
+        <button className="icon-action" type="button" aria-label="Zoom chart out" disabled={zoomPercent <= 100} onClick={() => setZoomPercent((value) => Math.max(100, value - 25))}>−</button>
+        <button className="icon-action" type="button" disabled={zoomPercent === 100} onClick={() => setZoomPercent(100)}>Reset zoom</button>
+      </div>}
       {!hasChartMarks ? (
         <div className="chart-empty" role="status">
           <span className="empty-index">NO MATCHED PAIRS</span>
@@ -352,13 +382,15 @@ export function ExplorerChart({
           <p>{xMetric === 'time' ? 'Reported mean and median seconds are shown only when published by the source. This view will not substitute tokens, steps, or an inferred runtime.' : 'Observations without an explicit percentage/fraction score or a usable X measurement remain in the table and evidence details.'}</p>
         </div>
       ) : (
+        <div className="chart-scroll" role="region" aria-label="Scrollable chart" tabIndex={0}>
         <svg
           id="effort-curve"
           ref={svgRef}
           className="effort-chart"
-          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+          viewBox={`0 0 ${WIDTH} ${chartHeight}`}
+          style={{ width: `${zoomPercent}%`, minWidth: `${720 * zoomPercent / 100}px` }}
           role="group"
-             aria-label={`Score chart. Horizontal axis: ${hasXAxisExtent ? `${hasApproximateCost ? 'mixed mean-per-attempt and approximate source-chart' : statistic} ${xMetricLabels[xMetric].label}` : `no usable numeric ${xMetricLabels[xMetric].label} values`}; vertical axis: ${scoreAxisLabel}. Connected segments follow one source series; screenshot-derived coordinates are approximate and have unknown cost aggregation. Hollow diamonds are standalone cost/usage scenarios with point-specific evidence and units; they are never connected. The far-right no-data lane is outside the numeric X axis; horizontal position in that lane encodes no X value.`}
+             aria-label={`Score chart. ${hasPercentageMarks ? `Horizontal axis: ${hasXAxisExtent ? `${hasApproximateCost ? 'mixed mean-per-attempt and approximate source-chart' : statistic} ${xMetricLabels[xMetric].label}` : `no usable numeric ${xMetricLabels[xMetric].label} values`}; vertical axis: ${scoreAxisLabel}. Connected segments follow one source series; screenshot-derived coordinates are approximate and have unknown cost aggregation. Hollow diamonds are standalone cost/usage scenarios with point-specific evidence and units; they are never connected. The far-right no-data lane is outside the numeric X axis; horizontal position in that lane encodes no X value.` : ''} ${rawGroups.length ? 'Separate raw source scores have source-specific numeric scales with unspecified units; these are not percentage or efficiency coordinates and do not establish cross-source comparability.' : ''}`}
         >
           {hasApproximateCost && <desc>GPT-6.1 Sol source path: five screenshot-derived approximate coordinates. Cost is source-chart Cost per task with unknown task denominator and aggregation; reading bounds are not confidence intervals. Point details retain the screenshot hash and source.</desc>}
           <defs>
@@ -366,6 +398,7 @@ export function ExplorerChart({
               <line x1="0" y1="0" x2="0" y2="8" stroke="#d7d0c1" strokeWidth="1" />
             </pattern>
           </defs>
+          {hasPercentageMarks && <>
           <rect x={PLOT.left} y={PLOT.top} width={PLOT.right - PLOT.left} height={PLOT.bottom - PLOT.top} fill="var(--paper-strong)" />
           {noDataMarks.length > 0 && <>
             <rect x={PLOT.right + 2} y={PLOT.top} width={WIDTH - PLOT.right - 14} height={PLOT.bottom - PLOT.top} className="no-data-lane" />
@@ -589,7 +622,41 @@ export function ExplorerChart({
                 : <text className="selected-guide-missing-label" data-guide-axis="x-missing" x={selectedGuideMissingX} y={selectedGuideMissingY} textAnchor={selectedGuideMissingAnchor}>{selectedGuideMissingLabel}</text>}
             </g>
           )}
+          </>}
+          {rawGroups.map((group) => {
+            const first = group.rows[0]!.observation
+            const left = 400
+            const right = WIDTH - 82
+            const rawX = (value: number) => left + (value - group.min) / (group.max - group.min) * (right - left)
+            const axisY = group.top + 84 + group.rows.length * 34
+            return <g key={group.key} className="raw-score-region" data-raw-source-id={first.provenance.sourceId} role="group" aria-label={`${first.publisher}, ${first.provenance.title}: raw source scores, unit unspecified; separate source-specific scale, no cross-source comparability.`}>
+              <rect x={PLOT.left} y={group.top - 20} width={WIDTH - PLOT.left - 20} height={group.height} className="raw-score-background" />
+              <text x={PLOT.left + 14} y={group.top} className="raw-score-title">RAW SOURCE SCORES · UNIT UNSPECIFIED</text>
+              <text x={PLOT.left + 14} y={group.top + 18} className="raw-score-note">{first.publisher} · {first.benchmark.version ? `DeepSWE v${first.benchmark.version}` : 'DeepSWE version unspecified'} · {first.provenance.sourceId}</text>
+              <text x={PLOT.left + 14} y={group.top + 36} className="raw-score-note">Source-specific scale · not percentages · no efficiency coordinates or cross-source comparison</text>
+              <text x={PLOT.left + 14} y={group.top + 54} className="raw-score-note">{group.rows.every(({ observation }) => (['cost', 'medianCost', 'outputTokens', 'medianOutputTokens', 'time', 'medianTime'] as const).every((metric) => observation.metrics[metric].value === null)) ? 'Cost, output tokens and time not reported.' : 'Usage, when reported, remains in evidence details.'}</text>
+              {group.rows.map(({ observation, score }, index) => {
+                const x = rawX(score.reportedValue)
+                const y = group.top + 82 + index * 34
+                const selected = selectedObservationId === observation.id
+                const color = stableColor(modelKey(observation))
+                const detail = `${observation.model.reportedName}; raw source score ${score.reportedText}; unit, statistic and denominator unspecified. Source metric: ${score.metricLabel}. ${observation.publisher}; ${observation.benchmark.version ? `DeepSWE v${observation.benchmark.version}` : 'DeepSWE version unspecified'}; ${observation.effort.reportedLabel ?? 'effort unreported'}; protocol ${observation.series.harness ?? 'not reported'}. ${(['cost', 'medianCost', 'outputTokens', 'medianOutputTokens', 'time', 'medianTime'] as const).every((metric) => observation.metrics[metric].value === null) ? 'Cost, output tokens and time not reported.' : 'Usage remains in evidence details.'} Raw numeric position uses only this source scale; no efficiency coordinate or percentage-plot guide is assigned.`
+                return <g key={observation.id} className={`raw-score-point ${selected || activeSeriesId === observation.series.id ? 'is-highlighted' : ''} ${activeSeriesId && activeSeriesId !== observation.series.id ? 'is-dimmed' : ''}`} data-observation-id={observation.id} data-series-id={observation.series.id} data-score-metric={score.metric} role="button" tabIndex={0} aria-label={`${detail} Activate to open evidence details.`} aria-pressed={selected}
+                  onMouseEnter={() => onActiveSeries(observation.series.id)} onMouseLeave={() => onActiveSeries(null)} onFocus={() => onActiveSeries(observation.series.id)} onBlur={() => onActiveSeries(null)} onClick={() => onSelect(observation.id)} onDoubleClick={() => onIsolate(modelKey(observation))}
+                  onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect(observation.id) } }}>
+                  <title>{detail}</title>
+                  <text x={PLOT.left + 14} y={y + 4} className="raw-score-model">{displayModelName(observation.model.reportedName)} · {observation.effort.reportedLabel ?? 'effort unreported'}</text>
+                  <circle cx={x} cy={y} r="13" className="point-hit-area" />
+                  {sourceShape(observation.sourceCategory, x, y, color, selected)}
+                  <text x={x + 14} y={y + 4} className="raw-score-value">{score.reportedText}</text>
+                </g>
+              })}
+              <line x1={left} x2={right} y1={axisY} y2={axisY} className="axis-line" />
+              {[group.min, (group.min + group.max) / 2, group.max].map((value, index) => <text key={index} x={rawX(value)} y={axisY + 17} className="tick-label" textAnchor="middle">{formatNumber(value)}</text>)}
+            </g>
+          })}
         </svg>
+        </div>
       )}
       {noDataMarks.length > 0 && <details className="no-data-key">
         <summary>No data for selected X <span>{noDataMarks.length} · gutter is outside the numeric axis</span></summary>
@@ -624,7 +691,7 @@ export function ExplorerChart({
       </details>}
       {omitted.length > 0 && (
         <p className="chart-footnote" role="status">
-          {omitted.length} selected configuration{omitted.length === 1 ? '' : 's'} omitted from this percentage plot: {countReasons(omitted.map((entry) => entry.reason))}. The source records remain available below.
+          {omitted.length} selected configuration{omitted.length === 1 ? '' : 's'} excluded from the percentage plot: {countReasons(omitted.map((entry) => entry.reason))}. Finite raw source values appear on separate source-specific scales; source records remain available below.
         </p>
       )}
       {scenarioOmitted.length > 0 && (
@@ -633,7 +700,7 @@ export function ExplorerChart({
         </p>
       )}
       <div className="chart-caption-row">
-           <span>{plottedRows.length} source coordinates{hasApproximateCost ? ' (including 5 approximate screenshot readings; cost aggregation unspecified)' : ''} · {estimatedPlotPoints.length} scenario · {noDataMarks.length} no-data. Hollow amber diamonds are standalone cost/usage scenarios and never join effort paths; task-cost source statistics remain point-specific. The far-right no-data lane is outside the numeric X axis.</span>
+           <span>{plottedRows.length} source coordinates{hasApproximateCost ? ' (including 5 approximate screenshot readings; cost aggregation unspecified)' : ''} · {estimatedPlotPoints.length} scenario · {noDataMarks.length} no-data · {rawGroups.reduce((count, group) => count + group.rows.length, 0)} raw source scores. Hollow amber diamonds are standalone cost/usage scenarios and never join effort paths; task-cost source statistics remain point-specific. The far-right no-data lane is outside the numeric X axis. Raw source scores use separate source-specific scales and encode no efficiency value.</span>
           <span>Source marks: ● organizer · ◆ developer · ▲ independent · ■ local evaluation · expand the no-data key for source, metric and omission notes.</span>
       </div>
       {suppressedCount > 0 && <p className="chart-footnote chart-precedence-note" role="status">{suppressedCount} matching non-Datacurve report{suppressedCount === 1 ? ' is' : 's are'} retained in the evidence table and exports but omitted from this chart by display precedence. An unspecified source version is not treated as a version conflict; known model, version, scope, and score-metric conflicts remain separate. Source rows are not merged.</p>}
