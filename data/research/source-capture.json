@@ -1,0 +1,284 @@
+{
+  "retrieved_on": "2026-09-26",
+  "hash_method": "SHA-256 over the response-body bytes returned by fetch; no source body is embedded in this manifest",
+  "captures": [
+    {
+      "id": "datacurve-home",
+      "url": "https://deepswe.datacurve.ai/",
+      "http_status": 200,
+      "response_bytes": 268036,
+      "sha256": "14436c31be1e50a0b62171e4aee4dd0ae0ce66b1e390af89c7e6e095ad59f1f1",
+      "etag": "W/\"98d253c8e74efd55409e4429874c186d\"",
+      "last_modified": "Tue, 22 Sep 2026 06:42:09 GMT"
+    },
+    {
+      "id": "datacurve-v1.1-live-json",
+      "url": "https://deepswe.datacurve.ai/artifacts/v1.1/leaderboard-live.json",
+      "http_status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "response_bytes": 94758,
+      "sha256": "a7c15d66288fd249c020b9931c017b92d1a3b90e480b3ff34974b752bd030019",
+      "etag": "W/\"c474b4a789dbf2a61e5f0d637be2dc90\"",
+      "last_modified": "Tue, 22 Sep 2026 06:47:03 GMT",
+      "generated_at": "2026-09-22T06:27:15.860279+00:00",
+      "latest_job_finished_at": "2026-09-01T07:35:13Z",
+      "n_tasks_in_set": 113,
+      "row_count": 70,
+      "unique_models": 28,
+      "unique_configs": 70,
+      "null_effort_rows": 1,
+      "field_coverage": {
+        "mean_cost_usd": 70,
+        "mean_output_tokens": 70,
+        "mean_duration_seconds": 70,
+        "median_duration_seconds": 70,
+        "mean_agent_steps": 70,
+        "mean_reasoning_tokens": 5,
+        "cost_basis": 5,
+        "provider": 5,
+        "pass_at_1": 70,
+        "ci_method": 70
+      },
+      "root_fields": [
+        "scope",
+        "unit",
+        "generated_at",
+        "n_tasks_in_set",
+        "latest_job",
+        "rows"
+      ],
+      "row_fields": [
+        "ci_attempted",
+        "ci_half",
+        "ci_hi",
+        "ci_lo",
+        "ci_method",
+        "ci_passed",
+        "completed_by_attempt",
+        "config",
+        "cost_basis",
+        "harness",
+        "mean_agent_steps",
+        "mean_cache_read_tokens",
+        "mean_cache_tokens",
+        "mean_cache_write_tokens",
+        "mean_compute_units",
+        "mean_cost_usd",
+        "mean_duration_seconds",
+        "mean_input_tokens",
+        "mean_output_tokens",
+        "mean_reasoning_tokens",
+        "mean_uncached_input_tokens",
+        "median_agent_steps",
+        "median_cache_read_tokens",
+        "median_cache_write_tokens",
+        "median_compute_units",
+        "median_cost_usd",
+        "median_duration_seconds",
+        "median_input_tokens",
+        "median_output_tokens",
+        "median_output_tokens_to_pass",
+        "median_peak_context_tokens",
+        "median_reasoning_tokens",
+        "median_uncached_input_tokens",
+        "model",
+        "n_attempted",
+        "n_passed",
+        "n_runs",
+        "n_tasks_attempted",
+        "n_tasks_passed_any",
+        "pass_at_1",
+        "pass_at_4",
+        "pass_rate",
+        "pass_rate_by_attempt",
+        "provider",
+        "reasoning_effort",
+        "source"
+      ]
+    },
+    {
+      "id": "datacurve-changelog",
+      "url": "https://deepswe.datacurve.ai/changelog",
+      "http_status": 200,
+      "response_bytes": 27104,
+      "sha256": "a64fe33edbd330f73cbd98749c08e5458f396e76ed001583eb46828087650036"
+    },
+    {
+      "id": "datacurve-v1.1-blog",
+      "url": "https://deepswe.datacurve.ai/blog/deepswe-v1-1",
+      "http_status": 200,
+      "response_bytes": 342946,
+      "sha256": "7fae68b8424e883a17925ed94553d3b170d59e50a467a7a11d57790fa80f2382",
+      "etag": "W/\"9ef1a45f9f08ab1a3cfd45cf76b70326\"",
+      "last_modified": "Tue, 22 Sep 2026 07:15:12 GMT"
+    },
+    {
+      "id": "datacurve-data-page",
+      "url": "https://deepswe.datacurve.ai/data/v1.1",
+      "http_status": 200,
+      "response_bytes": 23260,
+      "sha256": "39d9c257ec9b9d4eb9ca32f3593d28d337de7bf765c4c3eab8f2edd3d1f4315d",
+      "etag": "W/\"bd0a5af32ef6f8af4a019b0a1db4e3f4\"",
+      "last_modified": "Sat, 26 Sep 2026 16:07:22 GMT",
+      "retained_data": false
+    },
+    {
+      "id": "datacurve-benchmark-license",
+      "url": "https://raw.githubusercontent.com/datacurve-ai/deep-swe/main/LICENSE",
+      "http_status": 200,
+      "response_bytes": 11357,
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "openai-gpt-6-sol-luna",
+      "url": "https://openai.com/index/introducing-gpt-6-sol-and-luna/",
+      "http_status": 200,
+      "response_bytes": 847656,
+      "sha256": "27c60ffddb3d37dd734f1a06f0aba0f33770772eb9a03f53285318476ecde5ee",
+      "other_same-session_response_hash": "ae55276c22ce8e35c6b51431900586c98a0c496b46045f5c88a2eba2eadc7081",
+      "note": "The same-length HTML response had two hashes during this session; no textual revision was established. Evidence is tied to the retrieved Coding paragraph, not the hash alone."
+    },
+    {
+      "id": "anthropic-claude-opus-5.5-system-card",
+      "url": "https://www-cdn.anthropic.com/fc1b44717c85dc068bc6ba5024219938094694bd/Claude%20Opus%205.5%20System%20Card.pdf",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "response_bytes": 17795106,
+      "sha256": "7311c9c6bbb16d012f1c12c7418b05949fcf7ae3e30d2c40f22050074b2a7378",
+      "pdf_page_count": 230,
+      "evidence_pdf_page_index": 175,
+      "evidence_printed_page": "175",
+      "evidence_section": "8.3 DeepSWE v1.1",
+      "retained_pdf": false,
+      "visual_inspection": true
+    },
+    {
+      "id": "artificial-analysis-index",
+      "url": "https://artificialanalysis.ai/agents/coding-agents",
+      "http_status": 200,
+      "response_bytes": 713213,
+      "sha256": "8990fc56295a01ae69ab27ede1e8e4f2cf329112a8adae766e8a7f7a473a0be0"
+    },
+    {
+      "id": "artificial-analysis-comparison",
+      "url": "https://artificialanalysis.ai/agents/coding-agents/comparisons/claude-code-vs-codex",
+      "http_status": 200,
+      "response_bytes": 669432,
+      "sha256": "a555443bea5c2d185ceb5e18b451541a30929da66ff6d26153607f7171256bb5"
+    },
+    {
+      "id": "llm-benchmark-license",
+      "url": "https://raw.githubusercontent.com/781316853/llm-benchmark/main/LICENSE",
+      "http_status": 200,
+      "response_bytes": 1071,
+      "sha256": "e29e2d5b5b6ad9c8f8a3a217058b098dcffbb53824da016e4c602c88ef38a5e6",
+      "license": "MIT",
+      "copyright": "781316853, 2025-2026"
+    },
+    {
+      "id": "llm-benchmark-deepswe-adapter",
+      "url": "https://raw.githubusercontent.com/781316853/llm-benchmark/main/scripts/sources/deepswe.js",
+      "http_status": 200,
+      "response_bytes": 9256,
+      "sha256": "d0fb5865338c8fda3df8e5b9ae831989f996d71698a24cd5889106b261de39ed"
+    },
+    {
+      "id": "llm-benchmark-deepswe-data",
+      "url": "https://raw.githubusercontent.com/781316853/llm-benchmark/main/data/deepswe.js",
+      "http_status": 200,
+      "response_bytes": 7862,
+      "sha256": "88ca44afaa243fc8e2caebe2c82fd6e6c65c93e0889879e780a68bcb4cabfd45",
+      "static_data_parse_only": true,
+      "row_count": 36,
+      "supplemental_candidate_count": 8
+    },
+    {
+      "id": "datalearner-deepswe",
+      "url": "https://www.datalearner.com/benchmarks/deepswe",
+      "http_status": 200,
+      "response_bytes": 280880,
+      "sha256": "a6204cde71ebe5acd5bb2708bd24fe933eaa3b2da880e7a6fdccd8d1b290413a"
+    },
+    {
+      "id": "datalearner-methodology",
+      "url": "https://www.datalearner.com/about/data-methodology",
+      "http_status": 200,
+      "response_bytes": 80132,
+      "sha256": "cb31de9b21242b727707edb1b82f029687632cb571ad17dc752e03a095fe6298"
+    },
+    {
+      "id": "qwen-deepswe-article",
+      "url": "https://developer.aliyun.com/article/1763215",
+      "http_status": 200,
+      "response_bytes": 75660,
+      "sha256": "f15b613666f0baef7f04770c3e954dcfe0aa7d677e3f05a933005720dc02352e"
+    },
+    {
+      "id": "github-pages-limits",
+      "url": "https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits",
+      "http_status": 200,
+      "response_bytes": 89406,
+      "sha256": "2bf3cc3ec3d6ac2308d8c85d3044663c44f2ec7e164bfabff399ee14958d9ca4"
+    },
+    {
+      "id": "github-pages-custom-workflow",
+      "url": "https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages",
+      "http_status": 200,
+      "response_bytes": 142491,
+      "sha256": "cec4e9aa829eeb2537d7672812145cbcdd748f9caeb9cc878ec6378a21f68c31"
+    },
+    {
+      "id": "github-actions-billing",
+      "url": "https://docs.github.com/en/billing/concepts/product-billing/github-actions",
+      "http_status": 200,
+      "response_bytes": 226947,
+      "sha256": "e9caadc9fcbfe861064a2fe57952b6581219ca91ff75f4c254a255d356cd8130"
+    },
+    {
+      "id": "github-actions-schedule",
+      "url": "https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule",
+      "http_status": 200,
+      "response_bytes": 1073751,
+      "sha256": "8530c24f5adf7e84cf536e92d4793465a6757649c42412e0c75bde0af26102d1"
+    },
+    {
+      "id": "vite-github-pages",
+      "url": "https://vite.dev/guide/static-deploy.html#github-pages",
+      "http_status": 200,
+      "response_bytes": 93983,
+      "sha256": "2209c7da1f6ddf8bcd8e20842e99f25d4536cec06f64fe589e9ac8ed32abb32b"
+    },
+    {
+      "id": "echarts-line-handbook",
+      "url": "https://echarts.apache.org/handbook/en/how-to/chart-types/line/basic-line/",
+      "http_status": 200,
+      "captured_by": "ctx_fetch_and_index",
+      "evidence": "Line Chart in Cartesian Coordinate System uses paired points [[20,120],[50,200],[40,50]], a non-monotonic X input sequence."
+    },
+    {
+      "id": "echarts-series-line-api",
+      "url": "https://echarts.apache.org/en/llms-documents/option-parts/option.series-line.md",
+      "captured_by": "ctx_fetch_and_index",
+      "evidence": "smooth defaults false; connectNulls defaults false; event dataIndex is defined relative to the input data array."
+    },
+    {
+      "id": "echarts-x-axis-api",
+      "url": "https://echarts.apache.org/en/llms-documents/option-parts/option.xAxis.md",
+      "captured_by": "ctx_fetch_and_index",
+      "evidence": "Axis API distinguishes category axes from numerical value, time, and log axes."
+    }
+  ],
+  "not_found": [
+    {
+      "url": "https://deepswe.datacurve.ai/terms",
+      "http_status": 404
+    }
+  ],
+  "retention": {
+    "official_json_copy": false,
+    "official_json_reason": "The public endpoint was retrieved and hashed, but no feed-specific redistribution license or explicit permission was confirmed. The Datacurve repository's Apache-2.0 license does not clearly cover this separate hosted artifact.",
+    "anthropic_pdf_copy": false,
+    "benchmark_task_or_trajectory_bodies_copied": false
+  }
+}

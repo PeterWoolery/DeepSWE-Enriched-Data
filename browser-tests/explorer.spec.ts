@@ -42,6 +42,76 @@ async function noDataSymbolOverlaps(page: Page) {
   })
 }
 
+test('wheel zoom anchors the X axis at the cursor and leaves scrolling outside the plot alone', async ({ page }) => {
+  for (const scale of ['linear', 'log']) {
+    await page.goto(`?view=official&scale=${scale}`)
+    const chart = page.locator('.effort-chart')
+    await chart.scrollIntoViewIfNeeded()
+    const initialPath = await page.locator('.curve-path').first().getAttribute('d')
+    const initialCount = await page.locator('.plot-point').count()
+    const anchor = await chart.evaluate((svg) => {
+      const mark = Array.from(svg.querySelectorAll('.plot-point')).find((group) => {
+        const x = Number(group.querySelector('.point-hit-area')!.getAttribute('cx'))
+        return x > 250 && x < 650
+      })!
+      const hit = mark.querySelector('.point-hit-area')!
+      const x = Number(hit.getAttribute('cx'))
+      const y = Number(hit.getAttribute('cy'))
+      const screen = new DOMPoint(x, y).matrixTransform((svg as SVGSVGElement).getScreenCTM()!)
+      return { id: mark.getAttribute('data-observation-id'), x, y, screenX: screen.x, screenY: screen.y }
+    })
+    const mark = page.locator(`.plot-point[data-observation-id="${anchor.id}"] .point-hit-area`)
+    await page.mouse.move(anchor.screenX, anchor.screenY)
+    const scrollY = await page.evaluate(() => window.scrollY)
+    await page.mouse.wheel(0, -100)
+    await expect(page.locator('.curve-path').first()).not.toHaveAttribute('d', initialPath!)
+    // Native mouse coordinates are rounded to screen pixels by Chromium.
+    expect(Math.abs(Number(await mark.getAttribute('cx')) - anchor.x)).toBeLessThan(1)
+    expect(Number(await mark.getAttribute('cy'))).toBe(anchor.y)
+    expect(await page.evaluate(() => window.scrollY)).toBe(scrollY)
+    await page.mouse.wheel(0, 100)
+    await expect(page.getByRole('button', { name: 'Reset zoom' })).toBeDisabled()
+    await expect(page.locator('.plot-point')).toHaveCount(initialCount)
+
+    // Line/page deltas are handled too; axes and the no-data gutter do not consume wheels.
+    for (const deltaMode of [0, 1, 2]) {
+      const prevented = await chart.evaluate((svg, { anchor, deltaMode }) => {
+        const event = new WheelEvent('wheel', { bubbles: true, cancelable: true, clientX: anchor.screenX, clientY: anchor.screenY, deltaY: -1, deltaMode })
+        svg.dispatchEvent(event)
+        return event.defaultPrevented
+      }, { anchor, deltaMode })
+      expect(prevented).toBe(true)
+      await expect(page.getByRole('button', { name: 'Reset zoom' })).toBeEnabled()
+      await page.getByRole('button', { name: 'Reset zoom' }).click()
+      await expect(page.locator('.curve-path').first()).toHaveAttribute('d', initialPath!)
+    }
+    const outsidePrevented = await chart.evaluate((svg) => [20, 950].map((x) => {
+      const point = new DOMPoint(x, 200).matrixTransform((svg as SVGSVGElement).getScreenCTM()!)
+      const event = new WheelEvent('wheel', { bubbles: true, cancelable: true, clientX: point.x, clientY: point.y, deltaY: -100 })
+      svg.dispatchEvent(event)
+      return event.defaultPrevented
+    }))
+    expect(outsidePrevented).toEqual([false, false])
+
+    await page.getByRole('button', { name: 'Zoom chart in' }).focus()
+    await page.getByRole('button', { name: 'Zoom chart in' }).press('Enter')
+    await expect(page.getByRole('button', { name: 'Reset zoom' })).toBeEnabled()
+    await page.getByRole('button', { name: 'Output tokens per task', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Reset zoom' })).toBeDisabled()
+    await page.getByRole('button', { name: 'Cost per task', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Reset zoom' })).toBeDisabled()
+    await expect(page.locator('.curve-path').first()).toHaveAttribute('d', initialPath!)
+
+    await page.getByRole('button', { name: 'Zoom chart in' }).click()
+    const search = page.getByRole('searchbox', { name: 'Search models / publishers' })
+    await search.fill('Astra')
+    await expect(page.getByRole('button', { name: 'Reset zoom' })).toBeDisabled()
+    await search.fill('')
+    await expect(page.getByRole('button', { name: 'Reset zoom' })).toBeDisabled()
+    await expect(page.locator('.curve-path').first()).toHaveAttribute('d', initialPath!)
+  }
+})
+
 test('official numeric effort curve is accessible and pass@4 evidence stays metric-specific', async ({ page }) => {
   await page.goto('?view=official')
   const dataset = await loadDataset(page)
@@ -102,6 +172,44 @@ test('selected measured and estimated results show axis guides for the active X 
   await expect(estimatedGuide).toHaveClass(/is-estimated/)
   await expect(estimatedGuide.locator('.selected-guide-x, .selected-guide-y')).toHaveCount(2)
   await expect(estimatedGuide.locator('[data-guide-axis="x"]')).toContainText('EST ·')
+})
+
+test('approved usage wins per metric, zero stays selected on log axes, and other scenario metrics remain available', async ({ page }) => {
+  const source = JSON.parse(await readFile(new URL('../data/approved/dataset.json', import.meta.url), 'utf8')) as Dataset
+  const fixture: Dataset = structuredClone(source)
+  const target = fixture.observations.find((row) => row.id === 'aa-codex-gpt-6-luna-max-v1.1')!
+  target.metrics.outputTokens.value = 0
+  target.metrics.outputTokens.reportedValue = 0
+  target.metrics.outputTokens.unit = 'output tokens'
+  target.metrics.outputTokens.statistic = 'mean'
+  target.metrics.outputTokens.missingReason = null
+  await page.route('**/data/observations.json', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture) }))
+  await page.goto('?view=combined&q=GPT-6%20Luna&x=outputTokens')
+
+  const row = page.locator(`.results-table tr[data-observation-id="${target.id}"]`)
+  const measured = page.locator(`.plot-point[data-observation-id="${target.id}"]`)
+  const optional = page.locator(`.estimated-point[data-observation-id="${target.id}"]`)
+  await expect(measured).toHaveCount(1)
+  await expect(optional).toHaveCount(0)
+  await expect(row.locator('td').nth(4)).toContainText('0')
+  await row.locator('.table-model-button').click()
+  await expect(page.locator('.selected-usage-evidence')).toContainText('0 · mean · approved selected-statistic measurement')
+  await expect(page.locator('.selected-usage-evidence')).toContainText('aa-output-gpt-6-luna-max')
+  await expect(page.locator('.usage-evidence')).toContainText('APPROVED MEAN MEASUREMENT · OPTIONAL EVIDENCE RETAINED')
+
+  await page.getByRole('button', { name: 'Log', exact: true }).click()
+  await expect(measured).toHaveCount(0)
+  await expect(optional).toHaveCount(0)
+  await expect(page.locator('.chart-footnote')).toContainText('zero omitted on log scale')
+
+  await page.getByRole('button', { name: 'Linear', exact: true }).click()
+  await page.getByRole('button', { name: 'Cost per task', exact: true }).click()
+  await expect(page.locator(`.estimated-point[data-observation-id="${target.id}"]`)).toHaveCount(1)
+  await page.getByRole('button', { name: 'Output tokens per task', exact: true }).click()
+  await page.getByRole('button', { name: 'Median', exact: true }).click()
+  await expect(optional).toHaveCount(0)
+  await expect(page.locator('.selected-usage-evidence')).toContainText('Optional usage scenarios provide mean-only evidence; medians are not inferred.')
+  await expect(page.locator('.usage-evidence')).toContainText('Source-reported mean')
 })
 
 test('GPT-6.1 Sol screenshot curve renders five connected approximate marks with source-specific units', async ({ page }) => {
@@ -783,4 +891,25 @@ test('AA DeepSWE output and suppressed Google cross-run evidence stay attached t
   await expect(googleRow).toContainText('143,243 output tokens')
   await googleRow.getByRole('button', { name: 'Details' }).click()
   await expect(page.locator('.usage-evidence')).toContainText('mini_swe_agent_gemini_3_8_flash_high')
+})
+
+test('filtered scenario evidence export retains median/strict alternatives and precedence-suppressed rows', async ({ page }) => {
+  for (const scenario of [
+    { url: '?view=combined&stat=median&scenarios=0', excluded: 'medians are not inferred' },
+    { url: '?view=combined&strict=1&scenarios=0', excluded: 'excluded in strict mode' },
+  ]) {
+    await page.goto(scenario.url)
+    await page.locator('.scenario-export-group summary').click()
+    const download = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Filtered scenarios JSON' }).click()
+    const path = await (await download).path()
+    const exported = JSON.parse(await readFile(path!, 'utf8'))
+    expect(exported.scenarios).toHaveLength(17)
+    expect(exported.scenarios.some((row: { targetObservationId: string }) => row.targetObservationId === 'google-gemini-3.8-flash-high-v1.1')).toBe(true)
+    const luna = exported.scenarios.find((row: { targetObservationId: string }) => row.targetObservationId === 'aa-codex-gpt-6-luna-max-v1.1')
+    expect(luna.selectedMetricResolution.value).toBeNull()
+    expect(luna.selectedMetricResolution.alternatives[0].eligible).toBe(false)
+    expect(luna.selectedMetricResolution.alternatives[0].exclusionReason).toContain(scenario.excluded)
+    expect(luna.scenario.metricConfiguration.outputTokens.factIds).toContain('aa-output-gpt-6-luna-max')
+  }
 })

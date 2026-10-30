@@ -1,5 +1,5 @@
 import type { Dataset } from '../lib/schema'
-import { scenarioXValue, usageScenarios } from '../lib/usage-scenarios'
+import { resolveXUsage, usageScenarios } from '../lib/usage-scenarios'
 import { datacurveChartPrecedence } from '../lib/comparison'
 
 interface MethodologyPageProps { dataset: Dataset }
@@ -14,14 +14,22 @@ export function MethodologyPage({ dataset }: MethodologyPageProps) {
   const official = dataset.observations.filter((observation) => observation.provenance.sourceId === dataset.sourceRetrieval.sourceId)
   const meanTime = official.filter((observation) => observation.metrics.time.value !== null).length
   const medianTime = official.filter((observation) => observation.metrics.medianTime.value !== null).length
-  const scenarioObservationIds = new Set(usageScenarios.map((scenario) => scenario.targetObservationId))
   const chartPrecedence = datacurveChartPrecedence(dataset.observations, dataset.sourceRetrieval.sourceId)
-  const chartScenarios = usageScenarios.filter((scenario) => !chartPrecedence.has(scenario.targetObservationId))
-  const costScenarios = chartScenarios.filter((scenario) => scenarioXValue(scenario, 'cost') !== null).length
-  const outputScenarios = chartScenarios.filter((scenario) => scenarioXValue(scenario, 'outputTokens') !== null).length
-  const timeScenarios = chartScenarios.filter((scenario) => scenarioXValue(scenario, 'time') !== null).length
+  const chartRows = dataset.observations.filter((observation) => !chartPrecedence.has(observation.id))
+  const selectedOptionalMetrics = chartRows.map((observation) => ({
+    observation,
+    cost: resolveXUsage(observation, 'cost', 'mean', { scenariosEnabled: true, approvedDatasetRevision: dataset.revisionId }),
+    output: resolveXUsage(observation, 'outputTokens', 'mean', { scenariosEnabled: true, approvedDatasetRevision: dataset.revisionId }),
+    time: resolveXUsage(observation, 'time', 'mean', { scenariosEnabled: true, approvedDatasetRevision: dataset.revisionId }),
+  }))
+  const hasOptionalCoordinate = (resolution: typeof selectedOptionalMetrics[number]['cost']) => resolution.value !== null && resolution.evidenceKind !== 'approved-measurement'
+  const chartScenarioIds = new Set(selectedOptionalMetrics.filter(({ cost, output, time }) => [cost, output, time].some(hasOptionalCoordinate)).map(({ observation }) => observation.id))
+  const chartScenarioCount = chartScenarioIds.size
+  const costScenarios = selectedOptionalMetrics.filter(({ cost }) => hasOptionalCoordinate(cost)).length
+  const outputScenarios = selectedOptionalMetrics.filter(({ output }) => hasOptionalCoordinate(output)).length
+  const timeScenarios = selectedOptionalMetrics.filter(({ time }) => hasOptionalCoordinate(time)).length
   const missingUsageRows = dataset.observations.filter((observation) => observation.metrics.cost.value === null && observation.metrics.outputTokens.value === null && observation.metrics.time.value === null)
-  const chartNoDataRows = missingUsageRows.filter((observation) => !scenarioObservationIds.has(observation.id) && !chartPrecedence.has(observation.id))
+  const chartNoDataRows = missingUsageRows.filter((observation) => !chartScenarioIds.has(observation.id) && !chartPrecedence.has(observation.id))
   const noDataCount = chartNoDataRows.length
   const unscaledNoDataCount = chartNoDataRows.filter((observation) => observation.result.reportedUnit !== '%' && observation.result.reportedUnit !== 'fraction').length
   const chartNoDataCount = noDataCount - unscaledNoDataCount
@@ -77,7 +85,7 @@ export function MethodologyPage({ dataset }: MethodologyPageProps) {
         <article className="method-card method-card-wide">
           <span className="section-kicker">08 · USAGE SCENARIOS</span>
            <h2>Metric-specific usage evidence stays distinct from approved measurements.</h2>
-           <p>The default-enabled <strong>Include usage scenarios</strong> switch covers {usageScenarios.length} exact source-observation rows ({chartScenarios.length} chart-eligible after precedence): {costScenarios} have cost, {outputScenarios} output tokens and {timeScenarios} time for chart-visible rows. All ten AA rows use same-source DeepSWE output means for their exact agent variant; their dollar/time methods remain separate, including three pooled-suite cost proxies. Meta and xAI use explicitly weak adjacent-version transfers; the Google high-thinking row uses a separate Datacurve run with the same reported model/effort and is chart-suppressed. Four Fireworks costs remain source-scoped with unknown accounting. None populates approved measurement fields.</p>
+           <p>The default-enabled <strong>Include usage scenarios</strong> switch covers {usageScenarios.length} exact source-observation rows ({chartScenarioCount} chart-eligible after full-dataset precedence): {costScenarios} optional cost, {outputScenarios} optional output-token and {timeScenarios} optional time coordinates are selected where approved values are absent. An available approved value for the selected statistic wins independently per metric; alternatives stay in evidence and separate exports. Optional scenarios are selected only under Mean, outside strict mode, and while the switch is on. All ten AA rows use same-source DeepSWE output means for their exact agent variant; their dollar/time methods remain separate, including three pooled-suite cost proxies. Meta and xAI use explicitly weak adjacent-version transfers; the Google high-thinking row uses a separate Datacurve run with the same reported model/effort and is chart-suppressed. Four Fireworks costs remain source-scoped with unknown accounting. Optional values never populate approved measurement fields.</p>
           <p>The current snapshot has {missingUsageRows.length} observations missing all three measured usage metrics. {chartPrecedence.size} matching reports stay visible in the table but are omitted from the combined chart. Of the chart-visible rows, {noDataCount} have no cost or usage scenario; {chartNoDataCount} percentage-scale scores appear in the no-data gutter and {unscaledNoDataCount} raw-unit-unspecified scores stay outside the percentage plot. Calibrated estimates are mean-only; median views and strict comparisons exclude every scenario.</p>
            <ul className="scenario-method-list">{usageScenarios.map((scenario) => {
             const target = dataset.observations.find((observation) => observation.id === scenario.targetObservationId)

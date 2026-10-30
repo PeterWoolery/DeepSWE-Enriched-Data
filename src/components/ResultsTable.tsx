@@ -1,6 +1,6 @@
 import { displayModelName, displayScoreResult, displayScoreValue, hasPercentageScoreScale, metricObservation, modelKey, scoreMetricLabels, scoreResult, type ScoreMetric, type Statistic, type XMetric } from '../lib/comparison'
 import type { Observation } from '../lib/schema'
-import { scenarioXValue, type UsageScenario } from '../lib/usage-scenarios'
+import type { ResolveXUsageResult, ResolvedUsageCandidate, UsageScenario } from '../lib/usage-scenarios'
 
 export interface ResultsTableProps {
   observations: Observation[]
@@ -8,6 +8,7 @@ export interface ResultsTableProps {
   statistic: Statistic
   scoreMetric: ScoreMetric
   selectedId: string | null
+  usageResolutions: ReadonlyMap<string, ResolveXUsageResult>
   usageScenarios: ReadonlyMap<string, UsageScenario>
   chartSuppressions: ReadonlyMap<string, Observation[]>
   onSelect: (id: string) => void
@@ -29,11 +30,20 @@ function displayDuration(seconds: number) {
   return `${new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(seconds)} s`
 }
 
+function candidateLabel(candidate: ResolveXUsageResult | ResolvedUsageCandidate, metric: XMetric): string {
+  if (candidate.evidenceKind === 'approved-measurement') return 'Approved selected-statistic measurement'
+  if (metric === 'outputTokens' && candidate.evidenceKind === 'same-source-reference') return 'Same-source AA DeepSWE output mean'
+  if (candidate.relationship === 'separate-experiment-reference' || candidate.relationship === 'separate-benchmark-reference') return 'Separate experiment reference'
+  if (candidate.relationship === 'pooled-suite-proxy') return 'Pooled-suite proxy'
+  if (candidate.relationship === 'source-reported-unspecified') return 'Source-reported value; statistic unspecified'
+  return 'Configured optional transfer'
+}
+
 function categoryClass(category: Observation['sourceCategory']) {
   return `source-mark source-${category}`
 }
 
-export function ResultsTable({ observations, xMetric, statistic, scoreMetric, selectedId, usageScenarios, chartSuppressions, onSelect, onIsolate }: ResultsTableProps) {
+export function ResultsTable({ observations, xMetric, statistic, scoreMetric, selectedId, usageResolutions, usageScenarios, chartSuppressions, onSelect, onIsolate }: ResultsTableProps) {
   const sorted = [...observations].sort((left, right) => {
     const modelOrder = left.model.reportedName.localeCompare(right.model.reportedName)
     return modelOrder || (left.effort.order ?? Number.MAX_SAFE_INTEGER) - (right.effort.order ?? Number.MAX_SAFE_INTEGER)
@@ -59,19 +69,27 @@ export function ResultsTable({ observations, xMetric, statistic, scoreMetric, se
             const selectedScore = scoreResult(observation, scoreMetric)
             const reportedScore = displayScoreResult(observation, scoreMetric)
             const metric = metricObservation(observation, xMetric, statistic)
-            const sourceReportedCost = xMetric === 'cost' && metric.value === null ? observation.pricing.asReportedCost : null
+            const resolution = usageResolutions.get(observation.id)
+            const selectedValue = resolution?.value ?? null
+            const selectedApproved = resolution?.evidenceKind === 'approved-measurement'
+            const selectedScenario = Boolean(resolution && selectedValue !== null && resolution.evidenceKind !== 'approved-measurement')
+            const scenario = usageScenarios.get(observation.id)
+            const candidate: ResolveXUsageResult | ResolvedUsageCandidate | null = selectedScenario
+              ? resolution!
+              : resolution?.alternatives[0] ?? null
+            const candidateExclusionReason = candidate && 'exclusionReason' in candidate ? candidate.exclusionReason : null
+            const sourceReportedCost = xMetric === 'cost' && metric.value === null && selectedValue === null ? observation.pricing.asReportedCost : null
             const sourceReportedCostText = sourceReportedCost === null
               ? null
               : `$${new Intl.NumberFormat('en', { minimumFractionDigits: 2, maximumFractionDigits: 3 }).format(sourceReportedCost)} per task`
-            const scenario = usageScenarios.get(observation.id)
-            const scenarioMetricValue = scenario ? scenarioXValue(scenario, xMetric) : null
+            const scenarioMetricValue = candidate?.value ?? null
             const scenarioValue = scenarioMetricValue === null
               ? null
               : xMetric === 'cost'
-                ? `$${scenarioMetricValue.toFixed(2)} · ${scenario!.costUnit}`
+                ? `$${scenarioMetricValue.toFixed(2)} · ${candidate!.unit}`
                 : xMetric === 'outputTokens'
-                   ? `${new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(scenarioMetricValue)} ${scenario!.outputUnit}`
-                  : `${displayDuration(scenarioMetricValue)} reported time / scored attempt`
+                   ? `${new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(scenarioMetricValue)} ${candidate!.unit}`
+                  : `${displayDuration(scenarioMetricValue)} ${candidate!.unit}`
             const scenarioRange = !scenario
               ? null
               : xMetric === 'cost' ? scenario.costSensitivityRange : xMetric === 'outputTokens' ? scenario.outputTokenSensitivityRange : scenario.timeSensitivityRange
@@ -104,13 +122,20 @@ export function ResultsTable({ observations, xMetric, statistic, scoreMetric, se
                   {reportedScore.confidenceInterval.low !== null && reportedScore.confidenceInterval.high !== null && <span className="table-subline">{reportedScore.confidenceInterval.confidence === null ? 'Confidence interval' : `${reportedScore.confidenceInterval.confidence * 100}% CI`}{reportedScore.confidenceInterval.method ? ` · ${reportedScore.confidenceInterval.method}` : ''}</span>}
                   {!hasPercentageScoreScale(reportedScore) && <span className="table-subline">Raw source value · unit unspecified</span>}
                 </td>
-                <td>
-                   {sourceReportedCostText ? <><span className="unknown-value">Not a mean/median metric</span><span className="table-subline">Source-reported Cost/Task {sourceReportedCostText}</span></> : observation.approximation && xMetric === 'cost' && metric.value !== null ? <><span>≈{display(metric.value, metric.unit)}</span><span className="table-subline">Source chart Cost per task; aggregation and denominator unknown. ≈${observation.approximation.costBoundsUsd[0].toFixed(1)}–${observation.approximation.costBoundsUsd[1].toFixed(1)} reading bounds, not a CI or reported mean.</span></> : display(metric.value, metric.unit)}
-                  {metric.value === null && <span className="table-subline">{metric.missingReason}</span>}
-                  {scenario && <span className="table-usage-scenario">
-                     <strong>{scenario.outputEvidenceType === 'same-source-deepswe-mean' && xMetric === 'outputTokens' ? 'AA source-reported DeepSWE output mean · separate from approved measurement' : scenario.costScenarioType === 'source-reported-cost' ? 'Source-reported cost scenario · scope incomplete' : `Estimated scenario · ${scenario.confidence === 'low' ? 'low' : 'very low'} qualitative confidence · not measured`}</strong>
-                     <small>{scenario.outputEvidenceType === 'same-source-deepswe-mean' && xMetric === 'outputTokens' ? 'Output is a same-source benchmark mean; the separate dollar/time scenario has a qualitative evidence grade.' : 'Qualitative evidence grade, not a probability.'}</small>
-                     {scenarioValue ? <span>{scenario.outputEvidenceType === 'same-source-deepswe-mean' && xMetric === 'outputTokens' ? 'Same-source AA DeepSWE mean · ' : ''}{scenarioValue}</span> : <span>{scenario.costUsd === null ? 'No cost estimate.' : `Cost only: $${scenario.costUsd.toFixed(2)} · ${scenario.costUnit}.`} No estimate for the selected X metric.</span>}
+                 <td>
+                    {selectedValue !== null
+                      ? observation.approximation && xMetric === 'cost'
+                        ? <><span>≈{display(selectedValue, resolution!.unit)}</span><span className="table-subline">Source chart Cost per task; aggregation and denominator unknown. ≈${observation.approximation.costBoundsUsd[0].toFixed(1)}–${observation.approximation.costBoundsUsd[1].toFixed(1)} reading bounds, not a CI or reported mean.</span></>
+                        : <><span>{display(selectedValue, resolution!.unit)}</span><span className="table-subline">{candidateLabel(resolution!, xMetric)} · {resolution!.statistic} · {resolution!.relationship}</span></>
+                      : sourceReportedCostText
+                        ? <><span className="unknown-value">Not a mean/median metric</span><span className="table-subline">Source-reported Cost/Task {sourceReportedCostText}</span></>
+                        : display(null, metric.unit)}
+                   {selectedValue === null && <span className="table-subline">{resolution?.reason ?? metric.missingReason}</span>}
+                   {scenario && <span className="table-usage-scenario">
+                      <strong>{selectedApproved ? `Optional ${candidate ? candidateLabel(candidate, xMetric).toLowerCase() : 'usage evidence'} · not selected; approved ${statistic} value takes precedence` : selectedScenario ? `${candidateLabel(resolution!, xMetric)} · selected optional coordinate` : `${candidate ? candidateLabel(candidate, xMetric) : 'Optional usage evidence'} · not selected`}</strong>
+                      <small>{candidateExclusionReason ?? (scenario.outputEvidenceType === 'same-source-deepswe-mean' ? 'Output is a same-source benchmark mean; the separate dollar/time evidence is distinct.' : 'Qualitative evidence grade, not a probability.')}</small>
+                      {scenarioValue !== null ? <span>{scenarioValue}</span> : <span>{scenario.costUsd === null ? 'No cost estimate.' : `Cost context: $${scenario.costUsd.toFixed(2)} · ${scenario.costUnit}.`} No value for the selected X metric.</span>}
+                      {candidate && <small>Metric provenance · {candidate.evidenceKind}; {candidate.relationship}; method {candidate.method ?? 'not recorded'}; sources {candidate.sourceIds.join(', ') || 'not recorded'}; facts {candidate.factIds.join(', ') || 'none'}; references {candidate.referenceIds.join(', ') || 'none'}.</small>}
                     {scenarioRange
                       ? <small>Sensitivity envelope {xMetric === 'cost' ? `$${scenarioRange[0].toFixed(2)}–$${scenarioRange[1].toFixed(2)}` : xMetric === 'outputTokens' ? `${new Intl.NumberFormat('en').format(scenarioRange[0])}–${new Intl.NumberFormat('en').format(scenarioRange[1])} tokens` : `${displayDuration(scenarioRange[0])}–${displayDuration(scenarioRange[1])}`}; not a confidence interval.</small>
                       : <small>No defensible range or prediction interval is available.</small>}

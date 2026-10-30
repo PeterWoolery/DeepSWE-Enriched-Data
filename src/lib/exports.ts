@@ -1,6 +1,6 @@
 import type { Dataset, Observation } from './schema'
 import { modelKey, scoreResult, type ScoreMetric, type Statistic, type XMetric } from './comparison'
-import { usageScenarioForObservation } from './usage-scenarios'
+import { resolveXUsage, usageScenarioForObservation, type ResolveXUsageResult, type UsageScenario } from './usage-scenarios'
 
 export interface ExportFilters {
   view: string
@@ -40,9 +40,9 @@ export function filteredJsonExport(dataset: Dataset, observations: Observation[]
   }
 }
 
-function scenarioExportRows(observations: Observation[]) {
+function scenarioExportRows(observations: Observation[], approvedDatasetRevision: string) {
   return observations.flatMap((observation) => {
-    const scenario = usageScenarioForObservation(observation)
+    const scenario = usageScenarioForObservation(observation, approvedDatasetRevision)
     return scenario ? [{ observation, scenario }] : []
   })
 }
@@ -53,7 +53,7 @@ function scenarioRecordType(scenario: NonNullable<ReturnType<typeof usageScenari
   return 'estimated_usage_scenario' as const
 }
 
-function scenarioExportRecord(observation: Observation, scenario: NonNullable<ReturnType<typeof usageScenarioForObservation>>) {
+function scenarioExportRecord(observation: Observation, scenario: UsageScenario, selectedMetricResolution: ResolveXUsageResult) {
   return {
     recordType: scenarioRecordType(scenario),
     scenarioId: scenario.id,
@@ -82,8 +82,9 @@ function scenarioExportRecord(observation: Observation, scenario: NonNullable<Re
     },
     scenario: {
       statistic: scenario.scenarioStatistic,
-      costStatistic: scenario.scenarioStatistic,
-      outputStatistic: scenario.outputStatistic,
+      costStatistic: scenario.metricConfiguration.cost.statistic,
+      outputStatistic: scenario.metricConfiguration.outputTokens.statistic,
+      timeStatistic: scenario.metricConfiguration.time.statistic,
       costScenarioType: scenario.costScenarioType,
       costUsd: scenario.costUsd,
       costUnit: scenario.costUnit,
@@ -114,7 +115,9 @@ function scenarioExportRecord(observation: Observation, scenario: NonNullable<Re
       timeLeaveOneOutMapePercent: scenario.timeLeaveOneOutMapePercent,
       directUsageReference: scenario.directUsageReference,
       sources: scenario.sources,
+      metricConfiguration: scenario.metricConfiguration,
     },
+    selectedMetricResolution,
     scoreSourceEvidence: {
       title: observation.provenance.title,
       url: observation.provenance.url,
@@ -126,8 +129,13 @@ function scenarioExportRecord(observation: Observation, scenario: NonNullable<Re
 }
 
 /** Separate opt-in export: observed metrics remain under measurement; estimates are nested and labeled as scenarios. */
-export function usageScenarioJsonExport(dataset: Dataset, observations: Observation[], filters: ExportFilters, scope: 'filtered' | 'all', exportedAt = new Date().toISOString()) {
-  const rows = scenarioExportRows(observations)
+export function usageScenarioJsonExport(dataset: Dataset, observations: Observation[], filters: ExportFilters, scope: 'filtered' | 'all', exportedAt = new Date().toISOString(), resolutions?: ReadonlyMap<string, ResolveXUsageResult>) {
+  const rows = scenarioExportRows(observations, dataset.revisionId)
+  const resolutionFor = (observation: Observation) => resolutions?.get(observation.id) ?? resolveXUsage(observation, filters.xMetric, filters.statistic, {
+    scenariosEnabled: filters.includeUsageScenarios === true,
+    strict: filters.strict,
+    approvedDatasetRevision: dataset.revisionId,
+  })
   return {
     exportMetadata: {
       exportType: 'usage-scenarios-only',
@@ -139,12 +147,12 @@ export function usageScenarioJsonExport(dataset: Dataset, observations: Observat
       observationsAreNotModified: true,
        attribution: 'Usage scenarios, same-source DeepSWE output references, pooled-suite cost proxies, and source-reported cost scenarios are separate from approved measurements. Each metric preserves its own provenance and unit.',
     },
-    scenarios: rows.map(({ observation, scenario }) => scenarioExportRecord(observation, scenario)),
+     scenarios: rows.map(({ observation, scenario }) => scenarioExportRecord(observation, scenario, resolutionFor(observation))),
   }
 }
 
 /** Separate opt-in CSV export with distinct measured and scenario columns. */
-export function usageScenarioCsvExport(dataset: Dataset, observations: Observation[], filters: ExportFilters, scope: 'filtered' | 'all', exportedAt = new Date().toISOString()): string {
+export function usageScenarioCsvExport(dataset: Dataset, observations: Observation[], filters: ExportFilters, scope: 'filtered' | 'all', exportedAt = new Date().toISOString(), resolutions?: ReadonlyMap<string, ResolveXUsageResult>): string {
   const meta = [
     '# export_type=usage-scenarios-only',
     `# scope=${scope}`,
@@ -160,13 +168,18 @@ export function usageScenarioCsvExport(dataset: Dataset, observations: Observati
     'scenario_cost_type', 'scenario_cost_usd', 'scenario_cost_unit', 'scenario_cost_sensitivity_low_usd', 'scenario_cost_sensitivity_high_usd',
      'scenario_mean_output_tokens_per_attempt', 'scenario_output_unit', 'scenario_output_evidence_type', 'scenario_output_sensitivity_low_tokens', 'scenario_output_sensitivity_high_tokens',
     'scenario_mean_reported_seconds_per_attempt', 'scenario_time_sensitivity_low_seconds', 'scenario_time_sensitivity_high_seconds',
-     'aa_coding_suite_cost_usd_per_task', 'aa_coding_suite_time_seconds_per_task', 'aa_coding_suite_mixed_tokens_per_task', 'scenario_statistic', 'scenario_cost_statistic', 'scenario_output_statistic', 'scenario_confidence_quality', 'scenario_confidence_note',
+      'aa_coding_suite_cost_usd_per_task', 'aa_coding_suite_time_seconds_per_task', 'aa_coding_suite_mixed_tokens_per_task', 'scenario_statistic', 'scenario_cost_statistic', 'scenario_output_statistic', 'scenario_time_statistic', 'scenario_confidence_quality', 'scenario_confidence_note',
     'cost_calibration_method', 'cost_calibration_description', 'cost_leave_one_out_mape_percent', 'output_calibration_method', 'output_calibration_description', 'output_leave_one_out_mape_percent',
     'time_calibration_method', 'time_calibration_description', 'time_leave_one_out_mape_percent',
     'output_calibration_rows_json', 'cost_calibration_rows_json', 'time_calibration_rows_json', 'direct_usage_reference_json',
-    'sensitivity_note', 'score_source_title', 'score_source_url', 'score_source_retrieved_at', 'score_source_sha256', 'score_evidence_locator', 'scenario_sources_json',
+    'sensitivity_note', 'score_source_title', 'score_source_url', 'score_source_retrieved_at', 'score_source_sha256', 'score_evidence_locator', 'scenario_sources_json', 'metric_configuration_json', 'selected_metric_resolution_json',
   ]
-  const rows = scenarioExportRows(observations).map(({ observation, scenario }) => {
+  const rows = scenarioExportRows(observations, dataset.revisionId).map(({ observation, scenario }) => {
+    const selectedMetricResolution = resolutions?.get(observation.id) ?? resolveXUsage(observation, filters.xMetric, filters.statistic, {
+      scenariosEnabled: filters.includeUsageScenarios === true,
+      strict: filters.strict,
+      approvedDatasetRevision: dataset.revisionId,
+    })
     const costRange = scenario.costSensitivityRange
     const outputRange = scenario.outputTokenSensitivityRange
     const timeRange = scenario.timeSensitivityRange
@@ -178,13 +191,13 @@ export function usageScenarioCsvExport(dataset: Dataset, observations: Observati
       scenario.costScenarioType, scenario.costUsd, scenario.costUnit, costRange?.[0] ?? null, costRange?.[1] ?? null,
        scenario.outputTokensPerScoredAttempt, scenario.outputUnit, scenario.outputEvidenceType, outputRange?.[0] ?? null, outputRange?.[1] ?? null,
       scenario.timeSecondsPerScoredAttempt, timeRange?.[0] ?? null, timeRange?.[1] ?? null,
-       scenario.aaCodingSuiteCostUsdPerTask, scenario.aaCodingSuiteTimeSecondsPerTask, scenario.aaCodingSuiteMixedTokensPerTask, scenario.scenarioStatistic, scenario.scenarioStatistic, scenario.outputStatistic, scenario.confidence, scenario.confidenceNote,
+        scenario.aaCodingSuiteCostUsdPerTask, scenario.aaCodingSuiteTimeSecondsPerTask, scenario.aaCodingSuiteMixedTokensPerTask, scenario.scenarioStatistic, scenario.metricConfiguration.cost.statistic, scenario.metricConfiguration.outputTokens.statistic, scenario.metricConfiguration.time.statistic, scenario.confidence, scenario.confidenceNote,
       scenario.costCalibrationMethod, scenario.costCalibrationDescription, scenario.costLeaveOneOutMapePercent,
       scenario.outputCalibrationMethod, scenario.outputCalibrationDescription, scenario.outputLeaveOneOutMapePercent,
       scenario.timeCalibrationMethod, scenario.timeCalibrationDescription, scenario.timeLeaveOneOutMapePercent,
       JSON.stringify(scenario.outputCalibrationRows), JSON.stringify(scenario.costCalibrationRows), JSON.stringify(scenario.timeCalibrationRows), JSON.stringify(scenario.directUsageReference),
-      scenario.sensitivityNote, observation.provenance.title, observation.provenance.url, observation.provenance.retrievedAt,
-      observation.provenance.contentSha256, observation.provenance.evidenceLocator, JSON.stringify(scenario.sources),
+       scenario.sensitivityNote, observation.provenance.title, observation.provenance.url, observation.provenance.retrievedAt,
+       observation.provenance.contentSha256, observation.provenance.evidenceLocator, JSON.stringify(scenario.sources), JSON.stringify(scenario.metricConfiguration), JSON.stringify(selectedMetricResolution),
     ]
   })
   return `${meta.join('\n')}\n${headers.map(csv).join(',')}\n${rows.map((row) => row.map(csv).join(',')).join('\n')}\n`

@@ -9,7 +9,7 @@ import { datacurveChartPrecedence, displayModelName, displayScoreResult, display
 import { downloadText, filteredCsvExport, filteredJsonExport, usageScenarioCsvExport, usageScenarioJsonExport } from './lib/exports'
 import { CandidateQueueSchema, DatasetSchema, type Candidate, type Dataset, type Observation } from './lib/schema'
 import { defaultExplorerState, parseExplorerUrl, serializeExplorerUrl, type ExplorerUrlState, type ExplorerView } from './lib/url-state'
-import { scenarioXValue, usageScenarioForComparison } from './lib/usage-scenarios'
+import { resolveXUsage, usageScenarioForObservation } from './lib/usage-scenarios'
 
 interface SourceEntry {
   id: string
@@ -158,6 +158,15 @@ function App() {
     const bestIds = new Set(best.map((observation) => observation.id))
     return filteredObservations.filter((observation) => !scoreResult(observation, state.scoreMetric) || bestIds.has(observation.id))
   }, [filteredObservations, state.effortMode, state.scoreMetric])
+  const filteredScenarioObservations = useMemo(() => {
+    // Scenario evidence remains exportable even when strict comparison hides
+    // optional marks. Retain the ordinary filters and effort projection, but
+    // do not apply strict eligibility as an evidence-export filter.
+    if (state.effortMode === 'all') return unstrictObservations
+    const best = projectBest(unstrictObservations, state.scoreMetric)
+    const bestIds = new Set(best.map((observation) => observation.id))
+    return unstrictObservations.filter((observation) => !scoreResult(observation, state.scoreMetric) || bestIds.has(observation.id))
+  }, [unstrictObservations, state.effortMode, state.scoreMetric])
   const displayedChartObservations = useMemo(() => {
     if (state.effortMode === 'all') return chartFilteredObservations
     const best = projectBest(chartFilteredObservations, state.scoreMetric)
@@ -169,18 +178,32 @@ function App() {
     return matches ? [[observation.id, matches] as const] : []
   })), [displayedObservations, chartPrecedence])
 
-  const visibleUsageScenarios = useMemo(() => {
-    if (!state.includeUsageScenarios) return []
-    return displayedChartObservations.flatMap((observation) => {
-      const scenario = usageScenarioForComparison(observation, state.xMetric, state.statistic, state.strict)
-      return scenario ? [{ observation, scenario }] : []
-    })
-  }, [displayedChartObservations, state.includeUsageScenarios, state.xMetric, state.statistic, state.strict])
-  const usageScenariosByObservationId = useMemo(() => new Map(displayedObservations.flatMap((observation) => {
-    const scenario = state.includeUsageScenarios ? usageScenarioForComparison(observation, state.xMetric, state.statistic, state.strict) : null
+  const usageScenariosByObservationId = useMemo(() => new Map((dataset?.observations ?? []).flatMap((observation) => {
+    const scenario = usageScenarioForObservation(observation, dataset?.revisionId)
     return scenario ? [[observation.id, scenario] as const] : []
-  })), [displayedObservations, state.includeUsageScenarios, state.xMetric, state.statistic, state.strict])
-  const visibleScenarioMarks = visibleUsageScenarios.filter(({ observation, scenario }) => scenarioXValue(scenario, state.xMetric) !== null && hasPercentageScoreScale(displayScoreResult(observation, state.scoreMetric)))
+  })), [dataset])
+  const usageResolutionsByObservationId = useMemo(() => new Map((dataset?.observations ?? []).map((observation) => [
+    observation.id,
+    resolveXUsage(observation, state.xMetric, state.statistic, {
+      scenariosEnabled: state.includeUsageScenarios,
+      strict: state.strict,
+      approvedDatasetRevision: dataset?.revisionId,
+    }),
+  ] as const)), [dataset, state.xMetric, state.statistic, state.includeUsageScenarios, state.strict])
+  const visibleUsageScenarios = useMemo(() => displayedChartObservations.flatMap((observation) => {
+    const resolution = usageResolutionsByObservationId.get(observation.id)
+    const scenario = usageScenariosByObservationId.get(observation.id)
+    return resolution && scenario && resolution.value !== null && resolution.evidenceKind !== 'approved-measurement'
+      ? [{ observation, scenario, resolution }]
+      : []
+  }), [displayedChartObservations, usageResolutionsByObservationId, usageScenariosByObservationId])
+  const visibleScenarioMarks = visibleUsageScenarios.filter(({ observation, resolution }) =>
+    resolution.value !== null
+    && Number.isFinite(resolution.value)
+    && resolution.value >= 0
+    && (state.scale === 'linear' || resolution.value > 0)
+    && hasPercentageScoreScale(displayScoreResult(observation, state.scoreMetric)),
+  )
 
   const chartScoreDetails = useMemo(() => displayedChartObservations.map((observation) => ({ observation, score: displayScoreResult(observation, state.scoreMetric) })), [displayedChartObservations, state.scoreMetric])
   const chartScoreMetrics = new Set(chartScoreDetails.filter(({ score }) => hasPercentageScoreScale(score)).map(({ score }) => score.metric))
@@ -307,11 +330,14 @@ function App() {
       statistic: state.statistic,
       scoreMetric: state.scoreMetric,
     }
-    const observations = scope === 'all' ? dataset.observations : visibleUsageScenarios.map(({ observation }) => observation)
+    // This is an evidence export, not a list of currently plotted marks. Keep
+    // exact-target alternatives even when the scenario toggle, statistic,
+    // strict mode, or chart precedence prevents them from being selected.
+    const observations = scope === 'all' ? dataset.observations : filteredScenarioObservations
     const filename = `deepswe-${scope}-usage-scenarios.${format}`
     const text = format === 'json'
-      ? `${JSON.stringify(usageScenarioJsonExport(dataset, observations, filters, scope), null, 2)}\n`
-      : usageScenarioCsvExport(dataset, observations, filters, scope)
+      ? `${JSON.stringify(usageScenarioJsonExport(dataset, observations, filters, scope, undefined, usageResolutionsByObservationId), null, 2)}\n`
+      : usageScenarioCsvExport(dataset, observations, filters, scope, undefined, usageResolutionsByObservationId)
     downloadText(filename, text, format === 'json' ? 'application/json' : 'text/csv;charset=utf-8')
     setAnnouncement(`${scope === 'all' ? 'All' : 'Filtered'} usage scenario ${format.toUpperCase()} export downloaded separately from measured observations.`)
   }
@@ -431,17 +457,26 @@ function App() {
             {state.xMetric === 'outputTokens' && <div className="timing-scope-note token-scope-note"><strong>Output-token populations differ by source.</strong> Datacurve reports output per scored rollout attempt; exact AA variants report a DeepSWE task-attempt mean without an output-telemetry-specific sample count. Reasoning-token inclusion is unknown for most configurations; strict comparisons require it to be known.</div>}
             {state.includeUsageScenarios && state.strict && <div className="usage-scenario-note" role="note"><strong>Strict comparison excludes usage scenarios.</strong> Only source-reported measurements are considered in strict groups.</div>}
             {state.includeUsageScenarios && !state.strict && state.statistic === 'median' && <div className="usage-scenario-note" role="note"><strong>Scenarios are shown only with the Mean control.</strong> Median remains limited to source-reported measurements. Fireworks source Cost/Task rows do not publish a mean/median statistic and keep that limitation in their scenario label.</div>}
-            {state.includeUsageScenarios && !state.strict && state.statistic === 'mean' && visibleUsageScenarios.length > 0 && <div className="usage-scenario-note" role="note">
-               <strong>Mean-only cost and usage scenarios · separate from measurements.</strong> Hollow diamonds are standalone. Each scenario remains attached to its exact source row; unavailable metrics stay absent.
-              <ul>{visibleUsageScenarios.map(({ observation, scenario }) => {
-                const value = state.xMetric === 'cost'
-                   ? scenario.costUsd === null ? 'no cost estimate' : `$${scenario.costUsd.toFixed(2)} · ${scenario.costUnit}`
-                  : state.xMetric === 'outputTokens'
-                     ? scenario.outputTokensPerScoredAttempt === null ? 'no output-token estimate' : `${new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(scenario.outputTokensPerScoredAttempt)} ${scenario.outputUnit}`
-                     : scenario.timeSecondsPerScoredAttempt === null ? 'no time estimate' : `${new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(scenario.timeSecondsPerScoredAttempt / 60)} min/attempt`
-                const range = state.xMetric === 'cost' ? scenario.costSensitivityRange : state.xMetric === 'outputTokens' ? scenario.outputTokenSensitivityRange : scenario.timeSensitivityRange
-                 return <li key={scenario.id}>{observation.model.reportedName}: {scenario.outputEvidenceType === 'same-source-deepswe-mean' && state.xMetric === 'outputTokens' ? 'same-source AA DeepSWE mean' : `${scenario.confidence === 'low' ? 'low' : 'very low'} qualitative scenario evidence`}; {value}{range ? ' · observed small-sample sensitivity only, not a confidence interval' : ' · no defensible range or prediction interval'}.</li>
-              })}</ul>
+              {state.includeUsageScenarios && !state.strict && state.statistic === 'mean' && visibleUsageScenarios.length > 0 && <div className="usage-scenario-note" role="note">
+                <strong>Mean-only cost and usage scenarios · separate from measurements.</strong> Hollow diamonds are standalone. Each scenario remains attached to its exact source row; unavailable metrics stay absent.
+               <ul>{visibleUsageScenarios.map(({ observation, scenario, resolution }) => {
+                 const value = state.xMetric === 'cost'
+                    ? `$${resolution.value!.toFixed(2)} · ${resolution.unit}`
+                   : state.xMetric === 'outputTokens'
+                      ? `${new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(resolution.value!)} ${resolution.unit}`
+                      : `${new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(resolution.value! / 60)} min/attempt`
+                 const range = state.xMetric === 'cost' ? scenario.costSensitivityRange : state.xMetric === 'outputTokens' ? scenario.outputTokenSensitivityRange : scenario.timeSensitivityRange
+                 const evidence = resolution.relationship === 'same-source-same-benchmark-reference'
+                   ? `same-source ${resolution.statistic} reference`
+                   : resolution.relationship === 'separate-experiment-reference' || resolution.relationship === 'separate-benchmark-reference'
+                     ? 'separate-experiment reference'
+                     : resolution.relationship === 'pooled-suite-proxy'
+                       ? 'pooled-suite proxy'
+                       : resolution.relationship === 'source-reported-unspecified'
+                         ? 'source-reported statistic-unspecified value'
+                         : `configured ${resolution.relationship ?? 'optional'} evidence`
+                  return <li key={`${scenario.id}-${state.xMetric}`}>{observation.model.reportedName}: {evidence}; {value}; source {resolution.sourceIds.join(', ') || 'not recorded'}{range ? ' · observed small-sample sensitivity only, not a confidence interval' : ' · no defensible range or prediction interval'}.</li>
+               })}</ul>
               {state.xMetric === 'outputTokens'
                  ? <p>Output scenarios use separate DeepSWE references, same-source AA DeepSWE means, or explicitly weak output-only Intelligence Index transfers. Coding Agent suite mixed-token totals are never displayed as output tokens.</p>
                 : state.xMetric === 'cost'
@@ -463,13 +498,12 @@ function App() {
                 <div className="chart-card-head"><div><strong>{scoreMetricLabels[state.scoreMetric]}</strong><span>Score axis · explicit percentage/fraction values; reference key gives each source metric</span></div><button className="icon-action" type="button" aria-label="Download current chart as SVG" onClick={exportChartSvg}>↓ SVG</button></div>
                 <ExplorerChart
                   observations={displayedChartObservations}
-                  usageScenarios={visibleUsageScenarios}
+                  usageResolutions={usageResolutionsByObservationId}
+                  usageScenarios={usageScenariosByObservationId}
                   chartSuppressions={visibleChartSuppressions}
                   suppressedCount={visibleChartSuppressions.size}
                   xMetric={state.xMetric}
                   statistic={state.statistic}
-                  strict={state.strict}
-                  includeUsageScenarios={state.includeUsageScenarios}
                   scoreMetric={state.scoreMetric}
                   scale={state.scale}
                   connections={connections}
@@ -496,7 +530,7 @@ function App() {
                     {availableModels.length === 0 && <li className="legend-empty">No models in the selected source types.</li>}
                   </ul>
                 </section>
-                <EvidencePanel observation={selectedObservation} xMetric={state.xMetric} statistic={state.statistic} scoreMetric={state.scoreMetric} usageScenario={selectedObservation ? usageScenariosByObservationId.get(selectedObservation.id) ?? null : null} chartSuppression={selectedObservation ? visibleChartSuppressions.get(selectedObservation.id) ?? null : null} />
+                 <EvidencePanel observation={selectedObservation} xMetric={state.xMetric} statistic={state.statistic} scoreMetric={state.scoreMetric} usageResolution={selectedObservation ? usageResolutionsByObservationId.get(selectedObservation.id) ?? null : null} usageScenario={selectedObservation ? usageScenariosByObservationId.get(selectedObservation.id) ?? null : null} chartSuppression={selectedObservation ? visibleChartSuppressions.get(selectedObservation.id) ?? null : null} />
               </aside>
             </div>
           </section>
@@ -534,7 +568,7 @@ function App() {
                 </div></details>
               </div>
             </div>
-            <ResultsTable observations={displayedObservations} xMetric={state.xMetric} statistic={state.statistic} scoreMetric={state.scoreMetric} selectedId={state.selectedObservationId} usageScenarios={usageScenariosByObservationId} chartSuppressions={visibleChartSuppressions} onSelect={selectObservation} onIsolate={isolateModel} />
+             <ResultsTable observations={displayedObservations} xMetric={state.xMetric} statistic={state.statistic} scoreMetric={state.scoreMetric} selectedId={state.selectedObservationId} usageResolutions={usageResolutionsByObservationId} usageScenarios={usageScenariosByObservationId} chartSuppressions={visibleChartSuppressions} onSelect={selectObservation} onIsolate={isolateModel} />
           </section>
 
           <section className="share-strip">
