@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
-import { datacurveChartPrecedence, getEfficiencyCoverage, scoreResult } from '../src/lib/comparison'
+import { datacurveChartPrecedence, displayScoreResult, getEfficiencyCoverage, hasPercentageScoreScale, scoreResult } from '../src/lib/comparison'
 import type { Dataset } from '../src/lib/schema'
 
 interface ExportedObservation {
@@ -244,7 +244,8 @@ test('approved usage wins per metric, zero stays selected on log axes, and other
   const optional = page.locator(`.estimated-point[data-observation-id="${target.id}"]`)
   await expect(measured).toHaveCount(1)
   await expect(optional).toHaveCount(0)
-  await expect(row.locator('td').nth(4)).toContainText('0')
+  const outputColumn = await page.getByRole('columnheader', { name: 'mean output tokens' }).evaluate((header) => (header as HTMLTableCellElement).cellIndex)
+  await expect(row.locator('td, th').nth(outputColumn).locator('span').first()).toHaveText('0')
   await row.locator('.table-model-button').click()
   await expect(page.locator('.selected-usage-evidence')).toContainText('0 · mean · approved selected-statistic measurement')
   await expect(page.locator('.selected-usage-evidence')).toContainText('aa-output-gpt-6-luna-max')
@@ -335,13 +336,15 @@ test('default view surfaces supplemental reports with their reported score metri
   const approvedCount = (await loadDataset(page)).observations.length
   await expect(table.locator('tr')).toHaveCount(approvedCount)
   await expect(page.getByRole('tab', { name: /Combined reports/ })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.locator('.estimated-point[data-observation-id="openai-gpt-6-luna-v1.1-max"]')).toHaveCount(1)
+  await page.getByRole('checkbox', { name: /Include usage scenarios/ }).uncheck()
 
   const luna = table.locator('tr[data-observation-id="openai-gpt-6-luna-v1.1-max"]')
   await expect(luna).toHaveCount(1)
   await expect(luna).toHaveAttribute('data-observation-id', 'openai-gpt-6-luna-v1.1-max')
   await expect(luna.locator('td').nth(2)).toContainText('66.6%')
   await expect(luna.locator('td').nth(2)).toContainText('Different metric: Developer-reported DeepSWE score; exact score metric not specified')
-  await expect(luna.locator('td').nth(3)).toContainText('Mean task cost is not inferred')
+  await expect(luna.locator('td').nth(3)).toContainText('Optional usage scenarios are disabled')
   await expect(luna.locator('td').nth(5)).toContainText('developer')
   await expect(luna.locator('.row-evidence a')).toHaveAttribute('href', 'https://openai.com/index/introducing-gpt-6-sol-and-luna/')
   await expect(page.locator('.plot-point[data-observation-id="openai-gpt-6-luna-v1.1-max"]')).toHaveCount(0)
@@ -358,7 +361,7 @@ test('default view surfaces supplemental reports with their reported score metri
   await expect(opus).toHaveAttribute('data-observation-id', 'anthropic-claude-opus-5.5-v1.1')
   await expect(opus.locator('td').nth(2)).toContainText('74.2%')
   await expect(opus.locator('td').nth(2)).toContainText('Different metric: Developer-reported average score over five trials; exact score metric not specified')
-  await expect(opus.locator('td').nth(3)).toContainText('Mean task cost is not inferred')
+  await expect(opus.locator('td').nth(3)).toContainText('Optional usage scenarios are disabled')
   await expect(opus.locator('td').nth(5)).toContainText('developer')
   await expect(opus.locator('.row-evidence a')).toHaveAttribute('href', /Claude%20Opus%205\.5%20System%20Card\.pdf/)
   await expect(page.locator('.plot-point[data-observation-id="anthropic-claude-opus-5.5-v1.1"]')).toHaveCount(0)
@@ -452,9 +455,12 @@ test('Datacurve precedence removes duplicate chart marks without hiding source r
 })
 
 test('no-data marks use a separate gutter through X/statistic/scale changes', async ({ page }) => {
-  await page.goto('./')
-  await expect(page.locator('.no-data-point')).toHaveCount(22)
-  await expect(page.locator('.no-data-lane-count')).toHaveText('22')
+  await page.goto('?scenarios=0')
+  const dataset = JSON.parse(await readFile(new URL('../data/approved/dataset.json', import.meta.url), 'utf8')) as Dataset
+  const precedence = datacurveChartPrecedence(dataset.observations, dataset.sourceRetrieval.sourceId)
+  const missingCount = dataset.observations.filter((row) => !precedence.has(row.id) && hasPercentageScoreScale(displayScoreResult(row, 'pass_at_1')) && row.metrics.cost.value === null).length
+  await expect(page.locator('.no-data-point')).toHaveCount(missingCount)
+  await expect(page.locator('.no-data-lane-count')).toHaveText(String(missingCount))
   expect(await noDataSymbolOverlaps(page)).toEqual([])
   const lunaReference = page.locator('.no-data-point[data-observation-id="openai-gpt-6-luna-v1.1-max"]')
   const opusReference = page.locator('.no-data-point[data-observation-id="anthropic-claude-opus-5.5-v1.1"]')
@@ -471,12 +477,12 @@ test('no-data marks use a separate gutter through X/statistic/scale changes', as
   await expect(lunaReference).toHaveCount(1)
   await expect(opusReference).toHaveCount(1)
 
-  await page.goto('?score=pass_at_4')
+  await page.goto('?score=pass_at_4&scenarios=0')
   const fallback = page.locator('.no-data-entry[data-observation-id="openai-gpt-6-luna-v1.1-max"]')
   await expect(fallback).toHaveAttribute('data-score-metric', 'reported_score_unspecified')
   await expect(fallback).toHaveAttribute('aria-label', /Different metric from selected pass@4/)
 
-  await page.goto('?q=luna&publisher=OpenAI')
+  await page.goto('?q=luna&publisher=OpenAI&scenarios=0')
   await expect(page.locator('.results-table tbody tr')).toHaveCount(1)
   await expect(page.locator('.plot-point')).toHaveCount(0)
   await expect(page.locator('.no-data-point')).toHaveCount(1)
@@ -550,22 +556,23 @@ test('all three X metrics, statistic, scale, and connections survive a shared-UR
 
 test('publisher/model filters and strict mode do not combine unknown protocol groups', async ({ page }) => {
   await page.goto('?view=combined')
-  const approvedCount = (await loadDataset(page)).observations.length
+  const dataset = JSON.parse(await readFile(new URL('../data/approved/dataset.json', import.meta.url), 'utf8')) as Dataset
+  const approvedCount = dataset.observations.length
   await expect(page.locator('.results-table tbody tr')).toHaveCount(approvedCount)
   const versionUnknownPaperRow = page.locator('.results-table tbody tr').filter({ hasText: '70.0%' })
   await expect(versionUnknownPaperRow.locator('td').nth(0)).toContainText('unspecified')
 
   await page.getByRole('combobox', { name: /^Benchmark version$/ }).selectOption('1.1')
   await expect(page).toHaveURL(/version=1.1/)
-  await expect(page.locator('.results-table tbody tr')).toHaveCount(113)
+  await expect(page.locator('.results-table tbody tr')).toHaveCount(dataset.observations.filter((row) => row.benchmark.version === '1.1').length)
   await page.getByRole('combobox', { name: /^Harness \/ protocol$/ }).selectOption('mini-swe-agent')
-  await expect(page.locator('.results-table tbody tr')).toHaveCount(72)
+  await expect(page.locator('.results-table tbody tr')).toHaveCount(dataset.observations.filter((row) => row.benchmark.version === '1.1' && row.series.harness === 'mini-swe-agent').length)
   await page.getByRole('combobox', { name: /^Harness \/ protocol$/ }).selectOption('all')
 
   const sourceToggles = page.locator('.source-filter input[type="checkbox"]')
   await sourceToggles.nth(0).uncheck()
   await expect(page).toHaveURL(/sources=/)
-  await expect(page.locator('.results-table tbody tr')).toHaveCount(43)
+  await expect(page.locator('.results-table tbody tr')).toHaveCount(dataset.observations.filter((row) => row.benchmark.version === '1.1' && row.sourceCategory !== 'organizer').length)
   await sourceToggles.nth(0).check()
 
   await page.getByRole('searchbox', { name: 'Search models / publishers' }).fill('Astra')
@@ -792,7 +799,7 @@ test('SVG export, submission draft, methodology/source pages, and mobile layout 
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.width)
 })
 
-test('cost-only source scenarios preserve their basis and leave unsupported X metrics without numeric guides', async ({ page }) => {
+test('source-reported cost remains distinct from independent output and time transfers', async ({ page }) => {
   await page.goto('?view=combined&q=Fireworks')
   const reportId = 'fireworks-deepswe-deepseek-v4.1-flash-max'
   const point = page.locator(`.estimated-point[data-observation-id="${reportId}"]`)
@@ -804,13 +811,15 @@ test('cost-only source scenarios preserve their basis and leave unsupported X me
   const evidence = page.locator('.usage-evidence')
   await expect(evidence).toContainText('SOURCE-REPORTED COST SCENARIO')
   await expect(evidence).toContainText('not normalized as a mean/median cost per scored attempt')
-  await expect(evidence).not.toContainText('Mean output tokens')
-  await expect(evidence).not.toContainText('Mean reported time')
+  await expect(evidence).toContainText('Mean reported time')
+  await expect(evidence).toContainText('separate II workload')
 
   const missingOutput = page.locator(`.no-data-point[data-observation-id="${reportId}"]`)
   await page.getByRole('button', { name: 'Output tokens per task', exact: true }).click()
+  await expect(page.locator(`.estimated-point[data-observation-id="${reportId}"]`)).toHaveCount(1)
+  await page.getByRole('checkbox', { name: /Include usage scenarios/ }).uncheck()
   await expect(page.locator(`.estimated-point[data-observation-id="${reportId}"]`)).toHaveCount(0)
-  await expect(missingOutput).toHaveAttribute('aria-label', /scenario exists.*no output tokens per task estimate is available/)
+  await expect(missingOutput).toHaveAttribute('aria-label', /not selected/)
   await missingOutput.click()
   const noDataGuide = page.locator(`.selected-guide[data-selected-guide-for="${reportId}"]`)
   await expect(noDataGuide).toHaveAttribute('data-selected-guide-type', 'no-data')
@@ -820,9 +829,18 @@ test('cost-only source scenarios preserve their basis and leave unsupported X me
 
 test('usage scenarios stay separate from measurements and export independently', async ({ page }) => {
   await page.goto('?view=combined')
+  const dataset = JSON.parse(await readFile(new URL('../data/approved/dataset.json', import.meta.url), 'utf8')) as Dataset
+  const research = JSON.parse(await readFile(new URL('../data/research/usage-proxy-cross-platform-20260927.json', import.meta.url), 'utf8'))
+  const scenarioTargets = research.scenarioConfig.targets as { observationId: string; metrics: Record<string, { selection: string }> }[]
+  const precedence = datacurveChartPrecedence(dataset.observations, dataset.sourceRetrieval.sourceId)
+  const chartRows = dataset.observations.filter((row) => !precedence.has(row.id) && hasPercentageScoreScale(displayScoreResult(row, 'pass_at_1')))
+  const optionalCount = (metric: 'cost' | 'outputTokens' | 'time') => chartRows.filter((row) => {
+    const target = scenarioTargets.find((item) => item.observationId === row.id)
+    return row.metrics[metric].value === null && (target?.metrics[metric]?.selection !== undefined && target.metrics[metric]!.selection !== 'none' || research.efficiencyExtension.targets.some((item: { observationId: string; metrics: string[] }) => item.observationId === row.id && item.metrics.includes(metric)))
+  }).length
   const scenarioToggle = page.getByRole('checkbox', { name: /Include usage scenarios/ })
   await expect(scenarioToggle).toBeChecked()
-  await expect(page.locator('.estimated-point')).toHaveCount(9)
+  await expect(page.locator('.estimated-point')).toHaveCount(optionalCount('cost'))
 
   const lunaId = 'aa-codex-gpt-6-luna-max-v1.1'
   const opusId = 'artificial-analysis-claude-code-opus-5.5-max-v1.1'
@@ -839,8 +857,7 @@ test('usage scenarios stay separate from measurements and export independently',
   await expect(page.locator(`.no-data-point[data-observation-id="${lunaId}"]`)).toHaveCount(0)
 
   const lunaRow = page.locator(`.results-table tr[data-observation-id="${lunaId}"]`)
-  await expect(lunaRow.locator('td').nth(3)).toContainText('Mean task cost is not inferred')
-  await expect(lunaRow.locator('td').nth(3)).toContainText('Estimated scenario')
+  await expect(lunaRow.locator('td').nth(3)).toContainText('Configured optional transfer · selected optional coordinate')
   await expect(lunaRow.locator('td').nth(3)).toContainText('$0.21 · USD per scored rollout attempt')
   await expect(lunaRow.locator('td').nth(3)).toContainText('not a confidence interval')
   await lunaEstimate.click()
@@ -849,20 +866,22 @@ test('usage scenarios stay separate from measurements and export independently',
   await expect(page.locator('.usage-evidence')).toContainText('ESTIMATED USAGE SCENARIO · NOT MEASURED')
   await expect(page.locator('.usage-evidence')).toContainText('10,200,000 tokens/task')
   await expect(page.locator('.usage-evidence')).toContainText('not used as an output count')
-  await expect(page.locator('.usage-evidence a')).toHaveCount(3)
+  await expect(page.locator('.usage-source-evidence')).toContainText('aa-codex-vs-kimi-code-cli')
+  await expect(page.locator('.usage-source-evidence')).toContainText('datacurve-v1.1-json')
+  await expect(page.locator('.usage-source-evidence a').first()).toHaveAttribute('href', /^https:/)
 
   await scenarioToggle.uncheck()
   await expect(page).toHaveURL(/scenarios=0/)
   await expect(page.locator('.estimated-point')).toHaveCount(0)
   await expect(page.locator(`.no-data-point[data-observation-id="${lunaId}"]`)).toHaveCount(1)
-  await expect(page.locator('.no-data-lane-count')).toHaveText('31')
+  await expect(page.locator('.no-data-lane-count')).toHaveText(String(chartRows.filter((row) => row.metrics.cost.value === null).length))
   expect(await noDataSymbolOverlaps(page)).toEqual([])
   await page.reload()
   await expect(scenarioToggle).not.toBeChecked()
 
   await page.goto('?view=combined&x=outputTokens')
-  await expect(page.locator('.estimated-point')).toHaveCount(8)
-  await expect(page.locator('.estimated-point[data-x-metric="outputTokens"]')).toHaveCount(8)
+  await expect(page.locator('.estimated-point')).toHaveCount(optionalCount('outputTokens'))
+  await expect(page.locator('.estimated-point[data-x-metric="outputTokens"]')).toHaveCount(optionalCount('outputTokens'))
   await expect(page.locator('.x-tick-label')).not.toHaveCount(0)
   await expect(page.locator('.usage-scenario-note')).toContainText('Coding Agent suite mixed-token totals')
   await expect(lunaEstimate).toHaveAttribute('aria-label', /108,272 AA DeepSWE v1\.1 output tokens \/ task attempt/)
@@ -870,7 +889,7 @@ test('usage scenarios stay separate from measurements and export independently',
   await expect(opusEstimate).toHaveAttribute('aria-label', /No defensible sensitivity range or prediction interval/)
 
   await page.getByRole('button', { name: 'Time per task', exact: true }).click()
-  await expect(page.locator('.estimated-point')).toHaveCount(3)
+  await expect(page.locator('.estimated-point')).toHaveCount(optionalCount('time'))
   await expect(page.locator('.usage-scenario-note')).toContainText('Time scenarios use measured per-task wall-clock pairs')
   await page.getByRole('button', { name: 'Median', exact: true }).click()
   await expect(page.locator('.estimated-point')).toHaveCount(0)
@@ -892,8 +911,8 @@ test('usage scenarios stay separate from measurements and export independently',
   const scenarioPath = await (await scenarioDownload).path()
   const scenarioExport = JSON.parse(await readFile(scenarioPath!, 'utf8'))
   expect(scenarioExport.exportMetadata.exportType).toBe('usage-scenarios-only')
-  expect(scenarioExport.scenarios).toHaveLength(17)
-  expect(scenarioExport.scenarios.every((item: { recordType: string; measurement: { meanCostUsd: number | null }; scenario: { costUsd: number; costUnit: string } }) => ['estimated_usage_scenario', 'source_reported_cost_scenario', 'source_reported_output_with_cost_scenario'].includes(item.recordType) && item.measurement.meanCostUsd === null && item.scenario.costUsd > 0 && item.scenario.costUnit.length > 0)).toBe(true)
+  expect(scenarioExport.scenarios.map((item: { targetObservationId: string }) => item.targetObservationId).sort()).toEqual([...new Set<string>([...scenarioTargets.map((row) => row.observationId), ...research.efficiencyExtension.targets.map((row: { observationId: string }) => row.observationId)])].sort())
+  expect(scenarioExport.scenarios.every((item: { targetObservationId: string; recordType: string; measurement: { meanCostUsd: number | null }; scenario: { costUsd: number | null; costUnit: string } }) => ['estimated_usage_scenario', 'source_reported_cost_scenario', 'source_reported_output_with_cost_scenario'].includes(item.recordType) && item.measurement.meanCostUsd === dataset.observations.find((row) => row.id === item.targetObservationId)!.metrics.cost.value && item.scenario.costUnit.length > 0 && (item.targetObservationId === 'datacurve-paper-minimax-m2.7-default-version-unknown' ? item.scenario.costUsd === null : typeof item.scenario.costUsd === 'number' && Number.isFinite(item.scenario.costUsd) && item.scenario.costUsd > 0))).toBe(true)
   expect(scenarioExport.scenarios.filter((item: { recordType: string }) => item.recordType === 'source_reported_output_with_cost_scenario')).toHaveLength(10)
   expect(scenarioExport.scenarios.filter((item: { recordType: string }) => item.recordType === 'source_reported_cost_scenario')).toHaveLength(4)
   const deepseekOutput = scenarioExport.scenarios.find((item: { targetObservationId: string }) => item.targetObservationId === 'aa-codex-deepseek-v4-pro-0813-max-v1.1')
@@ -930,7 +949,7 @@ test('AA DeepSWE output and suppressed Google cross-run evidence stay attached t
   await expect(luna).toHaveAttribute('aria-label', /cost\/time scenarios are cross-benchmark transfers, not AA DeepSWE measurements/)
   await expect(luna).not.toHaveAttribute('aria-label', /only its dollar cost is pooled across the suite/)
   const opusRow = page.locator('.results-table tr[data-observation-id="aa-claude-code-opus-5-max-v1.1"]')
-  await expect(opusRow).toContainText('Same-source AA DeepSWE mean')
+  await expect(opusRow).toContainText('Same-source AA DeepSWE output mean')
   await opusRow.getByRole('button', { name: 'Details' }).click()
   await expect(page.locator('.usage-evidence')).toContainText('Same-model, same-max Datacurve mean USD per scored attempt')
   await expect(page.locator('.usage-evidence')).toContainText('Source-reported mean · AA DeepSWE v1.1 output tokens / task attempt')
@@ -947,6 +966,8 @@ test('AA DeepSWE output and suppressed Google cross-run evidence stay attached t
 })
 
 test('filtered scenario evidence export retains median/strict alternatives and precedence-suppressed rows', async ({ page }) => {
+  const dataset = JSON.parse(await readFile(new URL('../data/approved/dataset.json', import.meta.url), 'utf8')) as Dataset
+  const research = JSON.parse(await readFile(new URL('../data/research/usage-proxy-cross-platform-20260927.json', import.meta.url), 'utf8'))
   for (const scenario of [
     { url: '?view=combined&stat=median&scenarios=0', excluded: 'medians are not inferred' },
     { url: '?view=combined&strict=1&scenarios=0', excluded: 'excluded in strict mode' },
@@ -957,7 +978,8 @@ test('filtered scenario evidence export retains median/strict alternatives and p
     await page.getByRole('button', { name: 'Filtered scenarios JSON' }).click()
     const path = await (await download).path()
     const exported = JSON.parse(await readFile(path!, 'utf8'))
-    expect(exported.scenarios).toHaveLength(17)
+    expect(research.scenarioConfig.approvedDatasetRevision).toBe(dataset.revisionId)
+    expect(exported.scenarios.map((row: { targetObservationId: string }) => row.targetObservationId).sort()).toEqual([...new Set<string>([...research.scenarioConfig.targets.map((row: { observationId: string }) => row.observationId), ...research.efficiencyExtension.targets.map((row: { observationId: string }) => row.observationId)])].sort())
     expect(exported.scenarios.some((row: { targetObservationId: string }) => row.targetObservationId === 'google-gemini-3.8-flash-high-v1.1')).toBe(true)
     const luna = exported.scenarios.find((row: { targetObservationId: string }) => row.targetObservationId === 'aa-codex-gpt-6-luna-max-v1.1')
     expect(luna.selectedMetricResolution.value).toBeNull()
