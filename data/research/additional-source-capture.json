@@ -430,7 +430,7 @@
       "publisher": "MiniMax",
       "title": "MiniMax M3.1 Flash announcement",
       "url": "https://www.minimax.io/blog/minimax-m31f",
-      "publicationDate": null,
+      "publicationDate": "2026-10-19 (announcement page header; independently rechecked with webfetch)",
       "retrievedOn": "2026-11-06",
       "httpStatus": 200,
       "contentType": "text/html; charset=utf-8",
@@ -489,6 +489,26 @@
       "responseBytes": 323667,
       "sha256": "d4260d5e3ecaa5eeb47f7b8568ead1dca0ae0297982e3d7b23e4703d7f9f3f37",
       "evidenceLocator": "Evaluating Pareto across more industry benchmarks, pass-rate description and Industry Benchmarks table: DeepSWE 1.1, N=113, Ember-1 75.2%. Pass-rate aggregation, attempt denominator and harness unspecified; not the separate SII avg@3 result."
+    },
+    {
+      "id": "deepseek-1017-release-chart-20261106",
+      "publisher": "DeepSeek",
+      "title": "DeepSeek-V4.1-Flash-1017: Wish-Driven Programming Made Real",
+      "url": "https://api-docs.deepseek.com/news/news261017/",
+      "publicationDate": null,
+      "retrievedOn": "2026-11-06",
+      "groundedDocsFetch": "success",
+      "evidenceLocator": "Caption below performance-cost chart: DeepSWE v1.1 Pass@1 vs cost per task, mini-swe-v2. Does not establish that the chart configuration matches the model-card 77.0 table result; do not transfer the statistic."
+    },
+    {
+      "id": "minimax-m3.1-flash-evaluation-yaml-20261106",
+      "publisher": "MiniMaxAI model repository",
+      "title": "MiniMax-M3.1-Flash evaluation-result metadata",
+      "url": "https://huggingface.co/MiniMaxAI/MiniMax-M3.1-Flash/raw/main/.eval_results/MiniMax-M3.1-Flash.yaml",
+      "publicationDate": null,
+      "retrievedOn": "2026-11-06",
+      "groundedDocsFetch": "success",
+      "evidenceLocator": "datacurve/deep-swe row: 73.7, row date 2026-10-17, DeepSWE 1.1 and mini-SWE-agent 2.4.5; does not specify statistic, denominator or effort. Row date is not the announcement publication date."
     }
   ]
 }
