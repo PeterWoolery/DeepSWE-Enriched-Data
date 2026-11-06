@@ -55,7 +55,7 @@
       "effortLabel": null,
       "harness": "Mini-SWE-V2",
       "status": "pending-review",
-      "reason": "Developer model card and change log report the score and harness, but not its unit, statistic or evaluated denominator; see data/research/additional-source-capture.json for retrieval hashes.",
+      "reason": "Developer model card and change log report the score and harness, but not its unit, statistic or evaluated denominator. A release chart describes Pass@1 with mini-swe-v2, but does not establish that its configuration matches the 77.0 table result; see data/research/additional-source-capture.json.",
       "missing": ["score unit", "score definition and aggregation", "evaluated denominator", "effort", "cost", "tokens", "time", "confidence interval"]
     },
     {
@@ -65,7 +65,7 @@
       "sourceCategory": "developer",
       "sourceTitle": "MiniMax M3.1 Flash announcement",
       "sourceUrl": "https://www.minimax.io/blog/minimax-m31f",
-      "evidenceLocator": "Stronger Capabilities Across the Board, Coding and Software Engineering; model card Benchmarks table and Evaluation Notes, DeepSWE v1.1",
+      "evidenceLocator": "Announcement dated 2026-10-19, Stronger Capabilities Across the Board, Coding and Software Engineering; model card Benchmarks table and Evaluation Notes, DeepSWE v1.1",
       "reportedScore": 73.7,
       "normalizedScore": null,
       "scoreUnit": "%",
@@ -74,8 +74,8 @@
       "effortLabel": null,
       "harness": "mini-SWE-agent 2.4.5; 512K context",
       "status": "pending-review",
-      "reason": "Announcement reports percent; model card reports the same score with mini-SWE-agent 2.4.5 and 512K context. Statistic and evaluated denominator remain unspecified; see data/research/additional-source-capture.json for retrieval hashes.",
-      "missing": ["score definition and aggregation", "evaluated denominator", "effort", "publication date", "cost", "tokens", "time", "confidence interval"]
+      "reason": "Announcement reports percent; model card reports the same score with mini-SWE-agent 2.4.5 and 512K context. Statistic and evaluated denominator remain unspecified; see data/research/additional-source-capture.json for source details.",
+      "missing": ["score definition and aggregation", "evaluated denominator", "effort", "cost", "tokens", "time", "confidence interval"]
     },
     {
       "id": "candidate-kimi-k3.1-pro",
