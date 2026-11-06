@@ -18,6 +18,7 @@
     "validate:candidate": "tsx scripts/validate-candidate.ts",
     "export:data": "tsx scripts/export-data.ts",
     "refresh:official": "tsx scripts/refresh-official.ts",
+    "refresh:aa-usage": "tsx scripts/refresh-aa-usage.ts",
     "record:unchanged-check": "tsx scripts/record-unchanged-check.ts",
     "approve:candidate": "tsx scripts/approve-candidate.ts",
     "serve:static": "tsx scripts/serve-static.ts",

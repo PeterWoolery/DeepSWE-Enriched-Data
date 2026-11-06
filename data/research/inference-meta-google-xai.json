@@ -52,22 +52,19 @@
     {
       "observationId": "meta-muse-spark-1.3-v1.1-max", "reportedModel": "Muse Spark 1.3", "snapshot": "muse-spark-1.3", "effort": "max", "publisher": "Meta", "harness": "mini-swe-agent (per linked Meta methodology)", "scoreReportedText": "75.4%", "chartPrecedenceSuppressed": false,
       "aaIITotalOutputMillions": 170, "aaIIUsdPerTask": 1.60, "aaSource": "aa-muse-1.3-max", "calibrationGroup": "meta", "quality": "very-low; adjacent-model AND xhigh-to-max effort transfer",
-      "outputPairEstimates": [74008.4203539823,129757.57454050373], "outputTokensPerScoredAttemptScenario": 101882.99744724302, "outputSensitivityEnvelope": [74008.4203539823,129757.57454050373],
-      "costPairEstimatesUsd": [2.737556689239451,6.095678050360369], "usdPerScoredAttemptScenario": 4.41661736979991, "costSensitivityEnvelopeUsd": [2.737556689239451,6.095678050360369],
-      "looOutputAbsolutePercentageErrorMean": 59.14610401685732, "looCostAbsolutePercentageErrorMean": 88.87938092140342,
+      "historicalComputedDiagnostics": { "outputPairEstimates": [74008.4203539823,129757.57454050373], "outputCenter": 101882.99744724302, "outputSensitivityEnvelope": [74008.4203539823,129757.57454050373], "costPairEstimatesUsd": [2.737556689239451,6.095678050360369], "costCenterUsd": 4.41661736979991, "costSensitivityEnvelopeUsd": [2.737556689239451,6.095678050360369], "looOutputAbsolutePercentageErrorMean": 59.14610401685732, "looCostAbsolutePercentageErrorMean": 88.87938092140342, "status": "historical calculation snapshot; runtime values are recomputed from calibration inputs" },
       "separateSameVariantAaSuiteProxyUsdPerTask": 3.98, "suiteProxyNotDeepSWEOnly": true, "confidenceInterval": null, "targetMeasuredCost": null, "targetMeasuredOutputTokens": null
     },
     {
       "observationId": "google-gemini-3.8-flash-high-v1.1", "reportedModel": "Gemini 3.8 Flash", "snapshot": "API id gemini-3.8-flash; immutable checkpoint unknown", "effort": "high thinking", "publisher": "Google", "harness": "mini-SWE-agent", "scoreReportedText": "73.7%", "chartPrecedenceSuppressed": true,
-      "directReferenceConfig": "mini_swe_agent_gemini_3_8_flash_high", "directReferenceSource": "dc", "directReferenceAttempts": 447, "directReferenceRuns": 4, "directReferenceScore": 0.738255033557047, "directReferenceCostBasis": null,
-      "outputTokensPerScoredAttemptScenario": 143242.6644295302, "usdPerScoredAttemptScenario": 2.362349413758389, "quality": "low; exact reported API model and high effort, separate experiments, run/snapshot not proven identical", "confidenceInterval": null, "targetMeasuredCost": null, "targetMeasuredOutputTokens": null
+      "directReferenceConfig": "mini_swe_agent_gemini_3_8_flash_high", "directReferenceSource": "dc", "directReferenceScore": 0.738255033557047,
+      "quality": "low; exact reported API model and high effort, separate experiments, run/snapshot not proven identical", "confidenceInterval": null, "targetMeasuredCost": null, "targetMeasuredOutputTokens": null
     },
     {
       "observationId": "xai-grok-4.7-high-v1.1", "reportedModel": "Grok 4.7", "snapshot": "Grok 4.7; immutable checkpoint unknown", "effort": "high", "publisher": "xAI", "harness": null, "scoreReportedText": "71.0%*", "scoreMetric": "reported_score_unspecified", "chartPrecedenceSuppressed": false,
       "aaIITotalOutputMillions": 200, "aaIIUsdPerTask": 2.73, "aaSource": "aa-grok-4.7-high", "calibrationGroup": "xai", "quality": "very-low; adjacent-version high-effort transfer; developer harness and run protocol unknown",
-      "outputPairEstimates": [92273.58924261578,130129.66929282444], "outputTokensPerScoredAttemptScenario": 111201.62926772011, "outputSensitivityEnvelope": [92273.58924261578,130129.66929282444],
-      "costPairEstimatesUsd": [6.3413389529867255,6.435862312567054], "usdPerScoredAttemptScenario": 6.38860063277689, "costSensitivityEnvelopeUsd": [6.3413389529867255,6.435862312567054],
-      "looOutputAbsolutePercentageErrorMean": 35.0584774711769, "looCostAbsolutePercentageErrorMean": 1.47964379585927, "confidenceInterval": null, "targetMeasuredCost": null, "targetMeasuredOutputTokens": null
+      "historicalComputedDiagnostics": { "outputPairEstimates": [92273.58924261578,130129.66929282444], "outputCenter": 111201.62926772011, "outputSensitivityEnvelope": [92273.58924261578,130129.66929282444], "costPairEstimatesUsd": [6.3413389529867255,6.435862312567054], "costCenterUsd": 6.38860063277689, "costSensitivityEnvelopeUsd": [6.3413389529867255,6.435862312567054], "looOutputAbsolutePercentageErrorMean": 35.0584774711769, "looCostAbsolutePercentageErrorMean": 1.47964379585927, "status": "historical calculation snapshot; runtime values are recomputed from calibration inputs" },
+      "confidenceInterval": null, "targetMeasuredCost": null, "targetMeasuredOutputTokens": null
     }
   ],
   "unsupportedOrPrecedenceSuperseded": [

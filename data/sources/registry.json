@@ -281,6 +281,78 @@
       "notes": ["The report says its Gemini scores are pass@1; Gemini 3.8 Flash is a self-computed high-thinking mini-SWE-agent result.", "The separate Datacurve feed row remains separately attributed; no cost/token/time values are transferred."]
     },
     {
+      "id": "google-gemini-4-argon-announcement",
+      "publisher": "Google DeepMind",
+      "title": "Gemini 4 Argon: our next era of frontier intelligence",
+      "url": "https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-4-argon/",
+      "category": "developer",
+      "status": "source-reviewed",
+      "lastObservedDate": "2026-10-07",
+      "sha256": "cf2ecb2c2a5b8aca96928e2af37db3f25e24695d59406fbd51942a43c5c1864d",
+      "accessAndReuse": "Attributed benchmark result and publication date with section locator only; article text and assets are not copied.",
+      "notes": ["Published September 30, 2026. Enabling coding and enterprise workflows across domains, first paragraph, explicitly reports DeepSWE v1.1 at 77.9%.", "Metric and protocol facts are cross-referenced to google-gemini-4-argon-evaluation; this is Google's result, not an independent Datacurve measurement."]
+    },
+    {
+      "id": "google-gemini-4-argon-evaluation",
+      "publisher": "Google DeepMind",
+      "title": "Gemini 4 Argon Model evaluation: Approach, methodology & results",
+      "url": "https://deepmind.google/models/evals-methodology/gemini-4-argon",
+      "category": "developer",
+      "status": "source-reviewed",
+      "lastObservedDate": "2026-10-07",
+      "sha256": "ff1df6bdeddc4c0f48840c09a8a7813b10ae7ad9e053892da68dabf64f09bff7",
+      "accessAndReuse": "PDF inspected; retain attributed metric and protocol facts with section locators only. The PDF and task materials are not redistributed.",
+      "notes": ["URL redirects to https://storage.googleapis.com/deepmind-media/gemini/gemini_4_argon_model_evaluation.pdf; SHA-256 is of the retrieved PDF bytes.", "Methodology, first paragraph: Gemini 4 Argon scores are pass@1 unless otherwise noted, run via the Gemini API at the highest thinking settings. No exact named thinking setting is supplied for DeepSWE.", "Additional Details > Coding > DeepSWE v1.1: Gemini 4 Argon results are self computed using a mini-swe agent harness. Results introduction says as of October 2026; exact evaluation run date, API model snapshot, and row-specific trial count are not stated."]
+    },
+    {
+      "id": "mistral-large-4-announcement",
+      "publisher": "Mistral AI",
+      "title": "Introducing Mistral Large 4",
+      "url": "https://mistral.ai/news/mistral-large-4/",
+      "category": "developer",
+      "status": "source-reviewed",
+      "lastObservedDate": "2026-10-08",
+      "sha256": "8abfb479b3f63bdaf5c869b4b53a2ffa91c9804df683d4792089534268101d69",
+      "accessAndReuse": "Attributed benchmark result and publication date with section locator only; article text and assets are not copied.",
+      "notes": ["Published October 6, 2026. Capabilities deep-dive > Agentic coding, first paragraph, explicitly reports 61.7% on DeepSWE v1.1.", "Developer-published result; the cited text does not establish the evaluator, score statistic, harness, effort, denominator, runs, uncertainty, or DeepSWE cost/token/time metrics. SHA-256 is of the retrieved HTML bytes."]
+    },
+    {
+      "id": "mistral-large-4-model-card",
+      "publisher": "Mistral AI",
+      "title": "Mistral Large 4 - Mistral AI | Mistral Docs",
+      "url": "https://docs.mistral.ai/models/mistral-large-4-0",
+      "category": "developer",
+      "status": "source-reviewed",
+      "lastObservedDate": "2026-10-08",
+      "sha256": "e7d191113e0f8b732c18a088aab01788fbaec09fbcc8996facdb8c7a4823e585",
+      "accessAndReuse": "Attributed preview status and model identity with section locators only; documentation text and assets are not copied.",
+      "notes": ["Model header and API identifier badge identify Public Preview, model-card version v26.10, and API alias mistral-large-4.", "The API alias and model-card version are not evidence of an immutable evaluated checkpoint. SHA-256 is of the retrieved HTML bytes; this source supplies identity context, not benchmark protocol or efficiency measurements."]
+    },
+    {
+      "id": "anthropic-sonnet-5.5-system-card",
+      "publisher": "Anthropic",
+      "title": "Claude Sonnet 5.5 System Card",
+      "url": "https://www.anthropic.com/claude-sonnet-5-5-system-card#page=110",
+      "category": "developer",
+      "status": "source-reviewed",
+      "lastObservedDate": "2026-10-08",
+      "sha256": "89cfd6a6d3aa6148eaf23f4a53006950ee7746009f381237c62920c720725785",
+      "accessAndReuse": "PDF inspected; retain attributed score and configuration facts with page/section locators only. The PDF and task materials are not redistributed.",
+      "notes": ["SHA-256 is of the retrieved PDF bytes. Section 8.3 DeepSWE v1.1, p.110, describes 113 tasks and reports Sonnet 5.5 at an average of 71.0% over five trials; the score statistic is not explicitly identified as pass@1.", "Section 8.1 Table 8.1.A caption, p.109, specifies adaptive thinking at max effort with default sampling settings unless otherwise noted. Section 8.3 states no exception.", "The cited sections do not establish scored-attempt or passed counts, uncertainty, exact evaluation date, evaluator identity, harness or revision, evaluated checkpoint, or DeepSWE cost/token/time metrics."]
+    },
+    {
+      "id": "anthropic-sonnet-5.5-announcement",
+      "publisher": "Anthropic",
+      "title": "Introducing Claude Sonnet 5.5",
+      "url": "https://www.anthropic.com/claude-sonnet-5-5",
+      "category": "developer",
+      "status": "source-reviewed",
+      "lastObservedDate": "2026-10-08",
+      "sha256": "0a0470cf2527b9a65046d6896c6d12a73b69920b9b2e52dd06b81a649743865e",
+      "accessAndReuse": "Attributed release date and model identity with section locators only; article text and assets are not copied.",
+      "notes": ["Published September 28, 2026. Title/intro identifies Claude Sonnet 5.5; Getting started gives Claude Platform API alias claude-sonnet-5-5.", "The alias does not establish an immutable evaluated checkpoint. SHA-256 is of the retrieved HTML bytes; this source supplies identity context, not the DeepSWE score or efficiency measurements."]
+    },
+    {
       "id": "xai-grok-4-7-release",
       "publisher": "xAI / SpaceXAI",
       "title": "Introducing Grok 4.7",
@@ -387,6 +459,23 @@
       "sha256": "33bc6221b61a6b40caf8ee043609f22b36563099fe15e8ff2459c7eb8de45627",
       "accessAndReuse": "Attributed publication date and release facts only; the article text and scorecard image are not copied.",
       "notes": ["Meta article metadata gives publication date 2026-09-02 and links to the evaluation methodology report.", "The numeric DeepSWE v1.1 result is transcribed from the linked Meta model-and-benchmarks page, not inferred from the scorecard image."]
+    },
+    {
+      "id": "meta-muse-wonder-model-page",
+      "publisher": "Meta",
+      "title": "Muse Wonder and Muse Wonder Full model benchmarks",
+      "url": "https://developer.meta.com/ai/models/muse-wonder/",
+      "category": "developer",
+      "status": "source-reviewed",
+      "lastObservedDate": "2026-10-13",
+      "sha256": "7a7541d0e7f6a36f27a81509bb8a356003715dadce25ee1db5f36785c3e40533",
+      "accessAndReuse": "Attributed model and benchmark result facts and evidence locators only; no source page, image or task material is redistributed.",
+      "notes": [
+        "Muse Wonder and Muse Wonder Full benchmarks → Coding → DeepSWE 1.1 (Long horizon coding) row: Muse Wonder Full (max) 79.0 in the first model column and Muse Wonder (max) 78.8 in the second.",
+        "The official table corroborates the user-supplied image https://pbs.twimg.com/media/HUcMBSQacAAvLlw?format=jpg&name=4096x4096; original X-post attribution and byte-identical image provenance are not established. The SHA-256 identifies the fetched official model-page response.",
+        "The table leaves score unit, statistic, denominator, evaluator, harness, run count and confidence interval unspecified. Scores are retained as raw table values, not converted to pass@1 or asserted percentages; DeepSWE cost, output-token usage and duration remain unknown.",
+        "Meta's launch announcement https://about.fb.com/news/2026/10/introducing-muse-wonder-models/ is dated October 12, 2026. Retrieval and transcription review occurred October 13, 2026."
+      ]
     }
   ]
 }

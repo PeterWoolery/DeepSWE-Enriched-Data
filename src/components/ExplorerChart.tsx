@@ -1,9 +1,9 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { RefObject } from 'react'
-import { displayModelName, displayScoreResult, displayScoreValue, hasPercentageScoreScale, metricObservation, modelKey, scoreMetricLabels, xMetricLabels, type ScoreMetric, type Statistic, type XMetric } from '../lib/comparison'
+import { displayModelName, displayScoreResult, displayScoreValue, hasPercentageScoreScale, modelKey, scoreMetricLabels, xMetricLabels, type ScoreMetric, type Statistic, type XMetric } from '../lib/comparison'
 import { segmentXY, type AxisScale, type XYObservation } from '../lib/xy'
 import type { Observation } from '../lib/schema'
-import { scenarioXValue, usageScenarioForObservation, type UsageScenario } from '../lib/usage-scenarios'
+import type { ResolveXUsageResult, UsageScenario } from '../lib/usage-scenarios'
 
 const WIDTH = 1160
 const HEIGHT = 470
@@ -21,8 +21,32 @@ function stableColor(identity: string): string {
   return `hsl(${hue} ${saturation}% ${lightness}%)`
 }
 
-function xValue(observation: Observation, metric: XMetric, statistic: Statistic) {
-  return metricObservation(observation, metric, statistic).value
+function isOptionalSelection(resolution: ResolveXUsageResult | undefined): resolution is ResolveXUsageResult & { value: number } {
+  return resolution !== undefined && resolution.value !== null && resolution.evidenceKind !== 'approved-measurement'
+}
+
+function isSameSourceOutput(resolution: ResolveXUsageResult | null | undefined, metric: XMetric): boolean {
+  return metric === 'outputTokens'
+    && resolution?.evidenceKind === 'same-source-reference'
+    && resolution.relationship === 'same-source-same-benchmark-reference'
+}
+
+function evidenceLabel(resolution: ResolveXUsageResult, metric: XMetric): string {
+  if (resolution.evidenceKind === 'approved-measurement') return 'reported'
+  if (isSameSourceOutput(resolution, metric)) return 'source-reported AA DeepSWE mean'
+  if (resolution.relationship === 'separate-experiment-reference' || resolution.relationship === 'separate-benchmark-reference') return 'separate experiment reference'
+  if (resolution.relationship === 'pooled-suite-proxy') return 'pooled-suite proxy'
+  if (resolution.relationship === 'source-reported-unspecified') return 'source-reported statistic-unspecified value'
+  return 'estimated usage scenario'
+}
+
+function selectionPrefix(resolution: ResolveXUsageResult, metric: XMetric): string {
+  if (resolution.evidenceKind === 'approved-measurement') return ''
+  if (isSameSourceOutput(resolution, metric)) return 'AA MEAN · '
+  if (resolution.relationship === 'pooled-suite-proxy') return 'PROXY · '
+  if (resolution.relationship === 'source-reported-unspecified') return 'SRC · '
+  if (resolution.relationship === 'separate-experiment-reference' || resolution.relationship === 'separate-benchmark-reference') return 'REF · '
+  return 'EST · '
 }
 
 function formatNumber(value: number): string {
@@ -89,9 +113,7 @@ interface SelectedGuideMark {
   y: number
   xValue: number | null
   estimated: boolean
-  scenarioType?: UsageScenario['costScenarioType'] | null
-  scenarioOutputEvidenceType?: UsageScenario['outputEvidenceType'] | null
-  scenarioCostUnit?: string | null
+  resolution: ResolveXUsageResult | null
   missingReason: string | null
 }
 
@@ -109,13 +131,12 @@ function arrangeNoDataMarks(items: Omit<NoDataMark, 'x' | 'y'>[]): NoDataMark[] 
 
 export interface ExplorerChartProps {
   observations: Observation[]
-  usageScenarios: { observation: Observation; scenario: UsageScenario }[]
+  usageResolutions: ReadonlyMap<string, ResolveXUsageResult>
+  usageScenarios: ReadonlyMap<string, UsageScenario>
   chartSuppressions: ReadonlyMap<string, Observation[]>
   suppressedCount: number
   xMetric: XMetric
   statistic: Statistic
-  strict: boolean
-  includeUsageScenarios: boolean
   scoreMetric: ScoreMetric
   scale: AxisScale
   connections: boolean
@@ -129,13 +150,12 @@ export interface ExplorerChartProps {
 
 export function ExplorerChart({
   observations,
+  usageResolutions,
   usageScenarios,
   chartSuppressions,
   suppressedCount,
   xMetric,
   statistic,
-  strict,
-  includeUsageScenarios,
   scoreMetric,
   scale,
   connections,
@@ -146,6 +166,7 @@ export function ExplorerChart({
   onIsolate,
   svgRef,
 }: ExplorerChartProps) {
+  const [zoomPercent, setZoomPercent] = useState(100)
   const plotSeries = useMemo(() => {
     const grouped = new Map<string, Observation[]>()
     for (const observation of observations) {
@@ -159,9 +180,12 @@ export function ExplorerChart({
       const input: XYObservation[] = rows.map((observation) => {
         const score = displayScoreResult(observation, scoreMetric)
         const percentageScale = hasPercentageScoreScale(score)
+        const resolution = usageResolutions.get(observation.id)
         return {
           id: observation.id,
-          x: xValue(observation, xMetric, statistic),
+          // Scenario selections are deliberately not fed into measured
+          // effort segments: they render as standalone marks and leave gaps.
+          x: resolution?.evidenceKind === 'approved-measurement' ? resolution.value : null,
           y: percentageScale ? score.value : null,
           yMissingReason: !percentageScale ? 'unknown-score-scale' : undefined,
           effortOrder: observation.effort.order,
@@ -176,21 +200,21 @@ export function ExplorerChart({
         segments: segmentXY(input, scale),
       }
     })
-  }, [observations, xMetric, statistic, scoreMetric, scale])
+  }, [observations, usageResolutions, xMetric, scoreMetric, scale])
 
   const accepted = plotSeries.flatMap((series) => series.segments.points)
   const hasApproximateCost = xMetric === 'cost' && statistic === 'mean' && observations.some((observation) => Boolean(observation.approximation))
-  const scenarioCandidates = usageScenarios.flatMap(({ observation, scenario }) => {
+  const scenarioCandidates = observations.flatMap((observation) => {
+    const resolution = usageResolutions.get(observation.id)
+    if (!isOptionalSelection(resolution)) return []
     const score = displayScoreResult(observation, scoreMetric)
     if (!hasPercentageScoreScale(score)) return []
-    const x = scenarioXValue(scenario, xMetric)
-    return [{ observation, scenario, score, x }]
+    return { observation, scenario: usageScenarios.get(observation.id) ?? null, resolution, score, x: resolution.value }
   })
   const estimatedPlotPoints = scenarioCandidates.filter(
     (point): point is (typeof scenarioCandidates)[number] & { x: number } =>
-      point.x !== null && Number.isFinite(point.x) && point.x >= 0 && (scale === 'linear' || point.x > 0),
+      Number.isFinite(point.x) && point.x >= 0 && (scale === 'linear' || point.x > 0),
   )
-  const scenarioCandidateIds = new Set(estimatedPlotPoints.map(({ observation }) => observation.id))
   const xValues = [
     ...accepted.map((point) => point.x),
     ...estimatedPlotPoints.map((point) => point.x),
@@ -201,49 +225,76 @@ export function ExplorerChart({
   let xMax = Math.max(...(scale === 'log' ? positiveValues : linearValues), xMin)
   if (xMax === xMin) xMax = scale === 'log' ? xMin * 10 : xMin + 1
   const hasXAxisExtent = linearValues.length > 0
+  // Keep the viewport in normalized axis space, including on logarithmic axes.
+  // Changing the plotted data or axis starts a fresh, full-extent view.
+  const viewportKey = JSON.stringify([xMetric, statistic, scoreMetric, scale, xMin, xMax, xValues, observations.map((row) => row.id)])
+  const [viewport, setViewport] = useState({ key: viewportKey, min: 0, max: 1 })
+  useEffect(() => {
+    setViewport({ key: viewportKey, min: 0, max: 1 })
+  }, [viewportKey])
+  const view = viewport.key === viewportKey ? viewport : { min: 0, max: 1 }
+  const zoom = (factor: number, anchor = 0.5) => {
+    setViewport((previous) => {
+      const current = previous.key === viewportKey ? previous : { min: 0, max: 1 }
+      const span = current.max - current.min
+      const nextSpan = Math.max(1 / 100, Math.min(1, span * factor))
+      const min = Math.max(0, Math.min(1 - nextSpan, current.min + anchor * (span - nextSpan)))
+      return { key: viewportKey, min, max: min + nextSpan }
+    })
+  }
+  useEffect(() => {
+    const svg = svgRef.current
+    if (!svg || !hasXAxisExtent) return
+    const onWheel = (event: WheelEvent) => {
+      if (!event.cancelable || !Number.isFinite(event.deltaY) || event.deltaY === 0) return
+      const matrix = svg.getScreenCTM()
+      if (!matrix) return
+      const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse())
+      if (point.x < PLOT.left || point.x > PLOT.right || point.y < PLOT.top || point.y > PLOT.bottom) return
+      const pixels = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? svg.getBoundingClientRect().height : 1)
+      event.preventDefault()
+      zoom(Math.exp(Math.max(-200, Math.min(200, pixels)) * 0.002), (point.x - PLOT.left) / (PLOT.right - PLOT.left))
+    }
+    svg.addEventListener('wheel', onWheel, { passive: false })
+    return () => svg.removeEventListener('wheel', onWheel)
+  }, [svgRef, hasXAxisExtent, viewportKey])
+  const axisMin = scale === 'log' ? Math.log10(xMin) : xMin
+  const axisMax = scale === 'log' ? Math.log10(xMax) : xMax
+  const fromAxis = (value: number) => scale === 'log' ? 10 ** value : value
+  if (view.min > 0) xMin = fromAxis(axisMin + view.min * (axisMax - axisMin))
+  if (view.max < 1) xMax = fromAxis(axisMin + view.max * (axisMax - axisMin))
   const ticks = hasXAxisExtent ? makeTicks(scale, xMin, xMax) : []
   const plottedRows = plotSeries.flatMap((series) => series.segments.points.map((point) => ({ series, point, observation: series.byId.get(point.id)! })))
   const noDataMarks = arrangeNoDataMarks(plotSeries.flatMap((series) => series.rows.flatMap((observation) => {
     const score = displayScoreResult(observation, scoreMetric)
-    const metric = metricObservation(observation, xMetric, statistic)
-    if (metric.value !== null || !hasPercentageScoreScale(score) || scenarioCandidateIds.has(observation.id)) return []
-    const scenario = usageScenarioForObservation(observation)
-    const scenarioMetricValue = scenario ? scenarioXValue(scenario, xMetric) : null
+    const resolution = usageResolutions.get(observation.id)
+    if (resolution?.value !== null && resolution?.value !== undefined || !hasPercentageScoreScale(score)) return []
+    const scenario = usageScenarios.get(observation.id)
+    const alternative = resolution?.alternatives[0]
     const scenarioNote = !scenario
       ? null
-      : scenarioMetricValue === null
-         ? `A scenario exists${scenario.costUsd === null ? '' : ` (${scenario.costUnit})`}; no ${xMetricLabels[xMetric].label.toLowerCase()} estimate is available.`
-        : !includeUsageScenarios
-        ? 'A cost/usage scenario exists, but the scenario toggle is off.'
-        : strict
-          ? 'A cost/usage scenario exists, but strict comparisons exclude scenarios.'
-         : statistic === 'median'
-             ? xMetric === 'outputTokens' && scenario.outputStatistic === 'source-deepswe-mean'
-               ? 'A same-source AA DeepSWE output mean exists; no median output statistic is reported.'
-               : scenario.scenarioStatistic === 'source-statistic-unspecified'
-              ? 'This source-reported task cost has no mean/median statistic and is not shown in this Median view.'
-              : scenario.scenarioStatistic === 'pooled-suite-average'
-                ? 'This pooled-suite-average cost proxy is not converted to a median and is not shown in this view.'
-                : 'A mean-only usage estimate exists; no median scenario is available.'
-            : 'A scenario estimate is not active for this view.'
+      : alternative
+        ? `${evidenceLabel({ ...resolution!, value: alternative.value, evidenceKind: alternative.evidenceKind, relationship: alternative.relationship }, xMetric)} alternative: ${alternative.value} ${alternative.unit}${alternative.eligible ? '' : `; not selected because ${alternative.exclusionReason ?? resolution?.reason ?? 'it is ineligible'}`}.`
+        : `Usage evidence exists, but no configured ${xMetricLabels[xMetric].label.toLowerCase()} value is available.`
     return [{
       series: { id: series.id, color: series.color },
       observation,
       score,
-      missingReason: metric.missingReason ?? `${statistic} ${xMetricLabels[xMetric].label} is not reported.`,
+      missingReason: resolution?.reason ?? `${statistic} ${xMetricLabels[xMetric].label} is not reported.`,
       scenarioNote,
     }]
   })))
   const scenarioOmitted = scenarioCandidates.filter(
     (point): point is (typeof scenarioCandidates)[number] & { x: number } =>
-      point.x !== null && (!Number.isFinite(point.x) || point.x < 0 || scale === 'log' && point.x === 0),
+      !Number.isFinite(point.x) || point.x < 0 || scale === 'log' && point.x === 0,
   )
   const omitted = plotSeries.flatMap((series) => series.segments.omitted
     .filter((item) => item.reason !== 'missing-x')
     .map((item) => ({ ...item, observation: series.byId.get(item.id)! })))
   const plottedMetricIds = new Set(plotSeries.flatMap((series) => series.rows.flatMap((observation) => {
     const score = displayScoreResult(observation, scoreMetric)
-    const x = xValue(observation, xMetric, statistic)
+    const resolution = usageResolutions.get(observation.id)
+    const x = resolution?.evidenceKind === 'approved-measurement' ? resolution.value : null
     return hasPercentageScoreScale(score) && (x === null || scale === 'linear' || x > 0) ? [score.metric] : []
   })))
   const scoreAxisLabel = plottedMetricIds.size === 1 && plottedMetricIds.has('pass_at_1')
@@ -253,7 +304,30 @@ export function ExplorerChart({
       : plottedMetricIds.size === 1 && plottedMetricIds.has('task_pass_rate')
         ? 'TASK PASS RATE (%)'
       : 'SCORE (%)'
-  const hasChartMarks = plottedRows.length > 0 || estimatedPlotPoints.length > 0 || noDataMarks.length > 0
+  const hasPercentageMarks = plottedRows.length > 0 || estimatedPlotPoints.length > 0 || noDataMarks.length > 0
+  const rawGroups = (() => {
+    const groups = new Map<string, { observation: Observation; score: ReturnType<typeof displayScoreResult> }[]>()
+    for (const observation of observations) {
+      const score = displayScoreResult(observation, scoreMetric)
+      if (hasPercentageScoreScale(score) || !Number.isFinite(score.reportedValue)) continue
+      const key = JSON.stringify([observation.provenance.sourceId, observation.benchmark.version, score.metricLabel, score.reportedUnit])
+      const rows = groups.get(key) ?? []
+      rows.push({ observation, score })
+      groups.set(key, rows)
+    }
+    let top = hasPercentageMarks ? HEIGHT + 24 : 44
+    return [...groups.entries()].map(([key, rows]) => {
+      const values = rows.map(({ score }) => score.reportedValue)
+      const min = Math.min(...values)
+      const max = Math.max(...values)
+      const padding = max === min ? Math.max(1, Math.abs(min) * 0.01) : (max - min) * 0.15
+      const group = { key, rows, top, min: min - padding, max: max + padding, height: 122 + rows.length * 34 }
+      top += group.height + 24
+      return group
+    })
+  })()
+  const chartHeight = rawGroups.length ? rawGroups.at(-1)!.top + rawGroups.at(-1)!.height + 20 : HEIGHT
+  const hasChartMarks = hasPercentageMarks || rawGroups.length > 0
   const selectedGuide: SelectedGuideMark | null = (() => {
     if (!selectedObservationId) return null
     const measured = plottedRows.find(({ observation }) => observation.id === selectedObservationId)
@@ -266,9 +340,7 @@ export function ExplorerChart({
         y: scaleY(measured.point.y!),
         xValue: measured.point.x!,
         estimated: false,
-         scenarioType: null,
-         scenarioOutputEvidenceType: null,
-        scenarioCostUnit: null,
+        resolution: usageResolutions.get(measured.observation.id) ?? null,
         missingReason: null,
       }
     }
@@ -281,9 +353,7 @@ export function ExplorerChart({
         y: scaleY(estimated.score.value),
         xValue: estimated.x,
         estimated: true,
-         scenarioType: estimated.scenario.costScenarioType,
-         scenarioOutputEvidenceType: estimated.scenario.outputEvidenceType,
-        scenarioCostUnit: estimated.scenario.costUnit,
+        resolution: estimated.resolution,
         missingReason: null,
       }
     }
@@ -293,27 +363,23 @@ export function ExplorerChart({
       observation: missing.observation,
       score: missing.score,
       x: missing.x,
-      y: missing.y,
+        y: missing.y,
         xValue: null,
         estimated: false,
-         scenarioType: null,
-         scenarioOutputEvidenceType: null,
-        scenarioCostUnit: null,
+        resolution: usageResolutions.get(missing.observation.id) ?? null,
         missingReason: missing.missingReason,
-    }
+      }
   })()
+  const selectedGuideResolution = selectedGuide?.resolution ?? null
+  const selectedGuideSameSourceOutput = isSameSourceOutput(selectedGuideResolution, xMetric)
   const selectedGuideLabel = selectedGuide
     ? selectedGuide.xValue === null
       ? `${selectedGuide.observation.model.reportedName}; ${displayScoreValue(selectedGuide.score)} ${selectedGuide.score.metricLabel}; no ${xMetricLabels[xMetric].label.toLowerCase()} value is reported: ${selectedGuide.missingReason}. No numeric X guide is shown.`
-       : selectedGuide.scenarioOutputEvidenceType === 'same-source-deepswe-mean' && xMetric === 'outputTokens'
-         ? `${selectedGuide.observation.model.reportedName}; ${displayScoreValue(selectedGuide.score)} ${selectedGuide.score.metricLabel}; source-reported AA DeepSWE output mean per task attempt (output-telemetry sample count unspecified): ${formatAxis(selectedGuide.xValue, xMetric)} tokens. This is a separate scenario-layer reference, not a populated approved measurement.`
-       : selectedGuide.scenarioType === 'source-reported-cost'
-        ? `${selectedGuide.observation.model.reportedName}; ${displayScoreValue(selectedGuide.score)} ${selectedGuide.score.metricLabel}; source-reported cost scenario: ${formatAxis(selectedGuide.xValue, xMetric)} ${selectedGuide.scenarioCostUnit}.`
-       : selectedGuide.scenarioType === 'aa-suite-proxy' && xMetric === 'cost'
-          ? `${selectedGuide.observation.model.reportedName}; ${displayScoreValue(selectedGuide.score)} ${selectedGuide.score.metricLabel}; pooled-suite cost proxy: ${formatAxis(selectedGuide.xValue, xMetric)} ${selectedGuide.scenarioCostUnit}.`
-           : selectedGuide.observation.approximation && xMetric === 'cost'
-             ? `${selectedGuide.observation.model.reportedName}; ${selectedGuide.observation.effort.reportedLabel}; approximate screenshot-derived score ${displayScoreValue(selectedGuide.score)}; approximate source-chart Cost per task ${formatAxis(selectedGuide.xValue, xMetric)}; aggregation and task denominator unspecified. Reading bounds ${selectedGuide.observation.approximation.costBoundsUsd.join('–')} USD and ${selectedGuide.observation.approximation.scoreBoundsPercent.join('–')}%; not a confidence interval.`
-             : `${selectedGuide.observation.model.reportedName}; ${displayScoreValue(selectedGuide.score)} ${selectedGuide.score.metricLabel}; ${selectedGuide.estimated ? 'estimated scenario' : 'reported'} ${statistic} ${xMetricLabels[xMetric].axis}: ${formatAxis(selectedGuide.xValue, xMetric)}.`
+       : selectedGuideSameSourceOutput
+          ? `${selectedGuide.observation.model.reportedName}; ${displayScoreValue(selectedGuide.score)} ${selectedGuide.score.metricLabel}; source-reported AA DeepSWE output mean per task attempt (output-telemetry sample count unspecified): ${formatAxis(selectedGuide.xValue, xMetric)} tokens. This is a separate scenario-layer reference, not a populated approved measurement.`
+            : selectedGuide.observation.approximation && xMetric === 'cost'
+              ? `${selectedGuide.observation.model.reportedName}; ${selectedGuide.observation.effort.reportedLabel}; approximate screenshot-derived score ${displayScoreValue(selectedGuide.score)}; approximate source-chart Cost per task ${formatAxis(selectedGuide.xValue, xMetric)}; aggregation and task denominator unspecified. Reading bounds ${selectedGuide.observation.approximation.costBoundsUsd.join('–')} USD and ${selectedGuide.observation.approximation.scoreBoundsPercent.join('–')}%; not a confidence interval.`
+              : `${selectedGuide.observation.model.reportedName}; ${displayScoreValue(selectedGuide.score)} ${selectedGuide.score.metricLabel}; ${evidenceLabel(selectedGuideResolution!, xMetric)} ${selectedGuideResolution?.statistic ?? statistic} ${xMetricLabels[xMetric].axis}: ${formatAxis(selectedGuide.xValue, xMetric)} ${selectedGuideResolution?.unit ?? ''}. Relationship: ${selectedGuideResolution?.relationship ?? 'not recorded'}. Method: ${selectedGuideResolution?.method ?? 'source-reported measurement'}. Sources: ${selectedGuideResolution?.sourceIds.join(', ') || 'not recorded'}; facts: ${selectedGuideResolution?.factIds.join(', ') || 'none'}; references: ${selectedGuideResolution?.referenceIds.join(', ') || 'none'}.`
     : null
   const selectedGuideXAnchor = selectedGuide && selectedGuide.x <= PLOT.left + 54
     ? 'start'
@@ -345,6 +411,20 @@ export function ExplorerChart({
 
   return (
     <div className="chart-frame">
+      {hasChartMarks && <div className="chart-zoom-toolbar" role="group" aria-label="Chart magnification">
+        <span>Magnification <output aria-live="polite">{zoomPercent}%</output></span>
+        <button className="icon-action" type="button" aria-label="Magnify chart" disabled={zoomPercent >= 300} onClick={() => setZoomPercent((value) => Math.min(300, value + 25))}>+</button>
+        <button className="icon-action" type="button" aria-label="Reduce chart magnification" disabled={zoomPercent <= 100} onClick={() => setZoomPercent((value) => Math.max(100, value - 25))}>−</button>
+        <button className="icon-action" type="button" disabled={zoomPercent === 100} onClick={() => setZoomPercent(100)}>Reset magnification</button>
+      </div>}
+      {hasXAxisExtent && <div className="chart-caption-row" role="group" aria-label="Horizontal chart zoom">
+        <span>Scroll over the plot to zoom the X axis · score axis stays fixed.</span>
+        <div>
+          <button type="button" className="icon-action" aria-label="Zoom chart in" disabled={view.max - view.min <= 1 / 100 + Number.EPSILON} onClick={() => zoom(0.8)}>+</button>{' '}
+          <button type="button" className="icon-action" aria-label="Zoom chart out" disabled={view.max - view.min >= 1} onClick={() => zoom(1.25)}>−</button>{' '}
+          <button type="button" className="icon-action" disabled={view.max - view.min >= 1} onClick={() => setViewport({ key: viewportKey, min: 0, max: 1 })}>Reset zoom</button>
+        </div>
+      </div>}
       {!hasChartMarks ? (
         <div className="chart-empty" role="status">
           <span className="empty-index">NO MATCHED PAIRS</span>
@@ -352,20 +432,26 @@ export function ExplorerChart({
           <p>{xMetric === 'time' ? 'Reported mean and median seconds are shown only when published by the source. This view will not substitute tokens, steps, or an inferred runtime.' : 'Observations without an explicit percentage/fraction score or a usable X measurement remain in the table and evidence details.'}</p>
         </div>
       ) : (
+        <div className="chart-scroll" role="region" aria-label="Scrollable chart" tabIndex={0}>
         <svg
           id="effort-curve"
           ref={svgRef}
           className="effort-chart"
-          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+          viewBox={`0 0 ${WIDTH} ${chartHeight}`}
+          style={{ width: `${zoomPercent}%`, minWidth: `${720 * zoomPercent / 100}px` }}
           role="group"
-             aria-label={`Score chart. Horizontal axis: ${hasXAxisExtent ? `${hasApproximateCost ? 'mixed mean-per-attempt and approximate source-chart' : statistic} ${xMetricLabels[xMetric].label}` : `no usable numeric ${xMetricLabels[xMetric].label} values`}; vertical axis: ${scoreAxisLabel}. Connected segments follow one source series; screenshot-derived coordinates are approximate and have unknown cost aggregation. Hollow diamonds are standalone cost/usage scenarios with point-specific evidence and units; they are never connected. The far-right no-data lane is outside the numeric X axis; horizontal position in that lane encodes no X value.`}
+             aria-label={`Score chart. ${hasPercentageMarks ? `Horizontal axis: ${hasXAxisExtent ? `${hasApproximateCost ? 'mixed mean-per-attempt and approximate source-chart' : statistic} ${xMetricLabels[xMetric].label}` : `no usable numeric ${xMetricLabels[xMetric].label} values`}; vertical axis: ${scoreAxisLabel}. Connected segments follow one source series; screenshot-derived coordinates are approximate and have unknown cost aggregation. Hollow diamonds are standalone cost/usage scenarios with point-specific evidence and units; they are never connected. The far-right no-data lane is outside the numeric X axis; horizontal position in that lane encodes no X value.` : ''} ${rawGroups.length ? 'Separate raw source scores have source-specific numeric scales with unspecified units; these are not percentage or efficiency coordinates and do not establish cross-source comparability.' : ''}`}
         >
           {hasApproximateCost && <desc>GPT-6.1 Sol source path: five screenshot-derived approximate coordinates. Cost is source-chart Cost per task with unknown task denominator and aggregation; reading bounds are not confidence intervals. Point details retain the screenshot hash and source.</desc>}
           <defs>
+            <clipPath id="chart-plot-clip">
+              <rect x={PLOT.left} y={PLOT.top} width={PLOT.right - PLOT.left} height={PLOT.bottom - PLOT.top} />
+            </clipPath>
             <pattern id="chart-hatch" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
               <line x1="0" y1="0" x2="0" y2="8" stroke="#d7d0c1" strokeWidth="1" />
             </pattern>
           </defs>
+          {hasPercentageMarks && <>
           <rect x={PLOT.left} y={PLOT.top} width={PLOT.right - PLOT.left} height={PLOT.bottom - PLOT.top} fill="var(--paper-strong)" />
           {noDataMarks.length > 0 && <>
             <rect x={PLOT.right + 2} y={PLOT.top} width={WIDTH - PLOT.right - 14} height={PLOT.bottom - PLOT.top} className="no-data-lane" />
@@ -405,7 +491,7 @@ export function ExplorerChart({
             const points = segment.map((point) => `${scaleX(point.x!, scale, xMin, xMax)},${scaleY(point.y!)}`).join(' L ')
             const opacity = activeSeriesId && activeSeriesId !== series.id ? 0.16 : 0.72
             const dash = series.first.sourceCategory === 'developer' ? '8 6' : series.first.sourceCategory === 'independent' ? '2 6' : undefined
-            return <path key={`${series.id}-${index}`} d={`M ${points}`} className="curve-path" data-series-id={series.id} data-observation-ids={segment.map((point) => point.id).join(' ')} style={{ stroke: series.color, opacity }} strokeDasharray={dash} />
+            return <path key={`${series.id}-${index}`} d={`M ${points}`} className="curve-path" clipPath="url(#chart-plot-clip)" data-series-id={series.id} data-observation-ids={segment.map((point) => point.id).join(' ')} style={{ stroke: series.color, opacity }} strokeDasharray={dash} />
           }))}
           {noDataMarks.map(({ series, observation, score, missingReason, scenarioNote, x, y }) => {
             const highlight = activeSeriesId === series.id || selectedObservationId === observation.id
@@ -447,15 +533,20 @@ export function ExplorerChart({
             )
           })}
           {plottedRows.map(({ series, point, observation }, index) => {
+            if (point.x! < xMin || point.x! > xMax) return null
             const x = scaleX(point.x!, scale, xMin, xMax)
             const y = scaleY(point.y!)
             const result = displayScoreResult(observation, scoreMetric)
+            const resolution = usageResolutions.get(observation.id)
             const confidence = result.confidenceInterval
             const highlight = activeSeriesId === series.id || selectedObservationId === observation.id
             const seriesDimmed = Boolean(activeSeriesId && activeSeriesId !== series.id)
             const metricNote = result.metric === scoreMetric ? '' : ` Different metric from selected ${scoreMetricLabels[scoreMetric]}.`
             const protocol = `${observation.publisher}; ${observation.benchmark.version ? `DeepSWE v${observation.benchmark.version}` : 'DeepSWE version unspecified'}; protocol ${observation.series.harness ?? 'not reported'}; evaluation policy ${observation.series.evaluationPolicy ?? 'not reported'}`
-             const label = `${observation.model.reportedName}; ${displayScoreValue(result)}; source metric: ${result.metricLabel}.${metricNote} Source/protocol: ${protocol}; ${observation.effort.reportedLabel ?? 'effort unreported'}; ${observation.approximation && xMetric === 'cost' ? `approximate screenshot-derived Cost per task ${formatAxis(point.x!, xMetric)}; aggregation and denominator unknown; reading bounds ${observation.approximation.costBoundsUsd.join('–')} USD and ${observation.approximation.scoreBoundsPercent.join('–')}%, not a confidence interval` : `${formatAxis(point.x!, xMetric)} ${xMetricLabels[xMetric].axis}`}`
+             const metricEvidence = resolution
+               ? ` Selected metric evidence: ${resolution.evidenceKind}; ${resolution.statistic ?? statistic}; source ${resolution.sourceIds.join(', ') || 'not recorded'}.`
+               : ''
+             const label = `${observation.model.reportedName}; ${displayScoreValue(result)}; source metric: ${result.metricLabel}.${metricNote} Source/protocol: ${protocol}; ${observation.effort.reportedLabel ?? 'effort unreported'}; ${observation.approximation && xMetric === 'cost' ? `approximate screenshot-derived Cost per task ${formatAxis(point.x!, xMetric)}; aggregation and denominator unknown; reading bounds ${observation.approximation.costBoundsUsd.join('–')} USD and ${observation.approximation.scoreBoundsPercent.join('–')}%, not a confidence interval` : `${formatAxis(point.x!, xMetric)} ${xMetricLabels[xMetric].axis}`}.${metricEvidence}`
             const onKeyDown = (event: React.KeyboardEvent<SVGGElement>) => {
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault()
@@ -466,6 +557,7 @@ export function ExplorerChart({
               <g
                 key={observation.id}
                 className={`plot-point ${highlight ? 'is-highlighted' : ''} ${seriesDimmed ? 'is-dimmed' : ''}`}
+                clipPath={view.max - view.min < 1 ? 'url(#chart-plot-clip)' : undefined}
                 role="button"
                 tabIndex={0}
                 data-series-id={series.id}
@@ -494,48 +586,61 @@ export function ExplorerChart({
               </g>
             )
           })}
-          {estimatedPlotPoints.map(({ observation, scenario, score, x }) => {
+          {estimatedPlotPoints.map(({ observation, scenario, resolution, score, x }) => {
+            if (x < xMin || x > xMax) return null
             const px = scaleX(x, scale, xMin, xMax)
             const py = scaleY(score.value)
             const seriesId = observation.series.id
             const highlight = activeSeriesId === seriesId || selectedObservationId === observation.id
             const seriesDimmed = Boolean(activeSeriesId && activeSeriesId !== seriesId)
             const estimate = xMetric === 'cost'
-              ? `$${x.toFixed(2)} · ${scenario.costUnit}`
+              ? `$${x.toFixed(2)} · ${resolution.unit}`
               : xMetric === 'outputTokens'
-                 ? `${new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(x)} ${scenario.outputUnit}`
-                : `${formatDuration(x)} reported time per scored attempt`
-            const range = xMetric === 'cost' ? scenario.costSensitivityRange : xMetric === 'outputTokens' ? scenario.outputTokenSensitivityRange : scenario.timeSensitivityRange
+                 ? `${new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(x)} ${resolution.unit}`
+                : `${formatDuration(x)} ${resolution.unit}`
+            const range = !scenario
+              ? null
+              : xMetric === 'cost' ? scenario.costSensitivityRange : xMetric === 'outputTokens' ? scenario.outputTokenSensitivityRange : scenario.timeSensitivityRange
             const sensitivity = range
               ? ` Observed sensitivity envelope: ${xMetric === 'cost' ? `$${range[0].toFixed(2)}–$${range[1].toFixed(2)}` : xMetric === 'outputTokens' ? `${new Intl.NumberFormat('en').format(range[0])}–${new Intl.NumberFormat('en').format(range[1])} tokens` : `${formatDuration(range[0])}–${formatDuration(range[1])}`}; not a confidence interval.`
               : ' No defensible sensitivity range or prediction interval is available.'
-            const method = xMetric === 'cost' ? scenario.costCalibrationDescription : xMetric === 'outputTokens' ? scenario.outputCalibrationDescription : scenario.timeCalibrationDescription
-            const sourceNotes = scenario.sources.map((source) => `${source.publisher} ${source.id}, accessed ${source.accessedOn}`).join('; ')
-            const tokenNote = xMetric === 'outputTokens' && scenario.aaCodingSuiteMixedTokensPerTask !== null
+            const methodDescription = !scenario
+              ? ''
+              : xMetric === 'cost' ? scenario.costCalibrationDescription : xMetric === 'outputTokens' ? scenario.outputCalibrationDescription : scenario.timeCalibrationDescription
+            const method = `${resolution.method ?? 'not recorded'}${methodDescription ? ` · ${methodDescription}` : ''}`
+            const sourceNotes = resolution.sourceIds.map((sourceId) => {
+              const source = scenario?.sources.find((item) => item.id === sourceId || item.id.endsWith(`:${sourceId}`))
+              return source ? `${source.publisher} ${source.id}, accessed ${source.accessedOn}` : sourceId
+            }).join('; ')
+            const factNotes = resolution.factIds.length ? resolution.factIds.join(', ') : 'none'
+            const referenceNotes = resolution.referenceIds.length ? resolution.referenceIds.join(', ') : 'none'
+            const tokenNote = xMetric === 'outputTokens' && scenario?.aaCodingSuiteMixedTokensPerTask !== null && scenario?.aaCodingSuiteMixedTokensPerTask !== undefined
               ? ` AA Coding Agent suite total ${new Intl.NumberFormat('en').format(scenario.aaCodingSuiteMixedTokensPerTask)} tokens/task mixes categories and is not used as output; cost is not converted into tokens.`
               : ''
-             const directNote = xMetric === 'outputTokens' && scenario.outputEvidenceType === 'same-source-deepswe-mean'
-               ? scenario.costScenarioType === 'aa-suite-proxy'
-                 ? ' The output is this AA variant’s DeepSWE mean; its separate dollar value is a three-benchmark pooled-suite proxy, not a DeepSWE-only cost.'
-                 : scenario.directUsageReference
-                   ? ' The output is this AA variant’s DeepSWE mean; its separate cost/time scenario uses a different Datacurve run, not an AA DeepSWE bill.'
-                   : ' The output is this AA variant’s DeepSWE mean; its separate cost/time scenarios are cross-benchmark transfers, not AA DeepSWE measurements.'
-               : scenario.costScenarioType === 'source-reported-cost'
-               ? ' This publisher-reported Cost/Task value is shown only for this exact report; the benchmark version, harness, denominator, run identity, and cost accounting basis are unspecified, so it is not normalized as a mean cost per scored attempt.'
-               : scenario.costScenarioType === 'aa-suite-proxy' && xMetric === 'cost'
-                ? ' The Artificial Analysis cost is a same-row pooled Coding Agent suite value across DeepSWE v1.1, Terminal-Bench 4.0, and SWE-Atlas-QnA; it is carried unchanged as a proxy, not allocated to DeepSWE.'
-                : scenario.directUsageReference
-               ? ` The scenario uses a separate same-model/effort Datacurve DeepSWE row (${scenario.directUsageReference.configurationId}, ${scenario.directUsageReference.scoredAttempts} scored attempts, ${scenario.directUsageReference.runs} runs); it is not the target source run.`
-               : ' These are cross-benchmark transfer inputs; their task populations and source cost bases are not established as equal.'
+             const directNote = xMetric === 'outputTokens' && isSameSourceOutput(resolution, xMetric)
+                ? scenario?.costScenarioType === 'aa-suite-proxy'
+                  ? ' The output is this AA variant’s DeepSWE mean; its separate dollar value is a three-benchmark pooled-suite proxy, not a DeepSWE-only cost.'
+                  : scenario?.directUsageReference
+                    ? ' The output is this AA variant’s DeepSWE mean; its separate cost/time scenario uses a different Datacurve run, not an AA DeepSWE bill.'
+                    : ' The output is this AA variant’s DeepSWE mean; its separate cost/time scenarios are cross-benchmark transfers, not AA DeepSWE measurements.'
+                : resolution.relationship === 'source-reported-unspecified'
+                ? ' This publisher-reported Cost/Task value is shown only for this exact report; the benchmark version, harness, denominator, run identity, and cost accounting basis are unspecified, so it is not normalized as a mean cost per scored attempt.'
+                : resolution.relationship === 'pooled-suite-proxy' && xMetric === 'cost'
+                 ? ' The Artificial Analysis cost is a same-row pooled Coding Agent suite value across DeepSWE v1.1, Terminal-Bench 4.0, and SWE-Atlas-QnA; it is carried unchanged as a proxy, not allocated to DeepSWE.'
+                 : scenario?.directUsageReference && resolution.referenceIds.includes(scenario.directUsageReference.configurationId)
+                ? ` The scenario uses a separate same-model/effort Datacurve DeepSWE row (${scenario.directUsageReference.configurationId}, ${scenario.directUsageReference.scoredAttempts} scored attempts, ${scenario.directUsageReference.runs} runs); it is not the target source run.`
+                : ' These are cross-benchmark transfer inputs; their task populations and source cost bases are not established as equal.'
             const timeNote = xMetric === 'time' ? ' Timer boundaries are unspecified for the Datacurve mean; this is not a verified end-to-end duration.' : ''
-            const scenarioLead = scenario.costScenarioType === 'source-reported-cost'
-              ? 'Source-reported cost scenario — not a normalized DeepSWE measurement.'
-               : scenario.costScenarioType === 'aa-suite-proxy' && xMetric === 'cost'
-                 ? 'Estimated suite-cost proxy — not a DeepSWE-only measurement.'
-                 : scenario.outputEvidenceType === 'same-source-deepswe-mean' && xMetric === 'outputTokens'
-                   ? 'Same-source AA DeepSWE mean — separate scenario layer, not a normalized approved measurement.'
-                : 'Estimated usage scenario — not a DeepSWE measurement.'
-             const detail = `${scenarioLead} ${observation.model.reportedName}, ${observation.effort.reportedLabel ?? 'effort unreported'}, ${observation.series.harness ?? 'harness unknown'}; source score ${score.reportedText} (${score.metricLabel}); ${estimate}. ${scenario.outputEvidenceType === 'same-source-deepswe-mean' && xMetric === 'outputTokens' ? 'Output is a same-source DeepSWE mean; the separate dollar/time evidence is qualitative.' : `Evidence quality: ${scenario.confidence === 'low' ? 'low' : 'very low'}, qualitative and not probabilistic.`} Method: ${method}.${sensitivity}${tokenNote}${directNote}${timeNote} Evidence: ${sourceNotes}.`
+            const scenarioLead = resolution.relationship === 'source-reported-unspecified'
+              ? 'Source-reported cost scenario — accounting basis unspecified; not a normalized DeepSWE measurement.'
+              : resolution.relationship === 'pooled-suite-proxy'
+                ? 'Estimated suite-cost proxy — not a DeepSWE-only measurement.'
+                : isSameSourceOutput(resolution, xMetric)
+                  ? 'Same-source AA DeepSWE mean — separate scenario layer, not a populated approved measurement.'
+                  : resolution.relationship === 'separate-experiment-reference' || resolution.relationship === 'separate-benchmark-reference'
+                    ? 'Separate experiment reference — not a target-run measurement.'
+                    : 'Estimated usage scenario — not a DeepSWE measurement.'
+            const detail = `${scenarioLead} ${observation.model.reportedName}, ${observation.effort.reportedLabel ?? 'effort unreported'}, ${observation.series.harness ?? 'harness unknown'}; source score ${score.reportedText} (${score.metricLabel}); ${estimate}. Evidence kind: ${resolution.evidenceKind}; statistic: ${resolution.statistic}; relationship: ${resolution.relationship}. Method: ${method}.${sensitivity}${tokenNote}${directNote}${timeNote} Metric source IDs: ${resolution.sourceIds.join(', ') || 'not recorded'}; fact IDs: ${factNotes}; calibration/reference IDs: ${referenceNotes}. Resolved sources: ${sourceNotes || 'not recorded'}. ${scenario?.confidenceNote ?? ''}`
             const onKeyDown = (event: React.KeyboardEvent<SVGGElement>) => {
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault()
@@ -544,11 +649,12 @@ export function ExplorerChart({
             }
             return (
               <g
-                key={scenario.id}
+                key={`${observation.id}-${xMetric}`}
                 className={`estimated-point ${highlight ? 'is-highlighted' : ''} ${seriesDimmed ? 'is-dimmed' : ''}`}
+                clipPath={view.max - view.min < 1 ? 'url(#chart-plot-clip)' : undefined}
                 role="button"
                 tabIndex={0}
-                data-usage-scenario-id={scenario.id}
+                data-usage-scenario-id={resolution.scenarioId ?? undefined}
                 data-observation-id={observation.id}
                 data-series-id={seriesId}
                 data-score-metric={score.metric}
@@ -565,15 +671,15 @@ export function ExplorerChart({
                 <title>{detail}</title>
                 <circle cx={px} cy={py} r="13" className="point-hit-area" />
                 <path d={`M ${px} ${py - 8} L ${px + 8} ${py} L ${px} ${py + 8} L ${px - 8} ${py} Z`} className="estimated-diamond" />
-                 {(activeSeriesId === seriesId || selectedObservationId === observation.id) && <text x={px + 10} y={py - 9} className="estimated-label">{xMetric === 'outputTokens' && scenario.outputEvidenceType === 'same-source-deepswe-mean' ? 'AA MEAN' : 'EST'} · {observation.effort.reportedLabel}</text>}
+                  {(activeSeriesId === seriesId || selectedObservationId === observation.id) && <text x={px + 10} y={py - 9} className="estimated-label">{selectionPrefix(resolution, xMetric)}{observation.effort.reportedLabel}</text>}
               </g>
             )
           })}
-          {selectedGuide && selectedGuideLabel && (
+          {selectedGuide && selectedGuideLabel && (selectedGuide.xValue === null || selectedGuide.xValue >= xMin && selectedGuide.xValue <= xMax) && (
             <g
               className={`selected-guide${selectedGuide.estimated ? ' is-estimated' : ''}${selectedGuide.xValue === null ? ' is-no-data' : ''}`}
               data-selected-guide-for={selectedGuide.observation.id}
-              data-selected-guide-type={selectedGuide.xValue === null ? 'no-data' : xMetric === 'outputTokens' && selectedGuide.scenarioOutputEvidenceType === 'same-source-deepswe-mean' ? 'source-output' : selectedGuide.estimated ? 'estimated' : 'measured'}
+              data-selected-guide-type={selectedGuide.xValue === null ? 'no-data' : selectedGuideSameSourceOutput ? 'source-output' : selectedGuide.estimated ? 'estimated' : 'measured'}
               data-x-metric={xMetric}
               data-x-value={selectedGuide.xValue ?? 'missing'}
               role="img"
@@ -585,11 +691,45 @@ export function ExplorerChart({
               {selectedGuide.xValue !== null && <line className="selected-guide-line selected-guide-x" x1={selectedGuide.x} x2={selectedGuide.x} y1={selectedGuide.y} y2={PLOT.bottom} />}
               <text className="selected-guide-label selected-guide-y-label" data-guide-axis="y" x={selectedGuideScoreX} y={selectedGuideScoreY} textAnchor="start">{displayScoreValue(selectedGuide.score)}</text>
               {selectedGuide.xValue !== null
-                 ? <text className="selected-guide-label selected-guide-x-label" data-guide-axis="x" x={selectedGuideLabelX} y={PLOT.bottom + 35} textAnchor={selectedGuideXAnchor}>{selectedGuide.observation.approximation && xMetric === 'cost' ? '≈ SRC · ' : selectedGuide.scenarioOutputEvidenceType === 'same-source-deepswe-mean' && xMetric === 'outputTokens' ? 'AA MEAN · ' : selectedGuide.scenarioType === 'source-reported-cost' ? 'SRC · ' : selectedGuide.scenarioType === 'aa-suite-proxy' && xMetric === 'cost' ? 'PROXY · ' : selectedGuide.estimated ? 'EST · ' : ''}{formatAxis(selectedGuide.xValue, xMetric)}</text>
+                 ? <text className="selected-guide-label selected-guide-x-label" data-guide-axis="x" x={selectedGuideLabelX} y={PLOT.bottom + 35} textAnchor={selectedGuideXAnchor}>{selectedGuide.observation.approximation && xMetric === 'cost' ? '≈ SRC · ' : selectedGuideResolution ? selectionPrefix(selectedGuideResolution, xMetric) : ''}{formatAxis(selectedGuide.xValue, xMetric)}</text>
                 : <text className="selected-guide-missing-label" data-guide-axis="x-missing" x={selectedGuideMissingX} y={selectedGuideMissingY} textAnchor={selectedGuideMissingAnchor}>{selectedGuideMissingLabel}</text>}
             </g>
           )}
+          </>}
+          {rawGroups.map((group) => {
+            const first = group.rows[0]!.observation
+            const left = 400
+            const right = WIDTH - 82
+            const rawX = (value: number) => left + (value - group.min) / (group.max - group.min) * (right - left)
+            const axisY = group.top + 84 + group.rows.length * 34
+            return <g key={group.key} className="raw-score-region" data-raw-source-id={first.provenance.sourceId} role="group" aria-label={`${first.publisher}, ${first.provenance.title}: raw source scores, unit unspecified; separate source-specific scale, no cross-source comparability.`}>
+              <rect x={PLOT.left} y={group.top - 20} width={WIDTH - PLOT.left - 20} height={group.height} className="raw-score-background" />
+              <text x={PLOT.left + 14} y={group.top} className="raw-score-title">RAW SOURCE SCORES · UNIT UNSPECIFIED</text>
+              <text x={PLOT.left + 14} y={group.top + 18} className="raw-score-note">{first.publisher} · {first.benchmark.version ? `DeepSWE v${first.benchmark.version}` : 'DeepSWE version unspecified'} · {first.provenance.sourceId}</text>
+              <text x={PLOT.left + 14} y={group.top + 36} className="raw-score-note">Source-specific scale · not percentages · no efficiency coordinates or cross-source comparison</text>
+              <text x={PLOT.left + 14} y={group.top + 54} className="raw-score-note">{group.rows.every(({ observation }) => (['cost', 'medianCost', 'outputTokens', 'medianOutputTokens', 'time', 'medianTime'] as const).every((metric) => observation.metrics[metric].value === null)) ? 'Cost, output tokens and time not reported.' : 'Usage, when reported, remains in evidence details.'}</text>
+              {group.rows.map(({ observation, score }, index) => {
+                const x = rawX(score.reportedValue)
+                const y = group.top + 82 + index * 34
+                const selected = selectedObservationId === observation.id
+                const color = stableColor(modelKey(observation))
+                const detail = `${observation.model.reportedName}; raw source score ${score.reportedText}; unit, statistic and denominator unspecified. Source metric: ${score.metricLabel}. ${observation.publisher}; ${observation.benchmark.version ? `DeepSWE v${observation.benchmark.version}` : 'DeepSWE version unspecified'}; ${observation.effort.reportedLabel ?? 'effort unreported'}; protocol ${observation.series.harness ?? 'not reported'}. ${(['cost', 'medianCost', 'outputTokens', 'medianOutputTokens', 'time', 'medianTime'] as const).every((metric) => observation.metrics[metric].value === null) ? 'Cost, output tokens and time not reported.' : 'Usage remains in evidence details.'} Raw numeric position uses only this source scale; no efficiency coordinate or percentage-plot guide is assigned.`
+                return <g key={observation.id} className={`raw-score-point ${selected || activeSeriesId === observation.series.id ? 'is-highlighted' : ''} ${activeSeriesId && activeSeriesId !== observation.series.id ? 'is-dimmed' : ''}`} data-observation-id={observation.id} data-series-id={observation.series.id} data-score-metric={score.metric} role="button" tabIndex={0} aria-label={`${detail} Activate to open evidence details.`} aria-pressed={selected}
+                  onMouseEnter={() => onActiveSeries(observation.series.id)} onMouseLeave={() => onActiveSeries(null)} onFocus={() => onActiveSeries(observation.series.id)} onBlur={() => onActiveSeries(null)} onClick={() => onSelect(observation.id)} onDoubleClick={() => onIsolate(modelKey(observation))}
+                  onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect(observation.id) } }}>
+                  <title>{detail}</title>
+                  <text x={PLOT.left + 14} y={y + 4} className="raw-score-model">{displayModelName(observation.model.reportedName)} · {observation.effort.reportedLabel ?? 'effort unreported'}</text>
+                  <circle cx={x} cy={y} r="13" className="point-hit-area" />
+                  {sourceShape(observation.sourceCategory, x, y, color, selected)}
+                  <text x={x + 14} y={y + 4} className="raw-score-value">{score.reportedText}</text>
+                </g>
+              })}
+              <line x1={left} x2={right} y1={axisY} y2={axisY} className="axis-line" />
+              {[group.min, (group.min + group.max) / 2, group.max].map((value, index) => <text key={index} x={rawX(value)} y={axisY + 17} className="tick-label" textAnchor="middle">{formatNumber(value)}</text>)}
+            </g>
+          })}
         </svg>
+        </div>
       )}
       {noDataMarks.length > 0 && <details className="no-data-key">
         <summary>No data for selected X <span>{noDataMarks.length} · gutter is outside the numeric axis</span></summary>
@@ -624,16 +764,16 @@ export function ExplorerChart({
       </details>}
       {omitted.length > 0 && (
         <p className="chart-footnote" role="status">
-          {omitted.length} selected configuration{omitted.length === 1 ? '' : 's'} omitted from this percentage plot: {countReasons(omitted.map((entry) => entry.reason))}. The source records remain available below.
+          {omitted.length} selected configuration{omitted.length === 1 ? '' : 's'} excluded from the percentage plot: {countReasons(omitted.map((entry) => entry.reason))}. Finite raw source values appear on separate source-specific scales; source records remain available below.
         </p>
       )}
       {scenarioOmitted.length > 0 && (
         <p className="chart-footnote" role="status">
-          {scenarioOmitted.length} estimated configuration{scenarioOmitted.length === 1 ? '' : 's'} omitted from this axis: {countReasons(scenarioOmitted.map(({ x }) => x === 0 && scale === 'log' ? 'non-positive-log-x' : x < 0 ? 'negative-x' : 'non-finite-x'))}. Known zero estimates remain distinct from missing data.
+          {scenarioOmitted.length} optional coordinate{scenarioOmitted.length === 1 ? '' : 's'} omitted from this axis: {countReasons(scenarioOmitted.map(({ x }) => x === 0 && scale === 'log' ? 'non-positive-log-x' : x < 0 ? 'negative-x' : 'non-finite-x'))}. Known zero values remain distinct from missing data and are never replaced by a weaker fallback.
         </p>
       )}
       <div className="chart-caption-row">
-           <span>{plottedRows.length} source coordinates{hasApproximateCost ? ' (including 5 approximate screenshot readings; cost aggregation unspecified)' : ''} · {estimatedPlotPoints.length} scenario · {noDataMarks.length} no-data. Hollow amber diamonds are standalone cost/usage scenarios and never join effort paths; task-cost source statistics remain point-specific. The far-right no-data lane is outside the numeric X axis.</span>
+           <span>{plottedRows.length} source coordinates{hasApproximateCost ? ' (including 5 approximate screenshot readings; cost aggregation unspecified)' : ''} · {estimatedPlotPoints.length} scenario · {noDataMarks.length} no-data · {rawGroups.reduce((count, group) => count + group.rows.length, 0)} raw source scores. Hollow amber diamonds are standalone cost/usage scenarios and never join effort paths; task-cost source statistics remain point-specific. The far-right no-data lane is outside the numeric X axis. Raw source scores use separate source-specific scales and encode no efficiency value.</span>
           <span>Source marks: ● organizer · ◆ developer · ▲ independent · ■ local evaluation · expand the no-data key for source, metric and omission notes.</span>
       </div>
       {suppressedCount > 0 && <p className="chart-footnote chart-precedence-note" role="status">{suppressedCount} matching non-Datacurve report{suppressedCount === 1 ? ' is' : 's are'} retained in the evidence table and exports but omitted from this chart by display precedence. An unspecified source version is not treated as a version conflict; known model, version, scope, and score-metric conflicts remain separate. Source rows are not merged.</p>}

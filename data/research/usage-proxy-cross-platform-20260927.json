@@ -1,8 +1,326 @@
 {
   "schemaVersion": 1,
   "researchDate": "2026-09-27",
-  "scenarioResearchUpdatedAt": "2026-09-28",
+  "scenarioResearchUpdatedAt": "2026-10-08",
   "purpose": "Research-only cross-platform usage calibration. Not approved benchmark measurements and not imported into the application dataset.",
+  "legacyScenarioFieldsStatus": "Derived value/range fields under scenarios[] are retained as pre-direct-source historical calibration research only. Runtime selection is derived from usageFacts, the pinned approved dataset, and scenarioConfig; these legacy fields are not current estimates.",
+  "referenceValueStatus": "Datacurve numeric values and ratios in legacy calibration/evidence records are preserved as historical captures. Runtime resolves references by exact configurationId from the approved dataset pinned by scenarioConfig.approvedDatasetRevision, then recomputes transfer coefficients from those approved values.",
+  "runtimeFactContractVersion": 1,
+  "efficiencyExtension": {
+    "retrievedOn": "2026-10-08",
+    "semantics": {
+      "coding": "Cost=variant.mean.costUsd USD/task attempt and time=variant.mean.agentWallTimeSec seconds/task attempt, pooled over DeepSWE v1.1, TerminalBench 4 and SWE Atlas QnA. Output=variant.evals[datasetIndexName=deep-swe-v1.1].mean.outputTokens, not pooled mixed tokens. Output telemetry count/reasoning scope unspecified.",
+      "ii": "Exact model slug: intelligenceIndexOutputTokensPerTask.output includes reasoning plus answer; intelligenceIndexCostPerTask.cost.total is weighted USD/task; intelligenceIndexTimePerTask is weighted seconds/task. These are separate Intelligence Index workloads/weightings, not coding-agent wall time or DeepSWE measurements.",
+      "calibration": "Coding transfers reuse the existing pinned September OpenAI max cost/time coefficients and membership, with October target inputs; historical inputs are not silently refreshed. II cost uses three same-model/max OpenAI pairs and a through-origin slope; II time uses their arithmetic mean ratios; II output retains the two Sol/Luna mean ratios. All references resolve full-precision approved metrics at runtime.",
+      "limits": "Low/very-low qualitative evidence only; no prediction intervals. II cost anchor ratios vary about 2.30–16.98. No score, throughput, price-only, different-model, or unsupported explicit-effort substitution. Missing reference metrics stay unknown. Existing stronger per-metric references and source costs are retained."
+    },
+    "sources": [
+      { "id": "aa-ii-gpt-6-astra-xhigh", "publisher": "Artificial Analysis", "url": "https://artificialanalysis.ai/models/gpt-6-astra-xhigh", "retrievedOn": "2026-10-08", "responseSha256": "fd7e62e19458bde8980f600000d3f0a45072990cd1fcccd6f79b78f4c18591b8", "hashStatus": "validated" },
+      { "id": "aa-coding-efficiency-20261008", "publisher": "Artificial Analysis", "url": "https://artificialanalysis.ai/agents/coding-agents", "retrievedOn": "2026-10-08", "responseSha256": "53115dcc0a8f37322231a4625f98fc28eadee986f9f668aed4342cb0c34d808b", "hashStatus": "validated" },
+      { "id": "aa-ii-mistral-large-4", "publisher": "Artificial Analysis", "url": "https://artificialanalysis.ai/models/mistral-large-4", "retrievedOn": "2026-10-08", "responseSha256": "95573de8a9668db131a6624f3d17cb3cd82ffe6846b1900de72907b1c5b52123", "hashStatus": "validated" },
+      { "id": "aa-ii-deepseek-v4-1-flash", "publisher": "Artificial Analysis", "url": "https://artificialanalysis.ai/models/deepseek-v4-1-flash", "retrievedOn": "2026-10-08", "responseSha256": "51b504266f82da31ce76dab11f35debb1b44575de5b7b945bccb55f6b6d88c73", "hashStatus": "validated" },
+      { "id": "aa-ii-mimo-v2-6-pro", "publisher": "Artificial Analysis", "url": "https://artificialanalysis.ai/models/mimo-v2-6-pro", "retrievedOn": "2026-10-08", "responseSha256": "ebc7ea5a48f8585e66d56520d4e40d4305b35d90388d202b4c2ee887d9fd6b54", "hashStatus": "validated" },
+      { "id": "aa-ii-mimo-v2-6-flash", "publisher": "Artificial Analysis", "url": "https://artificialanalysis.ai/models/mimo-v2-6-flash", "retrievedOn": "2026-10-08", "responseSha256": "1a21b34595dfd3fd36258989f2b6aad54bd54def155dad1d4e2af373a9ae8025", "hashStatus": "validated" },
+      { "id": "aa-ii-qwen3-8-flash-next", "publisher": "Artificial Analysis", "url": "https://artificialanalysis.ai/models/qwen3-8-flash-next", "retrievedOn": "2026-10-08", "responseSha256": "bd2cd07358fd4cfc4d14b12c42efb3e1f8ba6375b06f695b166c78f3a985a67a", "hashStatus": "validated" },
+      { "id": "aa-ii-gpt-5-5", "publisher": "Artificial Analysis", "url": "https://artificialanalysis.ai/models/gpt-5-5", "retrievedOn": "2026-10-08", "responseSha256": "53d9f20175bde263daa1499eca2f5984516d293e4f1201781ee7b4268fadda60", "hashStatus": "validated" },
+      { "id": "aa-ii-gpt-5-4-mini", "publisher": "Artificial Analysis", "url": "https://artificialanalysis.ai/models/gpt-5-4-mini", "retrievedOn": "2026-10-08", "responseSha256": "79a842121243084ab4e94ee4a114e8e99ad1839811d838411382b11495b720eb", "hashStatus": "validated" },
+      { "id": "aa-ii-kimi-k2-6", "publisher": "Artificial Analysis", "url": "https://artificialanalysis.ai/models/kimi-k2-6", "retrievedOn": "2026-10-08", "responseSha256": "9068a0abf071621ccb3510ece0f208e2b520b599969ec17c391d292e34bfdff7", "hashStatus": "validated" },
+      { "id": "aa-ii-haiku-4-5", "publisher": "Artificial Analysis", "url": "https://artificialanalysis.ai/models/claude-4-5-haiku-reasoning", "retrievedOn": "2026-10-08", "responseSha256": "5473a87b8ace65630ef5ee511b737413b9b9cd1b7865615c6408035445e09606", "hashStatus": "validated" },
+      { "id": "aa-ii-minimax-m2-7", "publisher": "Artificial Analysis", "url": "https://artificialanalysis.ai/models/minimax-m2-7", "retrievedOn": "2026-10-08", "responseSha256": "958b1f00433423dc11f0933308031afdd4cb4ced92978da6cd3619429fe02fd3", "hashStatus": "validated" },
+      { "id": "aa-ii-mimo-v2-5-pro", "publisher": "Artificial Analysis", "url": "https://artificialanalysis.ai/models/mimo-v2-5-pro", "retrievedOn": "2026-10-08", "responseSha256": "a5fa74c579fc8d65563a03c330982e0968c1cd59e086f35e10966d6bdc859de5", "hashStatus": "validated" },
+      { "id": "aa-ii-glm-5-1", "publisher": "Artificial Analysis", "url": "https://artificialanalysis.ai/models/glm-5-1", "retrievedOn": "2026-10-08", "responseSha256": "804f0158a2d29c4eae11faba4db925cf6caf475ce8fa7915c7ef166f7391abbd", "hashStatus": "validated" },
+      { "id": "aa-ii-opus-5-low", "publisher": "Artificial Analysis", "url": "https://artificialanalysis.ai/models/claude-opus-5-low", "retrievedOn": "2026-10-08", "responseSha256": "23f24b1a95d7265a613a469c6f59c89a4d6bfd20d7fcab2cdbbe26c6d8caee17", "hashStatus": "validated" },
+      { "id": "aa-ii-opus-5-medium", "publisher": "Artificial Analysis", "url": "https://artificialanalysis.ai/models/claude-opus-5-medium", "retrievedOn": "2026-10-08", "responseSha256": "e36cd3247cbad264316c99ead4dac268f0b0cb94db7f949a048db04e8b3e36b6", "hashStatus": "validated" },
+      { "id": "aa-ii-opus-5-high", "publisher": "Artificial Analysis", "url": "https://artificialanalysis.ai/models/claude-opus-5-high", "retrievedOn": "2026-10-08", "responseSha256": "2782d2a79765f9e1d56891c0005997ec6cd97c9f939907e6e00f01b07312072d", "hashStatus": "validated" },
+      { "id": "aa-ii-opus-5-xhigh", "publisher": "Artificial Analysis", "url": "https://artificialanalysis.ai/models/claude-opus-5-xhigh", "retrievedOn": "2026-10-08", "responseSha256": "e7de10ab9f4663215fe7f900d34fc0d66caf0fc53f1463d371db7e6e59373f63", "hashStatus": "validated" },
+      { "id": "aa-ii-gpt-6-astra", "publisher": "Artificial Analysis", "url": "https://artificialanalysis.ai/models/gpt-6-astra", "retrievedOn": "2026-10-08", "responseSha256": "640c2bfbd556ed62901e2fbf552729682314498b50970a9651cc797513d22fb3", "hashStatus": "validated" },
+      { "id": "aa-ii-gpt-5-6-sol", "publisher": "Artificial Analysis", "url": "https://artificialanalysis.ai/models/gpt-5-6-sol", "retrievedOn": "2026-10-08", "responseSha256": "280a163506b42a17b503785cee1d170f6728f7d5ee012dbab317f75ea16033b1", "hashStatus": "validated" },
+      { "id": "aa-ii-gpt-5-6-luna", "publisher": "Artificial Analysis", "url": "https://artificialanalysis.ai/models/gpt-5-6-luna", "retrievedOn": "2026-10-08", "responseSha256": "7ef1136b5f068ede2ab0a87e321f929b21cd6ad86c95750532ee86fa7eae1c35", "hashStatus": "validated" }
+    ],
+    "references": [
+      { "id": "ii-gpt-6-astra-xhigh", "sourceId": "aa-ii-gpt-6-astra-xhigh", "workload": "ii", "model": "GPT-6-Astra", "effort": "xhigh", "harness": null, "locator": "initialModels[slug=gpt-6-astra-xhigh], name=GPT-6 Astra (Xhigh)", "cost": 2.308795912269076, "outputTokens": 16901.1809658926, "time": 382.82955372004585 },
+      { "id": "coding-gemini-4", "sourceId": "aa-coding-efficiency-20261008", "workload": "coding", "model": "Gemini 4 Argon", "effort": "high", "harness": "Antigravity CLI", "locator": "variant.id=ef63fafa9b4a635522183c879ae8435b; Antigravity CLI - Gemini 4 Argon (high)", "cost": 5.84390538944481, "outputTokens": 152422.96130952382, "time": 2070.1686032008843 },
+      { "id": "coding-sonnet-5-5", "sourceId": "aa-coding-efficiency-20261008", "workload": "coding", "model": "Claude Sonnet 5.5", "effort": "max", "harness": "Claude Code", "locator": "variant.id=a2c87c062f3cef73d8525e7578f14742; Claude Code - Sonnet 5.5 (max)", "cost": 14.190800796369649, "outputTokens": 614455.6474926254, "time": 5244.965372937293 },
+      { "id": "coding-gpt-6-sol", "sourceId": "aa-coding-efficiency-20261008", "workload": "coding", "model": "GPT-6 Sol", "effort": "max", "harness": "Codex", "locator": "variant.id=7a0dfd2a7a9d93056f860d4675586d66; Codex - GPT-6 Sol (max)", "cost": 2.989729004180416, "outputTokens": 70300.33038348083, "time": 1338.0527051705185 },
+      { "id": "coding-gpt-6-luna", "sourceId": "aa-coding-efficiency-20261008", "workload": "coding", "model": "GPT-6 Luna", "effort": "max", "harness": "Codex", "locator": "variant.id=ac8276cd5d15ac2daacb9956ad44c132; Codex - GPT-6 Luna (max), reasoning_effort=max", "cost": 0.17591172304455457, "outputTokens": 108271.5634218289, "time": 1285.9268514851478 },
+      { "id": "coding-opus-5-5", "sourceId": "aa-coding-efficiency-20261008", "workload": "coding", "model": "Claude Opus 5.5", "effort": "max", "harness": "Claude Code", "locator": "variant.id=ab5074e404be48bbd4ac3c488ad9a3e2; Claude Code - Opus 5.5 (max)", "cost": 13.036383418426828, "outputTokens": 406479.005899705, "time": 3867.0923410341024 },
+      { "id": "coding-opus-5", "sourceId": "aa-coding-efficiency-20261008", "workload": "coding", "model": "Claude Opus 5", "effort": "max", "harness": "Claude Code", "locator": "variant.id=409518818f1e9ad21995d70631ab05b6; Claude Code - Opus 5 (max)", "cost": 10.789154699257413, "outputTokens": 129793.94690265486, "time": 2515.540235973597 },
+      { "id": "coding-fable-fallback", "sourceId": "aa-coding-efficiency-20261008", "workload": "coding", "model": "Fable 5.1 (max) (with fallback)", "effort": "max", "harness": "Claude Code", "locator": "variant.id=29a1cdad0d140781d05b9b4746cfdd0d; Claude Code - Fable 5.1 (max) (with fallback)", "cost": 12.388092375137534, "outputTokens": 155542.35398230088, "time": 2089.900125412543 },
+      { "id": "coding-deepseek-pro", "sourceId": "aa-coding-efficiency-20261008", "workload": "coding", "model": "DeepSeek V4 Pro 0813", "effort": "max", "harness": "Codex", "locator": "variant.id=542590ecc1aa12a718d158565d464daa; Codex - DeepSeek V4 Pro 0813 (max)", "cost": 0.23804610720792058, "outputTokens": 116676.62241887905, "time": 2417.5500099009905 },
+      { "id": "coding-deepseek-flash", "sourceId": "aa-coding-efficiency-20261008", "workload": "coding", "model": "DeepSeek V4 Flash 0731", "effort": "max", "harness": "Codex", "locator": "variant.id=28ef65135f08f035dc93a97d324fea73; Codex - DeepSeek V4 Flash 0731 (max)", "cost": 0.08506419165060494, "outputTokens": 97092.21238938053, "time": 1097.0404400440034 },
+      { "id": "coding-qwen-max", "sourceId": "aa-coding-efficiency-20261008", "workload": "coding", "model": "Qwen3.8 Max", "effort": null, "harness": "Claude Code", "locator": "variant.id=cd4c865dc2f539b650d741fd2ebf7f2d; Claude Code - Qwen3.8 Max", "cost": 3.478965577837015, "outputTokens": 104418.39233038347, "time": 3784.416073707372 },
+      { "id": "coding-kimi-k3", "sourceId": "aa-coding-efficiency-20261008", "workload": "coding", "model": "Kimi K3", "effort": null, "harness": "Kimi Code CLI", "locator": "variant.id=55b029d6971b4d378335bb168eb98b3b; Kimi Code CLI - Kimi K3", "cost": 5.047195443300332, "outputTokens": 75080.34808259587, "time": 3689.3441947194724 },
+      { "id": "coding-gemini-3-8", "sourceId": "aa-coding-efficiency-20261008", "workload": "coding", "model": "Gemini 3.8 Flash", "effort": "high", "harness": "Antigravity SDK", "locator": "variant.id=d1003684d8f29b95a3b14d2a7722221a; Antigravity SDK - Gemini 3.8 Flash (high)", "cost": 2.4673922004125437, "outputTokens": 148259.0501474926, "time": 702.7110253025301 },
+      { "id": "coding-muse-1-3", "sourceId": "aa-coding-efficiency-20261008", "workload": "coding", "model": "Muse Spark 1.3", "effort": "max", "harness": "Muse Code", "locator": "variant.id=f2de07373c3626f1b9269a6ecad7804c; Muse Code - Muse Spark 1.3 (max)", "cost": 3.977504096947204, "outputTokens": 122491.69026548673, "time": 1106.8533531353135 },
+      { "id": "ii-mistral-large-4", "sourceId": "aa-ii-mistral-large-4", "workload": "ii", "model": "Mistral Large 4 (Public Preview)", "effort": null, "harness": null, "locator": "initialModels[slug=mistral-large-4], name=Mistral Large 4 Preview", "cost": 1.1317590533008346, "outputTokens": 69329.96307013553, "time": 506.9495035338055 },
+      { "id": "ii-deepseek-v4-1-flash", "sourceId": "aa-ii-deepseek-v4-1-flash", "workload": "ii", "model": "DeepSeek-V4.1-Flash", "effort": "max", "harness": null, "locator": "initialModels[slug=deepseek-v4-1-flash], name=DeepSeek V4.1 Flash (Max)", "cost": 0.26522527009606844, "outputTokens": 88573.99849468909, "time": 276.38010151179117 },
+      { "id": "ii-mimo-v2-6-pro", "sourceId": "aa-ii-mimo-v2-6-pro", "workload": "ii", "model": "MiMo-V2.6 Pro", "effort": null, "harness": null, "locator": "initialModels[slug=mimo-v2-6-pro], name=MiMo-V2.6-Pro", "cost": 0.13322318937213493, "outputTokens": 64275.70051166789, "time": 1577.9278892097489 },
+      { "id": "ii-mimo-v2-6-flash", "sourceId": "aa-ii-mimo-v2-6-flash", "workload": "ii", "model": "MiMo-V2.6 Flash", "effort": null, "harness": null, "locator": "initialModels[slug=mimo-v2-6-flash], name=MiMo-V2.6-Flash", "cost": 0.06231470136619077, "outputTokens": 77791.6930778598, "time": 1317.824637019069 },
+      { "id": "ii-qwen-flash-next", "sourceId": "aa-ii-qwen3-8-flash-next", "workload": "ii", "model": "Qwen3.8-Flash-Next", "effort": null, "harness": null, "locator": "initialModels[slug=qwen3-8-flash-next], name=Qwen3.8-Flash-Next", "cost": 0.3721760025302965, "outputTokens": 107884.70441134622, "time": 1509.9048121795913 },
+      { "id": "ii-gpt-5-5", "sourceId": "aa-ii-gpt-5-5", "workload": "ii", "model": "GPT-5.5", "effort": "xhigh", "harness": null, "locator": "initialModels[slug=gpt-5-5], name=GPT-5.5 (Xhigh)", "cost": 2.6339796841243297, "outputTokens": 23658.278490452063, "time": 259.1899177205271 },
+      { "id": "ii-gpt-5-4-mini", "sourceId": "aa-ii-gpt-5-4-mini", "workload": "ii", "model": "GPT-5.4-mini", "effort": "xhigh", "harness": null, "locator": "initialModels[slug=gpt-5-4-mini], name=GPT-5.4 mini (Xhigh)", "cost": 0.4473810333705224, "outputTokens": 51657.29562655977, "time": 191.1774512572189 },
+      { "id": "ii-kimi-k2-6", "sourceId": "aa-ii-kimi-k2-6", "workload": "ii", "model": "Kimi K2.6", "effort": "reasoning", "harness": null, "locator": "initialModels[slug=kimi-k2-6], name=Kimi K2.6 (Reasoning)", "cost": 0.799769615295709, "outputTokens": 47337.10653638787, "time": 687.3754664080524 },
+      { "id": "ii-haiku-4-5", "sourceId": "aa-ii-haiku-4-5", "workload": "ii", "model": "Claude Haiku 4.5", "effort": "reasoning", "harness": null, "locator": "initialModels[slug=claude-4-5-haiku-reasoning], name=Claude 4.5 Haiku (Reasoning)", "cost": 0.27682075830176456, "outputTokens": 18484.51541295649, "time": 157.5597106736057 },
+      { "id": "ii-minimax-m2-7", "sourceId": "aa-ii-minimax-m2-7", "workload": "ii", "model": "MiniMax M2.7", "effort": null, "harness": null, "locator": "initialModels[slug=minimax-m2-7], name=MiniMax-M2.7; costPerTask missing", "cost": null, "outputTokens": 21038.927509116238, "time": 352.00610176358515 },
+      { "id": "ii-mimo-v2-5-pro", "sourceId": "aa-ii-mimo-v2-5-pro", "workload": "ii", "model": "MiMo-V2.5 Pro", "effort": "reasoning", "harness": null, "locator": "initialModels[slug=mimo-v2-5-pro], name=MiMo-V2.5-Pro (Reasoning)", "cost": 0.054072740415336835, "outputTokens": 29884.92268012666, "time": 870.3460230182137 },
+      { "id": "ii-glm-5-1", "sourceId": "aa-ii-glm-5-1", "workload": "ii", "model": "GLM-5.1", "effort": "reasoning", "harness": null, "locator": "initialModels[slug=glm-5-1], name=GLM-5.1 (Reasoning)", "cost": 1.0192564984972659, "outputTokens": 41294.80352158475, "time": 631.0946653345534 },
+      { "id": "ii-opus-5-low", "sourceId": "aa-ii-opus-5-low", "workload": "ii", "model": "Claude Opus 5", "effort": "low", "harness": null, "locator": "initialModels[slug=claude-opus-5-low], name=Claude Opus 5 (Low)", "cost": 1.098302324514437, "outputTokens": 14668.005308189016, "time": 172.6144705830499 },
+      { "id": "ii-opus-5-medium", "sourceId": "aa-ii-opus-5-medium", "workload": "ii", "model": "Claude Opus 5", "effort": "medium", "harness": null, "locator": "initialModels[slug=claude-opus-5-medium], name=Claude Opus 5 (Medium)", "cost": 2.1894793086538695, "outputTokens": 28977.35678529392, "time": 333.3811440659373 },
+      { "id": "ii-opus-5-high", "sourceId": "aa-ii-opus-5-high", "workload": "ii", "model": "Claude Opus 5", "effort": "high", "harness": null, "locator": "initialModels[slug=claude-opus-5-high], name=Claude Opus 5 (High)", "cost": 3.6132670078004714, "outputTokens": 46239.243439663434, "time": 545.70887502078 },
+      { "id": "ii-opus-5-xhigh", "sourceId": "aa-ii-opus-5-xhigh", "workload": "ii", "model": "Claude Opus 5", "effort": "xhigh", "harness": null, "locator": "initialModels[slug=claude-opus-5-xhigh], name=Claude Opus 5 (Xhigh)", "cost": 4.877843772646787, "outputTokens": 60655.03775869017, "time": 729.0431795445327 },
+      { "id": "ii-gpt-6-astra", "sourceId": "aa-ii-gpt-6-astra", "workload": "ii", "model": "GPT-6 Astra", "effort": "max", "harness": null, "locator": "initialModels[slug=gpt-6-astra], name=GPT-6 Astra (Max)", "cost": 3.2575003134834164, "outputTokens": 27205.50491647014, "time": 585.6828594750334 },
+      { "id": "ii-gpt-5-6-sol", "sourceId": "aa-ii-gpt-5-6-sol", "workload": "ii", "model": "GPT-5.6 Sol", "effort": "max", "harness": null, "locator": "initialModels[slug=gpt-5-6-sol], name=GPT-5.6 Sol (Max)", "cost": 1.98845538085375, "outputTokens": 29309.37423504531, "time": 386.88047189332076 },
+      { "id": "ii-gpt-5-6-luna", "sourceId": "aa-ii-gpt-5-6-luna", "workload": "ii", "model": "GPT-5.6 Luna", "effort": "max", "harness": null, "locator": "initialModels[slug=gpt-5-6-luna], name=GPT-5.6 Luna (Max)", "cost": 0.17829726152289094, "outputTokens": 41234.58985098852, "time": 348.92211567696864 }
+    ],
+    "iiAnchors": [
+      { "referenceId": "ii-gpt-6-astra", "configurationId": "mini_swe_agent_gpt_6_astra_max", "metrics": ["cost", "time"] },
+      { "referenceId": "ii-gpt-5-6-sol", "configurationId": "mini_swe_agent_gpt_5_6_sol_max", "metrics": ["cost", "outputTokens", "time"] },
+      { "referenceId": "ii-gpt-5-6-luna", "configurationId": "mini_swe_agent_gpt_5_6_luna_max", "metrics": ["cost", "outputTokens", "time"] }
+    ],
+    "targets": [
+      { "observationId": "fireworks-deepswe-gpt-6-astra-xhigh", "referenceId": "ii-gpt-6-astra-xhigh", "metrics": ["outputTokens", "time"], "assumption": "Same model/xhigh, separate II workload; retain Fireworks source cost. No transfer from AA max effort." },
+      { "observationId": "google-gemini-4-argon-v1.1", "referenceId": "coding-gemini-4", "metrics": ["cost", "outputTokens", "time"], "assumption": "Same model AA high variant is a sensitivity assumption for Google's highest-thinking/unnamed setting, not established effort identity; Antigravity CLI differs from Google's mini-swe harness." },
+      { "observationId": "anthropic-claude-sonnet-5.5-v1.1", "referenceId": "coding-sonnet-5-5", "metrics": ["cost", "outputTokens", "time"], "assumption": "Same model/max, separate AA Claude Code experiment; developer harness and immutable checkpoint unknown." },
+      { "observationId": "mistral-large-4-preview-v1.1", "referenceId": "ii-mistral-large-4", "metrics": ["cost", "outputTokens", "time"], "assumption": "Same Public Preview alias; use AA default variant as an explicit setting assumption for unknown developer effort. II is a different workload, not the reported DeepSWE run." },
+      { "observationId": "openai-gpt-6-sol-v1.1-max", "referenceId": "coding-gpt-6-sol", "metrics": ["cost", "outputTokens", "time"], "assumption": "Same model/max, separate AA Codex experiment; developer harness unknown." },
+      { "observationId": "openai-gpt-6-luna-v1.1-max", "referenceId": "coding-gpt-6-luna", "metrics": ["cost", "outputTokens", "time"], "assumption": "Same model/max, separate AA Codex experiment; developer harness unknown." },
+      { "observationId": "anthropic-claude-opus-5.5-v1.1", "referenceId": "coding-opus-5-5", "metrics": ["cost", "outputTokens", "time"], "assumption": "AA max is an explicit same-model sensitivity assumption for unknown developer effort, not effort identity; separate Claude Code experiment." },
+      { "observationId": "anthropic-claude-opus-5-max-v1.1", "referenceId": "coding-opus-5", "metrics": ["cost", "outputTokens", "time"], "assumption": "Same model/max, separate AA Claude Code experiment." },
+      { "observationId": "anthropic-claude-opus-5-low-v1.1", "referenceId": "ii-opus-5-low", "metrics": ["cost", "outputTokens", "time"], "assumption": "Exact model/low; II workload differs from developer DeepSWE." },
+      { "observationId": "anthropic-claude-opus-5-medium-v1.1", "referenceId": "ii-opus-5-medium", "metrics": ["cost", "outputTokens", "time"], "assumption": "Exact model/medium; II workload differs from developer DeepSWE." },
+      { "observationId": "anthropic-claude-opus-5-high-v1.1", "referenceId": "ii-opus-5-high", "metrics": ["cost", "outputTokens", "time"], "assumption": "Exact model/high; II workload differs from developer DeepSWE." },
+      { "observationId": "anthropic-claude-opus-5-xhigh-v1.1", "referenceId": "ii-opus-5-xhigh", "metrics": ["cost", "outputTokens", "time"], "assumption": "Exact model/xhigh; II workload differs from developer DeepSWE." },
+      { "observationId": "deepseek-v4.1-flash-mini-swe-v1.1", "referenceId": "ii-deepseek-v4-1-flash", "metrics": ["cost", "outputTokens", "time"], "assumption": "Exact model/max; II workload differs from mini-SWE-agent." },
+      { "observationId": "deepseek-v4.1-flash-claude-code-v1.1", "referenceId": "ii-deepseek-v4-1-flash", "metrics": ["cost", "outputTokens", "time"], "assumption": "Exact model/max; II workload differs from Claude Code." },
+      { "observationId": "deepseek-v4.1-flash-codex-v1.1", "referenceId": "ii-deepseek-v4-1-flash", "metrics": ["cost", "outputTokens", "time"], "assumption": "Exact model/max; II workload differs from Codex." },
+      { "observationId": "deepseek-v4.1-flash-opencode-v1.1", "referenceId": "ii-deepseek-v4-1-flash", "metrics": ["cost", "outputTokens", "time"], "assumption": "Exact model/max; II workload differs from OpenCode." },
+      { "observationId": "deepseek-v4.1-flash-pi-v1.1", "referenceId": "ii-deepseek-v4-1-flash", "metrics": ["cost", "outputTokens", "time"], "assumption": "Exact model/max; II workload differs from Pi." },
+      { "observationId": "deepseek-v4.1-flash-dsh-minimal-v1.1", "referenceId": "ii-deepseek-v4-1-flash", "metrics": ["cost", "outputTokens", "time"], "assumption": "Exact model/max; II workload differs from DeepSeek Harness Minimal." },
+      { "observationId": "deepseek-v4.1-flash-dsh-standard-v1.1", "referenceId": "ii-deepseek-v4-1-flash", "metrics": ["cost", "outputTokens", "time"], "assumption": "Exact model/max; II workload differs from DeepSeek Harness Standard." },
+      { "observationId": "deepseek-v4.1-flash-dsh-ptc-v1.1", "referenceId": "ii-deepseek-v4-1-flash", "metrics": ["cost", "outputTokens", "time"], "assumption": "Exact model/max; II workload differs from DeepSeek Harness PTC." },
+      { "observationId": "xiaomi-mimo-v2.6-pro-table3-v1.1", "referenceId": "ii-mimo-v2-6-pro", "metrics": ["cost", "outputTokens", "time"], "assumption": "Same model AA default variant is a setting assumption for unknown paper settings; II workload differs." },
+      { "observationId": "xiaomi-mimo-v2.6-flash-table3-v1.1", "referenceId": "ii-mimo-v2-6-flash", "metrics": ["cost", "outputTokens", "time"], "assumption": "Same model AA default variant is a setting assumption for unknown paper settings; II workload differs." },
+      { "observationId": "xiaomi-mimo-v2.6-pro-average-at-3-endpoint-v1.1", "referenceId": "ii-mimo-v2-6-pro", "metrics": ["cost", "outputTokens", "time"], "assumption": "Same model AA default variant assumption. Per-attempt proxy only: average@3 denominator is not an established task bill; do not multiply by three." },
+      { "observationId": "xiaomi-mimo-v2.6-flash-average-at-3-endpoint-v1.1", "referenceId": "ii-mimo-v2-6-flash", "metrics": ["cost", "outputTokens", "time"], "assumption": "Same model AA default variant assumption. Per-attempt proxy only: average@3 denominator is not an established task bill; do not multiply by three." },
+      { "observationId": "qwen-qwen3.8-flash-next-v1.1", "referenceId": "ii-qwen-flash-next", "metrics": ["cost", "outputTokens", "time"], "assumption": "Exact Flash-Next model, AA default setting assumption for unknown developer effort; not Qwen Max." },
+      { "observationId": "aa-claude-code-qwen3.8-max-v1.1", "referenceId": "coding-qwen-max", "metrics": ["cost", "outputTokens", "time"], "assumption": "Same named AA model/Claude Code; effort unspecified in both reports. Chart suppression does not remove evidence-table scenarios." },
+      { "observationId": "aa-kimi-code-cli-kimi-k3-v1.1", "referenceId": "coding-kimi-k3", "metrics": ["cost", "outputTokens", "time"], "assumption": "Same AA model/Kimi Code CLI, effort unspecified in both reports. Chart suppression does not remove evidence-table scenarios." },
+      { "observationId": "datacurve-paper-gpt-5.5-xhigh-version-unknown", "referenceId": "ii-gpt-5-5", "metrics": ["cost", "outputTokens", "time"], "assumption": "Same model/xhigh; paper benchmark version unknown; separate II workload." },
+      { "observationId": "datacurve-paper-gpt-5.4-mini-xhigh-version-unknown", "referenceId": "ii-gpt-5-4-mini", "metrics": ["cost", "outputTokens", "time"], "assumption": "Same model/xhigh; paper benchmark version unknown; separate II workload." },
+      { "observationId": "datacurve-paper-kimi-k2.6-default-version-unknown", "referenceId": "ii-kimi-k2-6", "metrics": ["cost", "outputTokens", "time"], "assumption": "Variant assumption: use the same-model AA default Reasoning variant as a sensitivity case for the paper's provider-default label; reasoning mode is not established for the paper. Version/workload differ." },
+      { "observationId": "datacurve-paper-claude-haiku-4.5-default-version-unknown", "referenceId": "ii-haiku-4-5", "metrics": ["cost", "outputTokens", "time"], "assumption": "Variant assumption: same-model AA Reasoning sensitivity case for provider-default paper label, not established reasoning-mode identity. Version/workload differ." },
+      { "observationId": "datacurve-paper-minimax-m2.7-default-version-unknown", "referenceId": "ii-minimax-m2-7", "metrics": ["outputTokens", "time"], "assumption": "Same-model AA default variant assumption for paper default. II task cost is absent: leave dollars unknown, not price-derived. Version/workload differ." },
+      { "observationId": "datacurve-paper-mimo-v2.5-pro-default-version-unknown", "referenceId": "ii-mimo-v2-5-pro", "metrics": ["cost", "outputTokens", "time"], "assumption": "Variant assumption: same-model AA Reasoning sensitivity case for provider-default paper label, not established reasoning-mode identity. Version/workload differ." },
+      { "observationId": "datacurve-paper-glm-5.1-default-version-unknown", "referenceId": "ii-glm-5-1", "metrics": ["cost", "outputTokens", "time"], "assumption": "Variant assumption: same-model AA Reasoning sensitivity case for provider-default paper label, not established reasoning-mode identity. Version/workload differ." },
+      { "observationId": "aa-claude-code-fable-5.1-max-v1.1", "referenceId": "coding-fable-fallback", "metrics": ["time"], "assumption": "Same exact AA mixed-model WITH FALLBACK variant; pooled time includes fallback behavior, not pure Fable performance. Existing suite cost/output remain preferred." },
+      { "observationId": "aa-codex-deepseek-v4-pro-0813-max-v1.1", "referenceId": "coding-deepseek-pro", "metrics": ["time"], "assumption": "Exact 0813/max/Codex variant; preserve existing output and suite-cost references." },
+      { "observationId": "aa-codex-deepseek-v4-flash-0731-max-v1.1", "referenceId": "coding-deepseek-flash", "metrics": ["time"], "assumption": "Exact 0731/max/Codex variant; preserve existing output and suite-cost references." },
+      { "observationId": "fireworks-deepswe-deepseek-v4.1-flash-max", "referenceId": "ii-deepseek-v4-1-flash", "metrics": ["outputTokens", "time"], "assumption": "Same model/max, separate II workload; Fireworks source cost remains preferred." },
+      { "observationId": "fireworks-deepswe-gemini-3.8-flash-high", "referenceId": "coding-gemini-3-8", "metrics": ["outputTokens", "time"], "assumption": "Same model/high, separate Antigravity SDK experiment; Fireworks source cost remains preferred." },
+      { "observationId": "fireworks-deepswe-claude-opus-5-max", "referenceId": "coding-opus-5", "metrics": ["outputTokens", "time"], "assumption": "Same model/max, separate Claude Code experiment; Fireworks source cost remains preferred." },
+      { "observationId": "google-gemini-3.8-flash-high-v1.1", "referenceId": "coding-gemini-3-8", "metrics": ["time"], "assumption": "Same model/high thinking, separate Antigravity SDK experiment; retain same-model Datacurve output/cost references." },
+      { "observationId": "meta-muse-spark-1.3-v1.1-max", "referenceId": "coding-muse-1-3", "metrics": ["time"], "assumption": "Same reported model/max, separate Muse Code experiment; existing output/cost scenarios retained, checkpoint identity not established." }
+    ]
+  },
+  "usageFacts": [
+    {
+      "id": "aa-output-gpt-6-sol-max",
+      "targetObservationId": "aa-codex-gpt-6-sol-max-v1.1",
+      "identity": { "sourceId": "aa-codex-vs-kimi-code-cli", "variantKey": "codex-gpt-6-sol-max", "displayLabel": "Codex - GPT-6 Sol (max)", "reportedModel": "GPT-6 Sol", "snapshot": null, "effort": "max", "rawSetting": "max", "harness": "Codex", "benchmarkVersion": "1.1", "datasetIndexName": "deep-swe-v1.1" },
+      "metric": "outputTokens", "value": 70300.33038348083, "missingReason": null, "unit": "AA DeepSWE v1.1 output tokens per task attempt", "statistic": "mean",
+      "definition": "Exact public AA variant evals[datasetIndexName=deep-swe-v1.1].mean.outputTokens.", "population": "Artificial Analysis DeepSWE v1.1 variant evaluation; output-specific telemetry count is not published.", "sampleCount": null, "includesReasoningTokens": null, "timingBoundaries": null, "pricingBasis": null,
+      "relationship": "same-source-same-benchmark-reference", "sourceIds": ["aa-codex-vs-kimi-code-cli"],
+      "evidence": { "url": "https://artificialanalysis.ai/agents/coding-agents/comparisons/codex-vs-kimi-code-cli", "retrievedAt": "2026-09-29", "locator": "displayLabel=Codex - GPT-6 Sol (max) → evals[datasetIndexName=deep-swe-v1.1].mean.outputTokens", "responseSha256": null, "hashStatus": "malformed-historical", "historicalMalformedSha256": "38e53b663085602e147094f4afd61cc6a7f67fa0156921f3bcc9b9d8f", "sourceRevision": "AA-public-serialized-html-2026-09-29", "approvedDatasetRevision": null, "caveats": ["Historical response hash has malformed length; original bytes are unavailable and the digest is not reconstructed.", "Output-specific telemetry count and reasoning-token inclusion are unspecified."] }
+    },
+    {
+      "id": "aa-output-gpt-6-luna-max",
+      "targetObservationId": "aa-codex-gpt-6-luna-max-v1.1",
+      "identity": { "sourceId": "aa-codex-vs-kimi-code-cli", "variantKey": "codex-gpt-6-luna-max", "displayLabel": "Codex - GPT-6 Luna (max)", "reportedModel": "GPT-6 Luna", "snapshot": null, "effort": "max", "rawSetting": "max", "harness": "Codex", "benchmarkVersion": "1.1", "datasetIndexName": "deep-swe-v1.1" },
+      "metric": "outputTokens", "value": 108271.5634218289, "missingReason": null, "unit": "AA DeepSWE v1.1 output tokens per task attempt", "statistic": "mean",
+      "definition": "Exact public AA variant evals[datasetIndexName=deep-swe-v1.1].mean.outputTokens.", "population": "Artificial Analysis DeepSWE v1.1 variant evaluation; output-specific telemetry count is not published.", "sampleCount": null, "includesReasoningTokens": null, "timingBoundaries": null, "pricingBasis": null,
+      "relationship": "same-source-same-benchmark-reference", "sourceIds": ["aa-codex-vs-kimi-code-cli"],
+      "evidence": { "url": "https://artificialanalysis.ai/agents/coding-agents/comparisons/codex-vs-kimi-code-cli", "retrievedAt": "2026-09-29", "locator": "displayLabel=Codex - GPT-6 Luna (max) → evals[datasetIndexName=deep-swe-v1.1].mean.outputTokens", "responseSha256": null, "hashStatus": "malformed-historical", "historicalMalformedSha256": "38e53b663085602e147094f4afd61cc6a7f67fa0156921f3bcc9b9d8f", "sourceRevision": "AA-public-serialized-html-2026-09-29", "approvedDatasetRevision": null, "caveats": ["Historical response hash has malformed length; original bytes are unavailable and the digest is not reconstructed.", "Output-specific telemetry count and reasoning-token inclusion are unspecified."] }
+    },
+    {
+      "id": "aa-output-gpt-6-astra-max",
+      "targetObservationId": "aa-codex-gpt-6-astra-max-v1.1",
+      "identity": { "sourceId": "aa-codex-vs-kimi-code-cli", "variantKey": "codex-gpt-6-astra-max", "displayLabel": "Codex - GPT-6 Astra (max)", "reportedModel": "GPT-6 Astra", "snapshot": null, "effort": "max", "rawSetting": "max", "harness": "Codex", "benchmarkVersion": "1.1", "datasetIndexName": "deep-swe-v1.1" },
+      "metric": "outputTokens", "value": 56420.18289085546, "missingReason": null, "unit": "AA DeepSWE v1.1 output tokens per task attempt", "statistic": "mean",
+      "definition": "Exact public AA variant evals[datasetIndexName=deep-swe-v1.1].mean.outputTokens.", "population": "Artificial Analysis DeepSWE v1.1 variant evaluation; output-specific telemetry count is not published.", "sampleCount": null, "includesReasoningTokens": null, "timingBoundaries": null, "pricingBasis": null,
+      "relationship": "same-source-same-benchmark-reference", "sourceIds": ["aa-codex-vs-kimi-code-cli"],
+      "evidence": { "url": "https://artificialanalysis.ai/agents/coding-agents/comparisons/codex-vs-kimi-code-cli", "retrievedAt": "2026-09-29", "locator": "displayLabel=Codex - GPT-6 Astra (max) → evals[datasetIndexName=deep-swe-v1.1].mean.outputTokens", "responseSha256": null, "hashStatus": "malformed-historical", "historicalMalformedSha256": "38e53b663085602e147094f4afd61cc6a7f67fa0156921f3bcc9b9d8f", "sourceRevision": "AA-public-serialized-html-2026-09-29", "approvedDatasetRevision": null, "caveats": ["Historical response hash has malformed length; original bytes are unavailable and the digest is not reconstructed.", "Output-specific telemetry count and reasoning-token inclusion are unspecified."] }
+    },
+    {
+      "id": "aa-output-gpt-5-6-sol-max",
+      "targetObservationId": "aa-codex-gpt-5.6-sol-max-v1.1",
+      "identity": { "sourceId": "aa-codex-vs-kimi-code-cli", "variantKey": "codex-gpt-5.6-sol-max", "displayLabel": "Codex - GPT-5.6 Sol (max)", "reportedModel": "GPT-5.6 Sol", "snapshot": null, "effort": "max", "rawSetting": "max", "harness": "Codex", "benchmarkVersion": "1.1", "datasetIndexName": "deep-swe-v1.1" },
+      "metric": "outputTokens", "value": 56943.890855457226, "missingReason": null, "unit": "AA DeepSWE v1.1 output tokens per task attempt", "statistic": "mean",
+      "definition": "Exact public AA variant evals[datasetIndexName=deep-swe-v1.1].mean.outputTokens.", "population": "Artificial Analysis DeepSWE v1.1 variant evaluation; output-specific telemetry count is not published.", "sampleCount": null, "includesReasoningTokens": null, "timingBoundaries": null, "pricingBasis": null,
+      "relationship": "same-source-same-benchmark-reference", "sourceIds": ["aa-codex-vs-kimi-code-cli"],
+      "evidence": { "url": "https://artificialanalysis.ai/agents/coding-agents/comparisons/codex-vs-kimi-code-cli", "retrievedAt": "2026-09-29", "locator": "displayLabel=Codex - GPT-5.6 Sol (max) → evals[datasetIndexName=deep-swe-v1.1].mean.outputTokens", "responseSha256": null, "hashStatus": "malformed-historical", "historicalMalformedSha256": "38e53b663085602e147094f4afd61cc6a7f67fa0156921f3bcc9b9d8f", "sourceRevision": "AA-public-serialized-html-2026-09-29", "approvedDatasetRevision": null, "caveats": ["Historical response hash has malformed length; original bytes are unavailable and the digest is not reconstructed.", "Output-specific telemetry count and reasoning-token inclusion are unspecified."] }
+    },
+    {
+      "id": "aa-output-gpt-5-6-luna-max",
+      "targetObservationId": "aa-codex-gpt-5.6-luna-max-v1.1",
+      "identity": { "sourceId": "aa-codex-vs-kimi-code-cli", "variantKey": "codex-gpt-5.6-luna-max", "displayLabel": "Codex - GPT-5.6 Luna (max)", "reportedModel": "GPT-5.6 Luna", "snapshot": null, "effort": "max", "rawSetting": "max", "harness": "Codex", "benchmarkVersion": "1.1", "datasetIndexName": "deep-swe-v1.1" },
+      "metric": "outputTokens", "value": 75781.00294985251, "missingReason": null, "unit": "AA DeepSWE v1.1 output tokens per task attempt", "statistic": "mean",
+      "definition": "Exact public AA variant evals[datasetIndexName=deep-swe-v1.1].mean.outputTokens.", "population": "Artificial Analysis DeepSWE v1.1 variant evaluation; output-specific telemetry count is not published.", "sampleCount": null, "includesReasoningTokens": null, "timingBoundaries": null, "pricingBasis": null,
+      "relationship": "same-source-same-benchmark-reference", "sourceIds": ["aa-codex-vs-kimi-code-cli"],
+      "evidence": { "url": "https://artificialanalysis.ai/agents/coding-agents/comparisons/codex-vs-kimi-code-cli", "retrievedAt": "2026-09-29", "locator": "displayLabel=Codex - GPT-5.6 Luna (max) → evals[datasetIndexName=deep-swe-v1.1].mean.outputTokens", "responseSha256": null, "hashStatus": "malformed-historical", "historicalMalformedSha256": "38e53b663085602e147094f4afd61cc6a7f67fa0156921f3bcc9b9d8f", "sourceRevision": "AA-public-serialized-html-2026-09-29", "approvedDatasetRevision": null, "caveats": ["Historical response hash has malformed length; original bytes are unavailable and the digest is not reconstructed.", "Output-specific telemetry count and reasoning-token inclusion are unspecified."] }
+    },
+    {
+      "id": "aa-output-opus-5-5-max",
+      "targetObservationId": "artificial-analysis-claude-code-opus-5.5-max-v1.1",
+      "identity": { "sourceId": "aa-claude-code-vs-codex", "variantKey": "claude-code-opus-5.5-max", "displayLabel": "Claude Code - Opus 5.5 (max)", "reportedModel": "Opus 5.5", "snapshot": null, "effort": "max", "rawSetting": "max", "harness": "Claude Code", "benchmarkVersion": "1.1", "datasetIndexName": "deep-swe-v1.1" },
+      "metric": "outputTokens", "value": 406479.005899705, "missingReason": null, "unit": "AA DeepSWE v1.1 output tokens per task attempt", "statistic": "mean",
+      "definition": "Exact public AA variant evals[datasetIndexName=deep-swe-v1.1].mean.outputTokens.", "population": "Artificial Analysis DeepSWE v1.1 variant evaluation; output-specific telemetry count is not published.", "sampleCount": null, "includesReasoningTokens": null, "timingBoundaries": null, "pricingBasis": null,
+      "relationship": "same-source-same-benchmark-reference", "sourceIds": ["aa-claude-code-vs-codex"],
+      "evidence": { "url": "https://artificialanalysis.ai/agents/coding-agents/comparisons/claude-code-vs-codex", "retrievedAt": "2026-09-29", "locator": "displayLabel=Claude Code - Opus 5.5 (max) → evals[datasetIndexName=deep-swe-v1.1].mean.outputTokens", "responseSha256": "2150113e1b5c0e7a08d60defd83cbca160663769d15625a133e104c6bf8156e0", "hashStatus": "validated", "sourceRevision": "AA-public-serialized-html-2026-09-29", "approvedDatasetRevision": null, "caveats": ["Output-specific telemetry count and reasoning-token inclusion are unspecified."] }
+    },
+    {
+      "id": "aa-output-opus-5-max",
+      "targetObservationId": "aa-claude-code-opus-5-max-v1.1",
+      "identity": { "sourceId": "aa-claude-code-vs-codex", "variantKey": "claude-code-opus-5-max", "displayLabel": "Claude Code - Opus 5 (max)", "reportedModel": "Opus 5", "snapshot": null, "effort": "max", "rawSetting": "max", "harness": "Claude Code", "benchmarkVersion": "1.1", "datasetIndexName": "deep-swe-v1.1" },
+      "metric": "outputTokens", "value": 129793.94690265486, "missingReason": null, "unit": "AA DeepSWE v1.1 output tokens per task attempt", "statistic": "mean",
+      "definition": "Exact public AA variant evals[datasetIndexName=deep-swe-v1.1].mean.outputTokens.", "population": "Artificial Analysis DeepSWE v1.1 variant evaluation; output-specific telemetry count is not published.", "sampleCount": null, "includesReasoningTokens": null, "timingBoundaries": null, "pricingBasis": null,
+      "relationship": "same-source-same-benchmark-reference", "sourceIds": ["aa-claude-code-vs-codex"],
+      "evidence": { "url": "https://artificialanalysis.ai/agents/coding-agents/comparisons/claude-code-vs-codex", "retrievedAt": "2026-09-29", "locator": "displayLabel=Claude Code - Opus 5 (max) → evals[datasetIndexName=deep-swe-v1.1].mean.outputTokens", "responseSha256": "2150113e1b5c0e7a08d60defd83cbca160663769d15625a133e104c6bf8156e0", "hashStatus": "validated", "sourceRevision": "AA-public-serialized-html-2026-09-29", "approvedDatasetRevision": null, "caveats": ["Output-specific telemetry count and reasoning-token inclusion are unspecified."] }
+    },
+    {
+      "id": "aa-output-fable-5-1-max-fallback",
+      "targetObservationId": "aa-claude-code-fable-5.1-max-v1.1",
+      "identity": { "sourceId": "aa-claude-code-vs-codex", "variantKey": "claude-code-fable-5.1-max-fallback", "displayLabel": "Claude Code - Fable 5.1 (max) (with fallback)", "reportedModel": "Fable 5.1 (max) (with fallback)", "snapshot": null, "effort": "max", "rawSetting": "max", "harness": "Claude Code", "benchmarkVersion": "1.1", "datasetIndexName": "deep-swe-v1.1" },
+      "metric": "outputTokens", "value": 155542.35398230088, "missingReason": null, "unit": "AA DeepSWE v1.1 output tokens per task attempt", "statistic": "mean",
+      "definition": "Exact public AA variant evals[datasetIndexName=deep-swe-v1.1].mean.outputTokens.", "population": "Artificial Analysis DeepSWE v1.1 variant evaluation; output-specific telemetry count is not published.", "sampleCount": null, "includesReasoningTokens": null, "timingBoundaries": null, "pricingBasis": null,
+      "relationship": "same-source-same-benchmark-reference", "sourceIds": ["aa-claude-code-vs-codex"],
+      "evidence": { "url": "https://artificialanalysis.ai/agents/coding-agents/comparisons/claude-code-vs-codex", "retrievedAt": "2026-09-29", "locator": "displayLabel=Claude Code - Fable 5.1 (max) (with fallback) → evals[datasetIndexName=deep-swe-v1.1].mean.outputTokens", "responseSha256": "2150113e1b5c0e7a08d60defd83cbca160663769d15625a133e104c6bf8156e0", "hashStatus": "validated", "sourceRevision": "AA-public-serialized-html-2026-09-29", "approvedDatasetRevision": null, "caveats": ["Output-specific telemetry count and reasoning-token inclusion are unspecified."] }
+    },
+    {
+      "id": "aa-output-deepseek-v4-pro-0813-max",
+      "targetObservationId": "aa-codex-deepseek-v4-pro-0813-max-v1.1",
+      "identity": { "sourceId": "aa-codex-kimi-live", "variantKey": "codex-deepseek-v4-pro-0813-max", "displayLabel": "Codex - DeepSeek V4 Pro 0813 (max)", "reportedModel": "DeepSeek V4 Pro 0813", "snapshot": null, "effort": "max", "rawSetting": "max", "harness": "Codex", "benchmarkVersion": "1.1", "datasetIndexName": "deep-swe-v1.1" },
+      "metric": "outputTokens", "value": 116676.62241887905, "missingReason": null, "unit": "AA DeepSWE v1.1 output tokens per task attempt", "statistic": "mean",
+      "definition": "Exact public AA variant evals[datasetIndexName=deep-swe-v1.1].mean.outputTokens.", "population": "Artificial Analysis DeepSWE v1.1 variant evaluation; output-specific telemetry count is not published.", "sampleCount": null, "includesReasoningTokens": null, "timingBoundaries": null, "pricingBasis": null,
+      "relationship": "same-source-same-benchmark-reference", "sourceIds": ["aa-codex-kimi-live", "aa-methodology"],
+      "evidence": { "url": "https://artificialanalysis.ai/agents/coding-agents/comparisons/codex-vs-kimi-code-cli", "retrievedAt": "2026-09-29", "locator": "displayLabel=Codex - DeepSeek V4 Pro 0813 (max) → evals[datasetIndexName=deep-swe-v1.1].mean.outputTokens", "responseSha256": null, "hashStatus": "malformed-historical", "historicalMalformedSha256": "38e53b663085602e147094f4afd61cc6a7f67fa0156921f3bcc9b9d8f", "sourceRevision": "AA-public-serialized-html-2026-09-29", "approvedDatasetRevision": null, "caveats": ["Historical response hash has malformed length; original bytes are unavailable and the digest is not reconstructed.", "safety.attemptCount is not an output-token telemetry denominator.", "Output-specific telemetry count and reasoning-token inclusion are unspecified."] }
+    },
+    {
+      "id": "aa-output-deepseek-v4-flash-0731-max",
+      "targetObservationId": "aa-codex-deepseek-v4-flash-0731-max-v1.1",
+      "identity": { "sourceId": "aa-codex-kimi-live", "variantKey": "codex-deepseek-v4-flash-0731-max", "displayLabel": "Codex - DeepSeek V4 Flash 0731 (max)", "reportedModel": "DeepSeek V4 Flash 0731", "snapshot": null, "effort": "max", "rawSetting": "max", "harness": "Codex", "benchmarkVersion": "1.1", "datasetIndexName": "deep-swe-v1.1" },
+      "metric": "outputTokens", "value": 97092.21238938053, "missingReason": null, "unit": "AA DeepSWE v1.1 output tokens per task attempt", "statistic": "mean",
+      "definition": "Exact public AA variant evals[datasetIndexName=deep-swe-v1.1].mean.outputTokens.", "population": "Artificial Analysis DeepSWE v1.1 variant evaluation; output-specific telemetry count is not published.", "sampleCount": null, "includesReasoningTokens": null, "timingBoundaries": null, "pricingBasis": null,
+      "relationship": "same-source-same-benchmark-reference", "sourceIds": ["aa-codex-kimi-live", "aa-methodology"],
+      "evidence": { "url": "https://artificialanalysis.ai/agents/coding-agents/comparisons/codex-vs-kimi-code-cli", "retrievedAt": "2026-09-29", "locator": "displayLabel=Codex - DeepSeek V4 Flash 0731 (max) → evals[datasetIndexName=deep-swe-v1.1].mean.outputTokens", "responseSha256": null, "hashStatus": "malformed-historical", "historicalMalformedSha256": "38e53b663085602e147094f4afd61cc6a7f67fa0156921f3bcc9b9d8f", "sourceRevision": "AA-public-serialized-html-2026-09-29", "approvedDatasetRevision": null, "caveats": ["Historical response hash has malformed length; original bytes are unavailable and the digest is not reconstructed.", "safety.attemptCount is not an output-token telemetry denominator.", "Output-specific telemetry count and reasoning-token inclusion are unspecified."] }
+    }
+  ],
+  "scenarioConfig": {
+    "approvedDatasetRevision": "dsv1.1-6684672fe564da3e",
+    "targets": [
+      { "observationId": "aa-codex-gpt-6-luna-max-v1.1", "sourceId": "artificial-analysis-codex-kimi-cli", "canonicalId": null, "snapshot": null, "benchmarkScope": "full", "taskCount": 113, "taskSetRevision": null,
+        "metrics": {
+          "cost": { "selection": "fallback", "method": "openai-max-through-origin-proportional-fit", "relationship": "calibrated-transfer", "statistic": "mean-only", "sourceIds": ["aa-codex-vs-kimi-code-cli", "datacurve-v1.1-json"], "factIds": [], "referenceIds": ["openai-max-cost-calibration"] },
+          "outputTokens": { "selection": "same-source-reference", "method": "same-aa-variant-deepswe-mean", "relationship": "same-source-same-benchmark-reference", "statistic": "source-deepswe-mean", "sourceIds": ["aa-codex-vs-kimi-code-cli"], "factIds": ["aa-output-gpt-6-luna-max"], "referenceIds": [] },
+          "time": { "selection": "fallback", "method": "openai-max-arithmetic-mean-ratio", "relationship": "calibrated-transfer", "statistic": "mean-only", "sourceIds": ["aa-codex-vs-kimi-code-cli", "datacurve-v1.1-json"], "factIds": [], "referenceIds": ["openai-max-time-calibration"] }
+        } },
+      { "observationId": "artificial-analysis-claude-code-opus-5.5-max-v1.1", "sourceId": "artificial-analysis-coding-agents", "canonicalId": "anthropic:claude-opus-5.5", "snapshot": null, "benchmarkScope": "full", "taskCount": 113, "taskSetRevision": null,
+        "metrics": {
+          "cost": { "selection": "fallback", "method": "opus-5-max-single-pair-ratio", "relationship": "calibrated-transfer", "statistic": "mean-only", "sourceIds": ["aa-claude-code-vs-codex", "datacurve-v1.1-json"], "factIds": [], "referenceIds": ["opus-5-max-cost-calibration"] },
+          "outputTokens": { "selection": "same-source-reference", "method": "same-aa-variant-deepswe-mean", "relationship": "same-source-same-benchmark-reference", "statistic": "source-deepswe-mean", "sourceIds": ["aa-claude-code-vs-codex"], "factIds": ["aa-output-opus-5-5-max"], "referenceIds": [] },
+          "time": { "selection": "fallback", "method": "opus-5-max-single-pair-ratio", "relationship": "calibrated-transfer", "statistic": "mean-only", "sourceIds": ["aa-claude-code-vs-codex", "datacurve-v1.1-json"], "factIds": [], "referenceIds": ["opus-5-max-time-calibration"] }
+        } },
+      { "observationId": "aa-codex-gpt-6-astra-max-v1.1", "sourceId": "artificial-analysis-coding-agents", "canonicalId": null, "snapshot": null, "benchmarkScope": "full", "taskCount": 113, "taskSetRevision": null,
+        "metrics": {
+          "cost": { "selection": "fallback", "method": "exact-model-effort-deepswe-reference", "relationship": "separate-experiment-reference", "statistic": "mean-only", "sourceIds": ["aa-codex-vs-kimi-code-cli", "datacurve-v1.1-json"], "factIds": [], "referenceIds": ["mini_swe_agent_gpt_6_astra_max"] },
+          "outputTokens": { "selection": "same-source-reference", "method": "same-aa-variant-deepswe-mean", "relationship": "same-source-same-benchmark-reference", "statistic": "source-deepswe-mean", "sourceIds": ["aa-codex-vs-kimi-code-cli"], "factIds": ["aa-output-gpt-6-astra-max"], "referenceIds": [] },
+          "time": { "selection": "fallback", "method": "exact-model-effort-deepswe-reference", "relationship": "separate-experiment-reference", "statistic": "mean-only", "sourceIds": ["aa-codex-vs-kimi-code-cli", "datacurve-v1.1-json"], "factIds": [], "referenceIds": ["mini_swe_agent_gpt_6_astra_max"] }
+        } },
+      { "observationId": "aa-codex-gpt-6-sol-max-v1.1", "sourceId": "artificial-analysis-coding-agents", "canonicalId": null, "snapshot": null, "benchmarkScope": "full", "taskCount": 113, "taskSetRevision": null,
+        "metrics": {
+          "cost": { "selection": "fallback", "method": "openai-max-through-origin-proportional-fit", "relationship": "calibrated-transfer", "statistic": "mean-only", "sourceIds": ["aa-codex-vs-kimi-code-cli", "datacurve-v1.1-json"], "factIds": [], "referenceIds": ["openai-max-cost-calibration"] },
+          "outputTokens": { "selection": "same-source-reference", "method": "same-aa-variant-deepswe-mean", "relationship": "same-source-same-benchmark-reference", "statistic": "source-deepswe-mean", "sourceIds": ["aa-codex-vs-kimi-code-cli"], "factIds": ["aa-output-gpt-6-sol-max"], "referenceIds": [] },
+          "time": { "selection": "fallback", "method": "openai-max-arithmetic-mean-ratio", "relationship": "calibrated-transfer", "statistic": "mean-only", "sourceIds": ["aa-codex-vs-kimi-code-cli", "datacurve-v1.1-json"], "factIds": [], "referenceIds": ["openai-max-time-calibration"] }
+        } },
+      { "observationId": "aa-claude-code-opus-5-max-v1.1", "sourceId": "artificial-analysis-coding-agents", "canonicalId": null, "snapshot": null, "benchmarkScope": "full", "taskCount": 113, "taskSetRevision": null,
+        "metrics": {
+          "cost": { "selection": "fallback", "method": "exact-model-effort-deepswe-reference", "relationship": "separate-experiment-reference", "statistic": "mean-only", "sourceIds": ["aa-claude-code-vs-codex", "datacurve-v1.1-json"], "factIds": [], "referenceIds": ["mini_swe_agent_claude_opus_5_max"] },
+          "outputTokens": { "selection": "same-source-reference", "method": "same-aa-variant-deepswe-mean", "relationship": "same-source-same-benchmark-reference", "statistic": "source-deepswe-mean", "sourceIds": ["aa-claude-code-vs-codex"], "factIds": ["aa-output-opus-5-max"], "referenceIds": [] },
+          "time": { "selection": "fallback", "method": "exact-model-effort-deepswe-reference", "relationship": "separate-experiment-reference", "statistic": "mean-only", "sourceIds": ["aa-claude-code-vs-codex", "datacurve-v1.1-json"], "factIds": [], "referenceIds": ["mini_swe_agent_claude_opus_5_max"] }
+        } },
+      { "observationId": "aa-codex-gpt-5.6-sol-max-v1.1", "sourceId": "artificial-analysis-coding-agents", "canonicalId": null, "snapshot": null, "benchmarkScope": "full", "taskCount": 113, "taskSetRevision": null,
+        "metrics": {
+          "cost": { "selection": "fallback", "method": "exact-model-effort-deepswe-reference", "relationship": "separate-experiment-reference", "statistic": "mean-only", "sourceIds": ["aa-codex-vs-kimi-code-cli", "datacurve-v1.1-json"], "factIds": [], "referenceIds": ["mini_swe_agent_gpt_5_6_sol_max"] },
+          "outputTokens": { "selection": "same-source-reference", "method": "same-aa-variant-deepswe-mean", "relationship": "same-source-same-benchmark-reference", "statistic": "source-deepswe-mean", "sourceIds": ["aa-codex-vs-kimi-code-cli"], "factIds": ["aa-output-gpt-5-6-sol-max"], "referenceIds": [] },
+          "time": { "selection": "fallback", "method": "exact-model-effort-deepswe-reference", "relationship": "separate-experiment-reference", "statistic": "mean-only", "sourceIds": ["aa-codex-vs-kimi-code-cli", "datacurve-v1.1-json"], "factIds": [], "referenceIds": ["mini_swe_agent_gpt_5_6_sol_max"] }
+        } },
+      { "observationId": "aa-codex-gpt-5.6-luna-max-v1.1", "sourceId": "artificial-analysis-coding-agents", "canonicalId": null, "snapshot": null, "benchmarkScope": "full", "taskCount": 113, "taskSetRevision": null,
+        "metrics": {
+          "cost": { "selection": "fallback", "method": "exact-model-effort-deepswe-reference", "relationship": "separate-experiment-reference", "statistic": "mean-only", "sourceIds": ["aa-codex-vs-kimi-code-cli", "datacurve-v1.1-json"], "factIds": [], "referenceIds": ["mini_swe_agent_gpt_5_6_luna_max"] },
+          "outputTokens": { "selection": "same-source-reference", "method": "same-aa-variant-deepswe-mean", "relationship": "same-source-same-benchmark-reference", "statistic": "source-deepswe-mean", "sourceIds": ["aa-codex-vs-kimi-code-cli"], "factIds": ["aa-output-gpt-5-6-luna-max"], "referenceIds": [] },
+          "time": { "selection": "fallback", "method": "exact-model-effort-deepswe-reference", "relationship": "separate-experiment-reference", "statistic": "mean-only", "sourceIds": ["aa-codex-vs-kimi-code-cli", "datacurve-v1.1-json"], "factIds": [], "referenceIds": ["mini_swe_agent_gpt_5_6_luna_max"] }
+        } },
+      { "observationId": "aa-claude-code-fable-5.1-max-v1.1", "sourceId": "artificial-analysis-coding-agents", "canonicalId": null, "snapshot": null, "benchmarkScope": "full", "taskCount": 113, "taskSetRevision": null,
+        "metrics": {
+          "cost": { "selection": "fallback", "method": "same-row-aa-coding-agent-suite-cost-proxy", "relationship": "pooled-suite-proxy", "statistic": "pooled-suite-average", "sourceIds": ["aa-claude-code-vs-codex"], "factIds": [], "referenceIds": [] },
+          "outputTokens": { "selection": "same-source-reference", "method": "same-aa-variant-deepswe-mean", "relationship": "same-source-same-benchmark-reference", "statistic": "source-deepswe-mean", "sourceIds": ["aa-claude-code-vs-codex"], "factIds": ["aa-output-fable-5-1-max-fallback"], "referenceIds": [] },
+          "time": { "selection": "none", "method": "not-estimated", "relationship": "no-data", "statistic": "not-estimated", "sourceIds": [], "factIds": [], "referenceIds": [] }
+        } },
+      { "observationId": "aa-codex-deepseek-v4-pro-0813-max-v1.1", "sourceId": "artificial-analysis-codex-kimi-cli", "canonicalId": null, "snapshot": null, "benchmarkScope": "full", "taskCount": 113, "taskSetRevision": null,
+        "metrics": {
+          "cost": { "selection": "fallback", "method": "same-row-aa-coding-agent-suite-cost-proxy", "relationship": "pooled-suite-proxy", "statistic": "pooled-suite-average", "sourceIds": ["aa-codex-vs-kimi-code-cli"], "factIds": [], "referenceIds": [] },
+          "outputTokens": { "selection": "same-source-reference", "method": "same-aa-variant-deepswe-mean", "relationship": "same-source-same-benchmark-reference", "statistic": "source-deepswe-mean", "sourceIds": ["aa-codex-kimi-live", "aa-methodology"], "factIds": ["aa-output-deepseek-v4-pro-0813-max"], "referenceIds": [] },
+          "time": { "selection": "none", "method": "not-estimated", "relationship": "no-data", "statistic": "not-estimated", "sourceIds": [], "factIds": [], "referenceIds": [] }
+        } },
+      { "observationId": "aa-codex-deepseek-v4-flash-0731-max-v1.1", "sourceId": "artificial-analysis-codex-kimi-cli", "canonicalId": null, "snapshot": null, "benchmarkScope": "full", "taskCount": 113, "taskSetRevision": null,
+        "metrics": {
+          "cost": { "selection": "fallback", "method": "same-row-aa-coding-agent-suite-cost-proxy", "relationship": "pooled-suite-proxy", "statistic": "pooled-suite-average", "sourceIds": ["aa-codex-vs-kimi-code-cli"], "factIds": [], "referenceIds": [] },
+          "outputTokens": { "selection": "same-source-reference", "method": "same-aa-variant-deepswe-mean", "relationship": "same-source-same-benchmark-reference", "statistic": "source-deepswe-mean", "sourceIds": ["aa-codex-kimi-live", "aa-methodology"], "factIds": ["aa-output-deepseek-v4-flash-0731-max"], "referenceIds": [] },
+          "time": { "selection": "none", "method": "not-estimated", "relationship": "no-data", "statistic": "not-estimated", "sourceIds": [], "factIds": [], "referenceIds": [] }
+        } },
+      { "observationId": "fireworks-deepswe-deepseek-v4.1-flash-max", "sourceId": "fireworks-deepswe-comparison", "canonicalId": null, "snapshot": null, "benchmarkScope": "unknown", "taskCount": null, "taskSetRevision": null,
+        "metrics": {
+          "cost": { "selection": "fallback", "method": "same-row-source-reported-cost-task", "relationship": "source-reported-unspecified", "statistic": "source-statistic-unspecified", "sourceIds": ["fireworks-deepswe-comparison"], "factIds": [], "referenceIds": [] },
+          "outputTokens": { "selection": "none", "method": "not-estimated", "relationship": "no-data", "statistic": "not-estimated", "sourceIds": [], "factIds": [], "referenceIds": [] },
+          "time": { "selection": "none", "method": "not-estimated", "relationship": "no-data", "statistic": "not-estimated", "sourceIds": [], "factIds": [], "referenceIds": [] }
+        } },
+      { "observationId": "fireworks-deepswe-gpt-6-astra-xhigh", "sourceId": "fireworks-deepswe-comparison", "canonicalId": null, "snapshot": null, "benchmarkScope": "unknown", "taskCount": null, "taskSetRevision": null,
+        "metrics": {
+          "cost": { "selection": "fallback", "method": "same-row-source-reported-cost-task", "relationship": "source-reported-unspecified", "statistic": "source-statistic-unspecified", "sourceIds": ["fireworks-deepswe-comparison"], "factIds": [], "referenceIds": [] },
+          "outputTokens": { "selection": "none", "method": "not-estimated", "relationship": "no-data", "statistic": "not-estimated", "sourceIds": [], "factIds": [], "referenceIds": [] },
+          "time": { "selection": "none", "method": "not-estimated", "relationship": "no-data", "statistic": "not-estimated", "sourceIds": [], "factIds": [], "referenceIds": [] }
+        } },
+      { "observationId": "fireworks-deepswe-gemini-3.8-flash-high", "sourceId": "fireworks-deepswe-comparison", "canonicalId": null, "snapshot": null, "benchmarkScope": "unknown", "taskCount": null, "taskSetRevision": null,
+        "metrics": {
+          "cost": { "selection": "fallback", "method": "same-row-source-reported-cost-task", "relationship": "source-reported-unspecified", "statistic": "source-statistic-unspecified", "sourceIds": ["fireworks-deepswe-comparison"], "factIds": [], "referenceIds": [] },
+          "outputTokens": { "selection": "none", "method": "not-estimated", "relationship": "no-data", "statistic": "not-estimated", "sourceIds": [], "factIds": [], "referenceIds": [] },
+          "time": { "selection": "none", "method": "not-estimated", "relationship": "no-data", "statistic": "not-estimated", "sourceIds": [], "factIds": [], "referenceIds": [] }
+        } },
+      { "observationId": "fireworks-deepswe-claude-opus-5-max", "sourceId": "fireworks-deepswe-comparison", "canonicalId": null, "snapshot": null, "benchmarkScope": "unknown", "taskCount": null, "taskSetRevision": null,
+        "metrics": {
+          "cost": { "selection": "fallback", "method": "same-row-source-reported-cost-task", "relationship": "source-reported-unspecified", "statistic": "source-statistic-unspecified", "sourceIds": ["fireworks-deepswe-comparison"], "factIds": [], "referenceIds": [] },
+          "outputTokens": { "selection": "none", "method": "not-estimated", "relationship": "no-data", "statistic": "not-estimated", "sourceIds": [], "factIds": [], "referenceIds": [] },
+          "time": { "selection": "none", "method": "not-estimated", "relationship": "no-data", "statistic": "not-estimated", "sourceIds": [], "factIds": [], "referenceIds": [] }
+        } },
+      { "observationId": "meta-muse-spark-1.3-v1.1-max", "sourceId": "meta-muse-spark-1.3-model-page", "canonicalId": null, "snapshot": "muse-spark-1.3", "scenarioFamily": "meta-transfer", "reportedModel": "Muse Spark 1.3", "publisher": "Meta", "sourceCategory": "developer", "harness": "mini-swe-agent", "effort": "max", "scoreMetric": "task_pass_rate", "scoreReportedText": "75.4%", "benchmarkVersion": "1.1", "sourceEvidenceIds": ["meta-model", "dc", "aa-muse-1.1-xhigh", "aa-muse-1.2-xhigh", "aa-muse-1.3-max"], "contextSources": [{ "id": "aa-muse-code-1.3-max-direct-output-context", "publisher": "Artificial Analysis", "url": "https://artificialanalysis.ai/agents/coding-agents/comparisons/grok-build-vs-muse-code", "accessedOn": "2026-09-29", "evidenceLocator": "Muse Code 1.3 max evals[datasetIndexName=deep-swe-v1.1].mean.outputTokens=122491.69026548673, a different harness from Meta mini-swe-agent; $3.98/task pooled suite; response SHA-256 1b2fbd39cab29eb8c3d399f948adb82260f1c47ab8dfc0cc419690a506fc70be", "responseSha256": "1b2fbd39cab29eb8c3d399f948adb82260f1c47ab8dfc0cc419690a506fc70be", "hashStatus": "validated" }],
+        "metrics": {
+          "cost": { "selection": "fallback", "method": "two-predecessor-aa-ii-cost-transfer", "relationship": "calibrated-transfer", "statistic": "mean-only", "sourceIds": ["meta-model", "dc", "aa-muse-1.1-xhigh", "aa-muse-1.2-xhigh", "aa-muse-1.3-max"], "factIds": [], "referenceIds": ["meta-calibration"] },
+          "outputTokens": { "selection": "fallback", "method": "two-predecessor-aa-ii-aggregate-output-transfer", "relationship": "calibrated-transfer", "statistic": "mean-only", "sourceIds": ["meta-model", "dc", "aa-muse-1.1-xhigh", "aa-muse-1.2-xhigh", "aa-muse-1.3-max"], "factIds": [], "referenceIds": ["meta-calibration"] },
+          "time": { "selection": "none", "method": "not-estimated", "relationship": "no-data", "statistic": "not-estimated", "sourceIds": [], "factIds": [], "referenceIds": [] }
+        } },
+      { "observationId": "google-gemini-3.8-flash-high-v1.1", "sourceId": "google-gemini-3-8-evaluation", "canonicalId": null, "snapshot": null, "scenarioFamily": "google-reference", "reportedModel": "Gemini 3.8 Flash", "publisher": "Google DeepMind", "sourceCategory": "developer", "harness": "mini-SWE-agent", "effort": "high thinking", "scoreMetric": "pass_at_1", "scoreReportedText": "73.7%", "benchmarkVersion": "1.1", "sourceEvidenceIds": ["google-method", "dc"], "contextSources": [],
+        "metrics": {
+          "cost": { "selection": "fallback", "method": "separate-experiment-same-model-effort-deepswe-reference", "relationship": "separate-experiment-reference", "statistic": "mean-only", "sourceIds": ["google-method", "dc"], "factIds": [], "referenceIds": ["mini_swe_agent_gemini_3_8_flash_high"] },
+          "outputTokens": { "selection": "fallback", "method": "separate-experiment-same-model-effort-deepswe-reference", "relationship": "separate-experiment-reference", "statistic": "mean-only", "sourceIds": ["google-method", "dc"], "factIds": [], "referenceIds": ["mini_swe_agent_gemini_3_8_flash_high"] },
+          "time": { "selection": "none", "method": "not-estimated", "relationship": "no-data", "statistic": "not-estimated", "sourceIds": [], "factIds": [], "referenceIds": [] }
+        } },
+      { "observationId": "xai-grok-4.7-high-v1.1", "sourceId": "xai-grok-4-7-release", "canonicalId": null, "snapshot": null, "scenarioFamily": "xai-transfer", "reportedModel": "Grok 4.7", "publisher": "xAI / SpaceXAI", "sourceCategory": "developer", "harness": null, "effort": "high", "scoreMetric": "reported_score_unspecified", "scoreReportedText": "71.0%*", "benchmarkVersion": "1.1", "sourceEvidenceIds": ["xai-release", "dc", "aa-grok-4.5-high", "aa-grok-4.6-high", "aa-grok-4.7-high"], "contextSources": [],
+        "metrics": {
+          "cost": { "selection": "fallback", "method": "two-predecessor-aa-ii-cost-transfer", "relationship": "calibrated-transfer", "statistic": "mean-only", "sourceIds": ["xai-release", "dc", "aa-grok-4.5-high", "aa-grok-4.6-high", "aa-grok-4.7-high"], "factIds": [], "referenceIds": ["xai-calibration"] },
+          "outputTokens": { "selection": "fallback", "method": "two-predecessor-aa-ii-aggregate-output-transfer", "relationship": "calibrated-transfer", "statistic": "mean-only", "sourceIds": ["xai-release", "dc", "aa-grok-4.5-high", "aa-grok-4.6-high", "aa-grok-4.7-high"], "factIds": [], "referenceIds": ["xai-calibration"] },
+          "time": { "selection": "none", "method": "not-estimated", "relationship": "no-data", "statistic": "not-estimated", "sourceIds": [], "factIds": [], "referenceIds": [] }
+        } }
+    ]
+  },
   "explicitExclusions": [
     "The incomplete local GLM run was excluded; no local GLM result or usage data is included."
   ],
@@ -225,64 +543,28 @@
       "scenarioModelLabel": "GPT-6 Astra",
       "effort": "max",
       "harness": "mini-swe-agent",
-      "configurationId": "mini_swe_agent_gpt_6_astra_max",
-      "scoredAttempts": 452,
-      "runs": 4,
-      "meanCostUsdPerScoredAttempt": 7.497827996681416,
-      "costBasis": "Current pricing at all context lengths: $10/M uncached input, $12.50/M cache writes, $1/M cache reads, $50/M output; no separate compute-unit fee.",
-      "meanOutputTokensPerScoredAttempt": 61148.50663716814,
-      "costSourceField": "mean_cost_usd",
-      "outputTokenSourceField": "mean_output_tokens",
-      "meanDurationSecondsPerScoredAttempt": 1982.966814159292,
-      "durationSourceField": "mean_duration_seconds"
+      "configurationId": "mini_swe_agent_gpt_6_astra_max"
     },
     {
       "model": "gpt-5-6-sol",
       "scenarioModelLabel": "GPT-5.6 Sol",
       "effort": "max",
       "harness": "mini-swe-agent",
-      "configurationId": "mini_swe_agent_gpt_5_6_sol_max",
-      "scoredAttempts": 450,
-      "runs": 4,
-      "meanCostUsdPerScoredAttempt": 8.386436346666667,
-      "costBasis": null,
-      "meanOutputTokensPerScoredAttempt": 60013.64444444444,
-      "costSourceField": "mean_cost_usd",
-      "outputTokenSourceField": "mean_output_tokens",
-      "meanDurationSecondsPerScoredAttempt": 1128.624910331111,
-      "durationSourceField": "mean_duration_seconds"
+      "configurationId": "mini_swe_agent_gpt_5_6_sol_max"
     },
     {
       "model": "gpt-5-6-luna",
       "scenarioModelLabel": "GPT-5.6 Luna",
       "effort": "max",
       "harness": "mini-swe-agent",
-      "configurationId": "mini_swe_agent_gpt_5_6_luna_max",
-      "scoredAttempts": 448,
-      "runs": 4,
-      "meanCostUsdPerScoredAttempt": 3.028116810267857,
-      "costBasis": null,
-      "meanOutputTokensPerScoredAttempt": 73399.70758928571,
-      "costSourceField": "mean_cost_usd",
-      "outputTokenSourceField": "mean_output_tokens",
-      "meanDurationSecondsPerScoredAttempt": 1122.9470243995536,
-      "durationSourceField": "mean_duration_seconds"
+      "configurationId": "mini_swe_agent_gpt_5_6_luna_max"
     },
     {
       "model": "claude-opus-5",
       "scenarioModelLabel": "Opus 5",
       "effort": "max",
       "harness": "mini-swe-agent",
-      "configurationId": "mini_swe_agent_claude_opus_5_max",
-      "scoredAttempts": 444,
-      "runs": 4,
-      "meanCostUsdPerScoredAttempt": 11.837583271396396,
-      "costBasis": null,
-      "meanOutputTokensPerScoredAttempt": 117565.6936936937,
-      "costSourceField": "mean_cost_usd",
-      "outputTokenSourceField": "mean_output_tokens",
-      "meanDurationSecondsPerScoredAttempt": 1911.819866231982,
-      "durationSourceField": "mean_duration_seconds"
+      "configurationId": "mini_swe_agent_claude_opus_5_max"
     }
   ],
   "outputTokenCalibration": {
@@ -419,9 +701,6 @@
       "intelligenceIndexOutputSourceId": "aa-gpt-6-sol-luna-article",
       "evidenceQuality": "low",
       "aaDeepSWEv1_1Score": "64%",
-      "aaCodingSuiteCostUsdPerTask": 0.18,
-      "aaCodingSuiteTotalTokensPerTaskApprox": 10200000,
-      "aaCodingAgentTimePerTaskSeconds": 1284,
       "aaIntelligenceIndexOutputTokensPerTaskApprox": 51000,
       "outputCalibrationMethod": "openai-max-arithmetic-mean-ratio",
       "costCalibrationMethod": "openai-max-through-origin-proportional-fit",
@@ -456,9 +735,6 @@
       "intelligenceIndexOutputSourceId": "aa-claude-opus-5-5-article",
       "evidenceQuality": "very-low",
       "aaDeepSWEv1_1Score": "68%",
-      "aaCodingSuiteCostUsdPerTask": 13.04,
-      "aaCodingSuiteTotalTokensPerTaskApprox": 15600000,
-      "aaCodingAgentTimePerTaskSeconds": 3960,
       "aaIntelligenceIndexOutputTokensPerTaskApprox": 119000,
       "outputCalibrationMethod": "opus-5-max-single-pair-ratio",
       "costCalibrationMethod": "opus-5-max-single-pair-ratio",
@@ -491,9 +767,6 @@
       "intelligenceIndexOutputSourceId": "aa-gpt-6-astra-article",
       "evidenceQuality": "low",
       "aaDeepSWEv1_1Score": "68%",
-      "aaCodingSuiteCostUsdPerTask": 7.47,
-      "aaCodingSuiteTotalTokensPerTaskApprox": 3300000,
-      "aaCodingAgentTimePerTaskSeconds": 1764,
       "aaIntelligenceIndexOutputTokensPerTaskApprox": 27000,
       "outputCalibrationMethod": "exact-model-effort-deepswe-reference",
       "costCalibrationMethod": "exact-model-effort-deepswe-reference",
@@ -526,9 +799,6 @@
       "intelligenceIndexOutputSourceId": "aa-gpt-6-sol-luna-article",
       "evidenceQuality": "low",
       "aaDeepSWEv1_1Score": "69%",
-      "aaCodingSuiteCostUsdPerTask": 2.99,
-      "aaCodingSuiteTotalTokensPerTaskApprox": 9800000,
-      "aaCodingAgentTimePerTaskSeconds": 1338,
       "aaIntelligenceIndexOutputTokensPerTaskApprox": 31000,
       "outputCalibrationMethod": "openai-max-arithmetic-mean-ratio",
       "costCalibrationMethod": "openai-max-through-origin-proportional-fit",
@@ -564,9 +834,6 @@
       "intelligenceIndexOutputSourceId": "aa-claude-opus-5-5-article",
       "evidenceQuality": "low",
       "aaDeepSWEv1_1Score": "63%",
-      "aaCodingSuiteCostUsdPerTask": 10.79,
-      "aaCodingSuiteTotalTokensPerTaskApprox": 11400000,
-      "aaCodingAgentTimePerTaskSeconds": 2514,
       "aaIntelligenceIndexOutputTokensPerTaskApprox": 73000,
       "outputCalibrationMethod": "exact-model-effort-deepswe-reference",
       "costCalibrationMethod": "exact-model-effort-deepswe-reference",
@@ -599,9 +866,6 @@
       "intelligenceIndexOutputSourceId": "aa-gpt-6-sol-luna-article",
       "evidenceQuality": "low",
       "aaDeepSWEv1_1Score": "72%",
-      "aaCodingSuiteCostUsdPerTask": 6.35,
-      "aaCodingSuiteTotalTokensPerTaskApprox": 10200000,
-      "aaCodingAgentTimePerTaskSeconds": 1236,
       "aaIntelligenceIndexOutputTokensPerTaskApprox": 29000,
       "outputCalibrationMethod": "exact-model-effort-deepswe-reference",
       "costCalibrationMethod": "exact-model-effort-deepswe-reference",
@@ -634,9 +898,6 @@
       "intelligenceIndexOutputSourceId": "aa-gpt-6-sol-luna-article",
       "evidenceQuality": "low",
       "aaDeepSWEv1_1Score": "66%",
-      "aaCodingSuiteCostUsdPerTask": 0.44,
-      "aaCodingSuiteTotalTokensPerTaskApprox": 14900000,
-      "aaCodingAgentTimePerTaskSeconds": 1410,
       "aaIntelligenceIndexOutputTokensPerTaskApprox": 41000,
       "outputCalibrationMethod": "exact-model-effort-deepswe-reference",
       "costCalibrationMethod": "exact-model-effort-deepswe-reference",
@@ -776,19 +1037,32 @@
   ],
   "notEstimated": [
     "The incomplete local GLM run was excluded and was not used as a calibration point.",
-    "Fireworks' DeepSWE-labeled costs are retained only as exact-row source-reported cost scenarios; they remain excluded from calibration and provide no output-token usage.",
+    "Fireworks' costs remain exact-row source-reported scenarios, excluded from calibration. Separate exact-model/effort AA output/time references now supplement them; Fireworks itself reports neither metric.",
     "No DeepSWE output-token projection from AA Coding Agent total-token counts: those totals combine input, cache, cache-write, reasoning, and output and have no per-benchmark split.",
     "No cost derived from output tokens or score; exact input/cache/output mix and per-target price basis are not available for the target benchmark.",
-    "The remaining score-only targets have no matched source/evaluation row with compatible model, effort, benchmark, and usage evidence. AA suite-cost proxies are used only for their exact AA rows; Fireworks cost values are used only on their own rows. Unknown effort labels, unknown harnesses, older benchmark versions, and other model variants are not silently transferred."
+    "Unsupported identities remain unknown: no different-model substitutes, explicit-effort mismatches, or screenshot ordinal-to-effort mapping. Same-model default/max assumptions, cross-harness and cross-benchmark transfers are explicit in efficiencyExtension.targets; they never populate approved metrics."
   ],
   "coverageAudit": {
-    "researchDate": "2026-09-28",
-    "baselineObservationCount": 128,
-    "baselineMissingAllThreeMetricsCount": 58,
-    "baselineDistinctReportedModelLabelCount": 43,
+    "researchDate": "2026-10-08",
+    "baselineObservationCount": 138,
+    "baselineMissingAllThreeMetricsCount": 63,
+    "baselineDistinctReportedModelLabelCount": 48,
     "baselineMissingMetrics": ["cost", "outputTokens", "time"],
-    "outcomeRule": "Every listed target had null source-reported mean cost, mean output tokens, and mean time. Exact targetObservationId entries in scenarioObservationIds receive separate scenarios outside strict mode; costOnlyScenarioObservationIds have a cost scenario only and no inferred tokens or time. Approved measurement fields remain null. Chart-precedence suppression is applied before chart filters and is listed separately because suppressed reports remain in the evidence table and exports. Unknown benchmark version alone is not a conflict; this is display precedence, not a merge or equivalence claim.",
-    "chartNoDataLaneCount": 24,
+    "outcomeRule": "scenarioObservationIds and noDataObservationIds partition the 63 rows with all three approved metrics absent in the current scenarioConfig.approvedDatasetRevision baseline. noData means no optional metric at all, not one missing metric. Partial remaining gaps are separately listed. Coverage counts precede chart suppression, score-scale eligibility and visibility; optional values require Mean/non-strict and enabled scenarios. Approved fields remain unchanged. Chart precedence is display-only, not a merge or identity claim.",
+    "perMetricCoverage": { "cost": { "approved": 75, "scenario": 49, "remaining": 14 }, "outputTokens": { "approved": 70, "scenario": 50, "remaining": 18 }, "time": { "approved": 70, "scenario": 49, "remaining": 19 } },
+    "partialRemainingGaps": [
+      { "observationIds": ["datacurve-paper-minimax-m2.7-default-version-unknown"], "metrics": ["cost"], "reason": "Exact AA II task cost absent; output and II duration exist. Do not infer dollars from price or token count." },
+      { "observationIds": ["xai-grok-4.7-high-v1.1"], "metrics": ["time"], "reason": "Available AA Grok Build variant is xhigh, but developer target is explicitly high. Existing predecessor output/cost estimates retained; no new cross-effort duration." },
+      { "observationIds": ["openai-gpt-6.1-sol-deepswe-setting1", "openai-gpt-6.1-sol-deepswe-setting2", "openai-gpt-6.1-sol-deepswe-setting3", "openai-gpt-6.1-sol-deepswe-setting4", "openai-gpt-6.1-sol-deepswe-setting5"], "metrics": ["outputTokens", "time"], "reason": "Screenshot ordinal Settings 1–5 cannot be mapped to AA low/medium/high/xhigh/max. Existing source costs preserved." }
+    ],
+    "unsupportedGroups": [
+      { "observationIds": ["anthropic-claude-fable-5.1-v1.1"], "reason": "AA available WITH FALLBACK experiment uses mixed-model behavior; it does not support the pure developer Fable report." },
+      { "observationIds": ["badtheorylabs-tinfield-1-v1.1"], "reason": "No established AA model identity or task efficiency facts." },
+      { "observationIds": ["datacurve-paper-gemini-3.5-flash-medium-version-unknown", "datacurve-paper-claude-sonnet-4.6-high-version-unknown"], "reason": "Available AA settings are high/max respectively, not target medium/high; no explicit-effort substitute." },
+      { "observationIds": ["datacurve-paper-claude-opus-4.6-max-version-unknown", "datacurve-paper-gemini-3-flash-default-version-unknown", "datacurve-paper-qwen3.6-plus-default-version-unknown", "datacurve-paper-gpt-5.4-xhigh-version-unknown", "datacurve-paper-claude-opus-4.7-max-version-unknown", "datacurve-paper-gemini-3.1-pro-default-version-unknown"], "reason": "No complete attributable per-task II or coding-agent usage figures for the exact target. Speed/TTFC alone is insufficient; Gemini 3.1 Pro model page unavailable." },
+      { "observationIds": ["datacurve-paper-deepseek-v4-pro-default-version-unknown"], "reason": "Available AA snapshot is explicitly 0813/max, whereas paper is unversioned/provider-default. Snapshot and effort alignment unsupported." }
+    ],
+    "chartNoDataLaneCount": 10,
     "chartPrecedenceSuppressedCount": 15,
     "chartPrecedenceSuppressedObservationIds": [
       "aa-claude-code-opus-5-max-v1.1",
@@ -807,7 +1081,7 @@
       "fireworks-deepswe-gpt-6-astra-xhigh",
       "google-gemini-3.8-flash-high-v1.1"
     ],
-    "unscaledNoDataScoreCount": 12,
+    "unscaledNoDataScoreCount": 3,
     "scenarioObservationIds": [
       "aa-codex-gpt-6-luna-max-v1.1",
       "artificial-analysis-claude-code-opus-5.5-max-v1.1",
@@ -822,102 +1096,48 @@
       "fireworks-deepswe-deepseek-v4.1-flash-max",
       "fireworks-deepswe-gpt-6-astra-xhigh",
       "fireworks-deepswe-gemini-3.8-flash-high",
-      "fireworks-deepswe-claude-opus-5-max"
+      "fireworks-deepswe-claude-opus-5-max",
+      "meta-muse-spark-1.3-v1.1-max", "google-gemini-3.8-flash-high-v1.1", "xai-grok-4.7-high-v1.1",
+      "google-gemini-4-argon-v1.1", "anthropic-claude-sonnet-5.5-v1.1", "mistral-large-4-preview-v1.1",
+      "openai-gpt-6-sol-v1.1-max", "openai-gpt-6-luna-v1.1-max", "anthropic-claude-opus-5.5-v1.1",
+      "anthropic-claude-opus-5-max-v1.1", "anthropic-claude-opus-5-low-v1.1", "anthropic-claude-opus-5-medium-v1.1", "anthropic-claude-opus-5-high-v1.1", "anthropic-claude-opus-5-xhigh-v1.1",
+      "deepseek-v4.1-flash-mini-swe-v1.1", "deepseek-v4.1-flash-claude-code-v1.1", "deepseek-v4.1-flash-codex-v1.1", "deepseek-v4.1-flash-opencode-v1.1", "deepseek-v4.1-flash-pi-v1.1", "deepseek-v4.1-flash-dsh-minimal-v1.1", "deepseek-v4.1-flash-dsh-standard-v1.1", "deepseek-v4.1-flash-dsh-ptc-v1.1",
+      "xiaomi-mimo-v2.6-pro-table3-v1.1", "xiaomi-mimo-v2.6-flash-table3-v1.1", "xiaomi-mimo-v2.6-pro-average-at-3-endpoint-v1.1", "xiaomi-mimo-v2.6-flash-average-at-3-endpoint-v1.1", "qwen-qwen3.8-flash-next-v1.1",
+      "aa-claude-code-qwen3.8-max-v1.1", "aa-kimi-code-cli-kimi-k3-v1.1",
+      "datacurve-paper-gpt-5.5-xhigh-version-unknown", "datacurve-paper-gpt-5.4-mini-xhigh-version-unknown", "datacurve-paper-kimi-k2.6-default-version-unknown", "datacurve-paper-claude-haiku-4.5-default-version-unknown", "datacurve-paper-minimax-m2.7-default-version-unknown", "datacurve-paper-mimo-v2.5-pro-default-version-unknown", "datacurve-paper-glm-5.1-default-version-unknown"
     ],
-    "costOnlyScenarioObservationIds": [
-      "aa-claude-code-fable-5.1-max-v1.1",
-      "aa-codex-deepseek-v4-pro-0813-max-v1.1",
-      "aa-codex-deepseek-v4-flash-0731-max-v1.1",
-      "fireworks-deepswe-deepseek-v4.1-flash-max",
-      "fireworks-deepswe-gpt-6-astra-xhigh",
-      "fireworks-deepswe-gemini-3.8-flash-high",
-      "fireworks-deepswe-claude-opus-5-max"
-    ],
+    "costOnlyScenarioObservationIds": [],
     "noDataObservationIds": [
-      "openai-gpt-6-sol-v1.1-max",
-      "openai-gpt-6-luna-v1.1-max",
-      "anthropic-claude-opus-5.5-v1.1",
-      "anthropic-claude-opus-5-low-v1.1",
-      "anthropic-claude-opus-5-medium-v1.1",
-      "anthropic-claude-opus-5-high-v1.1",
-      "anthropic-claude-opus-5-xhigh-v1.1",
-      "anthropic-claude-opus-5-max-v1.1",
       "anthropic-claude-fable-5.1-v1.1",
-      "deepseek-v4.1-flash-mini-swe-v1.1",
-      "deepseek-v4.1-flash-claude-code-v1.1",
-      "deepseek-v4.1-flash-codex-v1.1",
-      "deepseek-v4.1-flash-opencode-v1.1",
-      "deepseek-v4.1-flash-pi-v1.1",
-      "deepseek-v4.1-flash-dsh-minimal-v1.1",
-      "deepseek-v4.1-flash-dsh-standard-v1.1",
-      "deepseek-v4.1-flash-dsh-ptc-v1.1",
-      "xiaomi-mimo-v2.6-pro-table3-v1.1",
-      "xiaomi-mimo-v2.6-flash-table3-v1.1",
-      "xiaomi-mimo-v2.6-pro-average-at-3-endpoint-v1.1",
-      "xiaomi-mimo-v2.6-flash-average-at-3-endpoint-v1.1",
-      "qwen-qwen3.8-flash-next-v1.1",
-      "google-gemini-3.8-flash-high-v1.1",
-      "xai-grok-4.7-high-v1.1",
       "badtheorylabs-tinfield-1-v1.1",
-      "aa-claude-code-qwen3.8-max-v1.1",
-      "aa-kimi-code-cli-kimi-k3-v1.1",
-      "datacurve-paper-gpt-5.5-xhigh-version-unknown",
       "datacurve-paper-gemini-3.5-flash-medium-version-unknown",
       "datacurve-paper-claude-opus-4.6-max-version-unknown",
-      "datacurve-paper-gpt-5.4-mini-xhigh-version-unknown",
-      "datacurve-paper-kimi-k2.6-default-version-unknown",
       "datacurve-paper-gemini-3-flash-default-version-unknown",
       "datacurve-paper-qwen3.6-plus-default-version-unknown",
-      "datacurve-paper-claude-haiku-4.5-default-version-unknown",
-      "datacurve-paper-minimax-m2.7-default-version-unknown",
       "datacurve-paper-gpt-5.4-xhigh-version-unknown",
       "datacurve-paper-claude-opus-4.7-max-version-unknown",
       "datacurve-paper-claude-sonnet-4.6-high-version-unknown",
-      "datacurve-paper-mimo-v2.5-pro-default-version-unknown",
-      "datacurve-paper-glm-5.1-default-version-unknown",
       "datacurve-paper-gemini-3.1-pro-default-version-unknown",
       "datacurve-paper-deepseek-v4-pro-default-version-unknown",
-      "meta-muse-spark-1.3-v1.1-max"
+      "meta-muse-wonder-v1.1-max",
+      "meta-muse-wonder-full-v1.1-max"
     ],
     "chartNoDataLaneObservationIds": [
-      "openai-gpt-6-sol-v1.1-max",
-      "openai-gpt-6-luna-v1.1-max",
-      "anthropic-claude-opus-5.5-v1.1",
       "anthropic-claude-fable-5.1-v1.1",
-      "xiaomi-mimo-v2.6-pro-average-at-3-endpoint-v1.1",
-      "xiaomi-mimo-v2.6-flash-average-at-3-endpoint-v1.1",
-      "xai-grok-4.7-high-v1.1",
-      "datacurve-paper-gpt-5.5-xhigh-version-unknown",
       "datacurve-paper-gemini-3.5-flash-medium-version-unknown",
       "datacurve-paper-claude-opus-4.6-max-version-unknown",
-      "datacurve-paper-gpt-5.4-mini-xhigh-version-unknown",
-      "datacurve-paper-kimi-k2.6-default-version-unknown",
       "datacurve-paper-gemini-3-flash-default-version-unknown",
       "datacurve-paper-qwen3.6-plus-default-version-unknown",
-      "datacurve-paper-claude-haiku-4.5-default-version-unknown",
-      "datacurve-paper-minimax-m2.7-default-version-unknown",
       "datacurve-paper-gpt-5.4-xhigh-version-unknown",
       "datacurve-paper-claude-opus-4.7-max-version-unknown",
       "datacurve-paper-claude-sonnet-4.6-high-version-unknown",
-      "datacurve-paper-mimo-v2.5-pro-default-version-unknown",
-      "datacurve-paper-glm-5.1-default-version-unknown",
       "datacurve-paper-gemini-3.1-pro-default-version-unknown",
-      "datacurve-paper-deepseek-v4-pro-default-version-unknown",
-      "meta-muse-spark-1.3-v1.1-max"
+      "datacurve-paper-deepseek-v4-pro-default-version-unknown"
     ],
     "unscaledNoDataScoreObservationIds": [
-      "deepseek-v4.1-flash-mini-swe-v1.1",
-      "deepseek-v4.1-flash-claude-code-v1.1",
-      "deepseek-v4.1-flash-codex-v1.1",
-      "deepseek-v4.1-flash-opencode-v1.1",
-      "deepseek-v4.1-flash-pi-v1.1",
-      "deepseek-v4.1-flash-dsh-minimal-v1.1",
-      "deepseek-v4.1-flash-dsh-standard-v1.1",
-      "deepseek-v4.1-flash-dsh-ptc-v1.1",
-      "xiaomi-mimo-v2.6-pro-table3-v1.1",
-      "xiaomi-mimo-v2.6-flash-table3-v1.1",
-      "qwen-qwen3.8-flash-next-v1.1",
-      "badtheorylabs-tinfield-1-v1.1"
+      "badtheorylabs-tinfield-1-v1.1",
+      "meta-muse-wonder-v1.1-max",
+      "meta-muse-wonder-full-v1.1-max"
     ],
     "sourceSearchGroups": [
       {
@@ -930,7 +1150,7 @@
           "https://artificialanalysis.ai/articles/claude-opus-5-5",
           "https://artificialanalysis.ai/articles/benchmarking-gpt-6-astra"
         ],
-        "finding": "The 12 variant rows provide suite-pooled cost, time, and mixed-category tokens, without DeepSWE efficiency allocation. Seven exact AA targets have full usage scenarios; three other model targets (Fable 5.1 and DeepSeek V4 Pro 0813 / V4 Flash 0731) use only their exact row's pooled suite cost as a proxy. AA Qwen3.8 Max and Kimi K3 were not given proxies because applicable Datacurve v1.1 results take chart precedence; Kimi's AA effort is unspecified."
+        "finding": "Historical rounded Coding Agent calibration inputs retained. October 8 serialized variant efficiency facts and hashes are in efficiencyExtension: output is DeepSWE-specific; cost/time are pooled across three benchmarks. Fable WITH FALLBACK and both exact DeepSeek snapshots now have time transfers without replacing existing output/cost. Qwen Max and Kimi K3 receive explicit evidence-table scenarios despite chart precedence suppression."
       },
       {
         "sourceIds": ["datacurve-v1.1-json"],
@@ -943,12 +1163,27 @@
       },
       {
         "sourceIds": ["fireworks-deepswe-comparison", "datacurve-paper-arxiv-pdf"],
-        "finding": "Fireworks Cost/Task remains outside normalized mean cost because its aggregation and billing basis are unspecified and it supplies no output/time values. Its four values appear only as same-row source-reported cost scenarios without transfers. Older Datacurve paper rows are version-unknown and have no matching efficiency data; no current feed usage is joined to them."
+        "finding": "Fireworks Cost/Task remains outside normalized mean cost with unspecified aggregation/billing basis. All four exact-row costs are preserved while supported same-model/effort AA output/time references supplement them. Selected version-unknown paper rows now have separate II transfers with explicit default-to-reasoning assumptions where applicable; unsupported model/effort identities remain unknown."
       },
       {
         "sourceIds": ["meta-muse-spark-1.3-model-page", "meta-muse-spark-1.3-evaluation-methodology", "meta-muse-spark-1.3-announcement"],
         "urls": ["https://dev.meta.ai/models/muse-spark", "https://research.meta.ai/static/muse-spark-1-3-multimodal-evaluation-methodology", "https://research.meta.ai/blog/introducing-muse-spark-1-3"],
-        "finding": "Meta reports 75.4 on the DeepSWE v1.1 row for Muse Spark 1.3 max and defines task pass rate with the mini-swe-agent harness. Its per-model denominator, run count, uncertainty, and per-task usage are not reported; no estimate or Muse Spark 1.1/1.2 usage is transferred."
+        "finding": "Meta reports 75.4 for Muse Spark 1.3 max with mini-swe-agent; denominator/run count/usage remain unreported. Existing predecessor output/cost scenarios are preserved. A separate exact-model/max Muse Code pooled time input now supports an explicit OpenAI-calibrated time transfer, not a Meta-run duration measurement."
+      },
+      {
+        "sourceIds": ["google-gemini-4-argon-announcement", "google-gemini-4-argon-evaluation"],
+        "urls": ["https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-4-argon/", "https://deepmind.google/models/evals-methodology/gemini-4-argon"],
+        "finding": "Google's Gemini 4 Argon 77.9% DeepSWE v1.1 pass@1 uses highest thinking and mini-swe harness, with exact setting/checkpoint/usage unknown. Optional October AA Antigravity CLI high usage supplies a same-model, explicitly assumed variant reference for output plus pooled cost/time transfers. Approved usage remains null; this is not Google's measured run. efficiencyExtension records the AA hash, variant ID and assumptions."
+      },
+      {
+        "sourceIds": ["mistral-large-4-announcement", "mistral-large-4-model-card"],
+        "urls": ["https://mistral.ai/news/mistral-large-4/", "https://docs.mistral.ai/models/mistral-large-4-0"],
+        "finding": "Mistral Large 4 Public Preview reports 61.7% with unknown DeepSWE score statistic/harness/effort/denominator and no measured usage. Exact AA mistral-large-4 II per-task output, dollars and seconds now support very-low-confidence OpenAI-relative transfers, using an explicit AA default-setting assumption. They are separate II-workload estimates, not approved DeepSWE metrics or an immutable checkpoint match."
+      },
+      {
+        "sourceIds": ["anthropic-sonnet-5.5-system-card", "anthropic-sonnet-5.5-announcement"],
+        "urls": ["https://www.anthropic.com/claude-sonnet-5-5-system-card#page=110", "https://www.anthropic.com/claude-sonnet-5-5"],
+        "finding": "Sonnet 5.5 system card reports 71.0% averaged over five trials, 113 tasks, default adaptive thinking/max. Harness/checkpoint/usage remain unreported. Exact AA Sonnet 5.5 max Claude Code output is now a separate-experiment DeepSWE reference, with OpenAI-calibrated pooled cost/time estimates. efficiencyExtension records full source precision/hash/variant locator; approved metrics stay null."
       }
     ],
     "noDataReasonsByMetric": {

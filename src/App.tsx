@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { z } from 'zod'
 import { ExplorerChart } from './components/ExplorerChart'
 import { EvidencePanel } from './components/EvidencePanel'
 import { MethodologyPage } from './components/MethodologyPage'
@@ -9,20 +10,14 @@ import { datacurveChartPrecedence, displayModelName, displayScoreResult, display
 import { downloadText, filteredCsvExport, filteredJsonExport, usageScenarioCsvExport, usageScenarioJsonExport } from './lib/exports'
 import { CandidateQueueSchema, DatasetSchema, type Candidate, type Dataset, type Observation } from './lib/schema'
 import { defaultExplorerState, parseExplorerUrl, serializeExplorerUrl, type ExplorerUrlState, type ExplorerView } from './lib/url-state'
-import { scenarioXValue, usageScenarioForComparison } from './lib/usage-scenarios'
+import { resolveXUsage, usageScenarioForObservation } from './lib/usage-scenarios'
 
-interface SourceEntry {
-  id: string
-  publisher: string
-  title: string
-  url: string | null
-  category: string
-  status: string
-  sha256: string | null
-  license?: string
-  accessAndReuse: string
-  notes: string[]
-}
+const SourceRegistrySchema = z.object({ sources: z.array(z.object({
+  id: z.string(), publisher: z.string(), title: z.string(), url: z.string().nullable(),
+  category: z.string(), status: z.string(), sha256: z.string().nullable(),
+  license: z.string().optional(), accessAndReuse: z.string(), notes: z.array(z.string()),
+})) })
+type SourceEntry = z.infer<typeof SourceRegistrySchema>['sources'][number]
 
 const baseUrl = import.meta.env.BASE_URL
 const deployedAt = import.meta.env.VITE_DEPLOYED_AT || null
@@ -47,8 +42,10 @@ function freshness(lastChecked: string): { stale: boolean; label: string } {
 function App() {
   const [state, setState] = useState<ExplorerUrlState>(() => parseExplorerUrl(window.location.search))
   const [dataset, setDataset] = useState<Dataset | null>(null)
-  const [candidates, setCandidates] = useState<Candidate[]>([])
-  const [sources, setSources] = useState<SourceEntry[]>([])
+  const [candidates, setCandidates] = useState<Candidate[] | null>(null)
+  const [sources, setSources] = useState<SourceEntry[] | null>(null)
+  const [candidateError, setCandidateError] = useState(false)
+  const [sourceError, setSourceError] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [activeSeriesId, setActiveSeriesId] = useState<string | null>(null)
   const [connections, setConnections] = useState(state.connections)
@@ -56,25 +53,52 @@ function App() {
   const [announcement, setAnnouncement] = useState('')
   const [modelMenuSearch, setModelMenuSearch] = useState('')
   const svgRef = useRef<SVGSVGElement>(null)
+  const analysisRef = useRef<HTMLDivElement>(null)
+  const fullscreenButtonRef = useRef<HTMLButtonElement>(null)
+  const [chartFullscreen, setChartFullscreen] = useState(false)
+  const [fullscreenStatus, setFullscreenStatus] = useState('')
+
+  useEffect(() => {
+    let wasFullscreen = false
+    const onFullscreenChange = () => {
+      const active = document.fullscreenElement === analysisRef.current && document.fullscreenElement !== null
+      setChartFullscreen(active)
+      if (wasFullscreen && !active) fullscreenButtonRef.current?.focus()
+      wasFullscreen = active
+    }
+    document.addEventListener('fullscreenchange', onFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
+  }, [])
+
+  async function toggleChartFullscreen() {
+    setFullscreenStatus('')
+    try {
+      if (document.fullscreenElement === analysisRef.current && document.fullscreenElement !== null) {
+        await document.exitFullscreen()
+      } else if (!document.fullscreenEnabled || !analysisRef.current?.requestFullscreen) {
+        setFullscreenStatus('Fullscreen is unavailable in this browser. You can still enlarge the chart with Zoom.')
+      } else {
+        await analysisRef.current.requestFullscreen()
+        fullscreenButtonRef.current?.focus()
+      }
+    } catch {
+      setFullscreenStatus('The browser could not change fullscreen mode. Try again, or enlarge the chart with Zoom.')
+    }
+  }
 
   useEffect(() => {
     let active = true
-    Promise.all([
-      fetchJson('data/observations.json'),
-      fetchJson('data/candidates.json'),
-      fetchJson('data/source-registry.json'),
-    ]).then(([data, queue, registry]) => {
-      if (!active) return
-      const parsedData = DatasetSchema.parse(data)
-      const parsedQueue = CandidateQueueSchema.parse(queue)
-      setDataset(parsedData)
-      setCandidates(parsedQueue.candidates)
-      if (typeof registry === 'object' && registry !== null && 'sources' in registry && Array.isArray(registry.sources)) {
-        setSources(registry.sources as SourceEntry[])
-      }
+    fetchJson('data/observations.json').then((data) => DatasetSchema.parse(data)).then((data) => {
+      if (active) setDataset(data)
     }).catch((error: unknown) => {
       if (active) setLoadError(error instanceof Error ? error.message : 'Unable to load the approved snapshot.')
     })
+    fetchJson('data/candidates.json').then((data) => CandidateQueueSchema.parse(data)).then((queue) => {
+      if (active) setCandidates(queue.candidates)
+    }).catch(() => { if (active) setCandidateError(true) })
+    fetchJson('data/source-registry.json').then((data) => SourceRegistrySchema.parse(data)).then((registry) => {
+      if (active) setSources(registry.sources)
+    }).catch(() => { if (active) setSourceError(true) })
     return () => { active = false }
   }, [])
 
@@ -158,6 +182,15 @@ function App() {
     const bestIds = new Set(best.map((observation) => observation.id))
     return filteredObservations.filter((observation) => !scoreResult(observation, state.scoreMetric) || bestIds.has(observation.id))
   }, [filteredObservations, state.effortMode, state.scoreMetric])
+  const filteredScenarioObservations = useMemo(() => {
+    // Scenario evidence remains exportable even when strict comparison hides
+    // optional marks. Retain the ordinary filters and effort projection, but
+    // do not apply strict eligibility as an evidence-export filter.
+    if (state.effortMode === 'all') return unstrictObservations
+    const best = projectBest(unstrictObservations, state.scoreMetric)
+    const bestIds = new Set(best.map((observation) => observation.id))
+    return unstrictObservations.filter((observation) => !scoreResult(observation, state.scoreMetric) || bestIds.has(observation.id))
+  }, [unstrictObservations, state.effortMode, state.scoreMetric])
   const displayedChartObservations = useMemo(() => {
     if (state.effortMode === 'all') return chartFilteredObservations
     const best = projectBest(chartFilteredObservations, state.scoreMetric)
@@ -169,18 +202,32 @@ function App() {
     return matches ? [[observation.id, matches] as const] : []
   })), [displayedObservations, chartPrecedence])
 
-  const visibleUsageScenarios = useMemo(() => {
-    if (!state.includeUsageScenarios) return []
-    return displayedChartObservations.flatMap((observation) => {
-      const scenario = usageScenarioForComparison(observation, state.xMetric, state.statistic, state.strict)
-      return scenario ? [{ observation, scenario }] : []
-    })
-  }, [displayedChartObservations, state.includeUsageScenarios, state.xMetric, state.statistic, state.strict])
-  const usageScenariosByObservationId = useMemo(() => new Map(displayedObservations.flatMap((observation) => {
-    const scenario = state.includeUsageScenarios ? usageScenarioForComparison(observation, state.xMetric, state.statistic, state.strict) : null
+  const usageScenariosByObservationId = useMemo(() => new Map((dataset?.observations ?? []).flatMap((observation) => {
+    const scenario = usageScenarioForObservation(observation, dataset?.revisionId)
     return scenario ? [[observation.id, scenario] as const] : []
-  })), [displayedObservations, state.includeUsageScenarios, state.xMetric, state.statistic, state.strict])
-  const visibleScenarioMarks = visibleUsageScenarios.filter(({ observation, scenario }) => scenarioXValue(scenario, state.xMetric) !== null && hasPercentageScoreScale(displayScoreResult(observation, state.scoreMetric)))
+  })), [dataset])
+  const usageResolutionsByObservationId = useMemo(() => new Map((dataset?.observations ?? []).map((observation) => [
+    observation.id,
+    resolveXUsage(observation, state.xMetric, state.statistic, {
+      scenariosEnabled: state.includeUsageScenarios,
+      strict: state.strict,
+      approvedDatasetRevision: dataset?.revisionId,
+    }),
+  ] as const)), [dataset, state.xMetric, state.statistic, state.includeUsageScenarios, state.strict])
+  const visibleUsageScenarios = useMemo(() => displayedChartObservations.flatMap((observation) => {
+    const resolution = usageResolutionsByObservationId.get(observation.id)
+    const scenario = usageScenariosByObservationId.get(observation.id)
+    return resolution && scenario && resolution.value !== null && resolution.evidenceKind !== 'approved-measurement'
+      ? [{ observation, scenario, resolution }]
+      : []
+  }), [displayedChartObservations, usageResolutionsByObservationId, usageScenariosByObservationId])
+  const visibleScenarioMarks = visibleUsageScenarios.filter(({ observation, resolution }) =>
+    resolution.value !== null
+    && Number.isFinite(resolution.value)
+    && resolution.value >= 0
+    && (state.scale === 'linear' || resolution.value > 0)
+    && hasPercentageScoreScale(displayScoreResult(observation, state.scoreMetric)),
+  )
 
   const chartScoreDetails = useMemo(() => displayedChartObservations.map((observation) => ({ observation, score: displayScoreResult(observation, state.scoreMetric) })), [displayedChartObservations, state.scoreMetric])
   const chartScoreMetrics = new Set(chartScoreDetails.filter(({ score }) => hasPercentageScoreScale(score)).map(({ score }) => score.metric))
@@ -254,9 +301,11 @@ function App() {
     clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
     clone.setAttribute('width', String(svgRef.current.viewBox.baseVal.width))
     clone.setAttribute('height', String(svgRef.current.viewBox.baseVal.height))
+    clone.removeAttribute('style')
     const styles = document.createElementNS('http://www.w3.org/2000/svg', 'style')
     styles.textContent = ':root{--paper-strong:#fbf9f2;--ink:#1d2624;--ink-soft:#4d5b57;--ink-faint:#78817b;--line:#cfc8b9;--line-strong:#aaa493;--teal:#006d68;--amber:#bd661d;--teal-soft:#dce9e4}.grid-line{stroke:#cfc8b9;stroke-width:1;stroke-dasharray:2 5}.axis-line{stroke:#aaa493;stroke-width:1.2}.tick-label{fill:#78817b;font:10px monospace}.axis-title{fill:#4d5b57;font:9px monospace;letter-spacing:.11em}.curve-path{fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}.point-hit-area{fill:transparent;stroke:transparent}.no-data-lane{fill:#f4f0e5;stroke:#cfc8b9;stroke-dasharray:3 4}.no-data-lane-divider{stroke:#aaa493;stroke-width:1.2;stroke-dasharray:3 4}.no-data-lane-title,.no-data-lane-count{fill:#9a551d;font:10px monospace;letter-spacing:.08em}.no-data-lane-note{fill:#78817b;font:8px monospace}.confidence-mark line{stroke:#1d2624;stroke-width:1.25}.point-label{fill:#1d2624;font:10px monospace;paint-order:stroke;stroke:#fbf9f2;stroke-width:3px}.selected-guide{pointer-events:none}.selected-guide-line{fill:none;stroke:#006d68;stroke-width:1.5;stroke-dasharray:4 3}.selected-guide.is-estimated .selected-guide-line{stroke:#bd661d;stroke-dasharray:2 3}.selected-guide-label{fill:#006d68;font:10px monospace;font-weight:700;paint-order:stroke;stroke:#fbf9f2;stroke-width:4px;stroke-linejoin:round}.selected-guide.is-estimated .selected-guide-label{fill:#bd661d}.selected-guide-missing-label{fill:#bd661d;font:9px monospace;font-weight:700;paint-order:stroke;stroke:#fbf9f2;stroke-width:4px;stroke-linejoin:round}'
     styles.textContent += '.estimated-diamond{fill:#fbf9f2;stroke:#bd661d;stroke-width:2.4;stroke-dasharray:2 2}.estimated-label{fill:#bd661d;font:9px monospace;paint-order:stroke;stroke:#fbf9f2;stroke-width:3px}'
+    styles.textContent += '.raw-score-background{fill:#fbf9f2;stroke:#cfc8b9}.raw-score-title{fill:#006d68;font:10px monospace;letter-spacing:.08em}.raw-score-note{fill:#78817b;font:9px monospace}.raw-score-model{fill:#4d5b57;font:10px monospace}.raw-score-value{fill:#1d2624;font:bold 11px monospace}.raw-score-point.is-dimmed{opacity:.2}'
     clone.insertBefore(styles, clone.firstChild)
     const svg = new XMLSerializer().serializeToString(clone)
     downloadText(`deepswe-${state.xMetric}-${state.scoreMetric}-${dataset?.revisionId ?? 'snapshot'}.svg`, `<?xml version="1.0" encoding="UTF-8"?>\n${svg}\n`, 'image/svg+xml')
@@ -307,11 +356,14 @@ function App() {
       statistic: state.statistic,
       scoreMetric: state.scoreMetric,
     }
-    const observations = scope === 'all' ? dataset.observations : visibleUsageScenarios.map(({ observation }) => observation)
+    // This is an evidence export, not a list of currently plotted marks. Keep
+    // exact-target alternatives even when the scenario toggle, statistic,
+    // strict mode, or chart precedence prevents them from being selected.
+    const observations = scope === 'all' ? dataset.observations : filteredScenarioObservations
     const filename = `deepswe-${scope}-usage-scenarios.${format}`
     const text = format === 'json'
-      ? `${JSON.stringify(usageScenarioJsonExport(dataset, observations, filters, scope), null, 2)}\n`
-      : usageScenarioCsvExport(dataset, observations, filters, scope)
+      ? `${JSON.stringify(usageScenarioJsonExport(dataset, observations, filters, scope, undefined, usageResolutionsByObservationId), null, 2)}\n`
+      : usageScenarioCsvExport(dataset, observations, filters, scope, undefined, usageResolutionsByObservationId)
     downloadText(filename, text, format === 'json' ? 'application/json' : 'text/csv;charset=utf-8')
     setAnnouncement(`${scope === 'all' ? 'All' : 'Filtered'} usage scenario ${format.toUpperCase()} export downloaded separately from measured observations.`)
   }
@@ -326,7 +378,7 @@ function App() {
   if (state.view === 'review') return (
     <div className="app-shell" data-theme={theme}>
       <SiteHeader state={state} onView={(view) => update({ view })} theme={theme} onTheme={() => setTheme(theme === 'light' ? 'dark' : 'light')} />
-      <ReviewQueue candidates={candidates} />
+      <ReviewQueue candidates={candidates} loadError={candidateError} />
       <SiteFooter revisionId={dataset.revisionId} checkedAt={dataset.lastSuccessfulCheckAt} deployedAt={deployedAt} onView={(view) => update({ view })} />
       <div className="sr-only" role="status" aria-live="polite">{announcement}</div>
     </div>
@@ -341,7 +393,7 @@ function App() {
   if (state.view === 'sources') return (
     <div className="app-shell" data-theme={theme}>
       <SiteHeader state={state} onView={(view) => update({ view })} theme={theme} onTheme={() => setTheme(theme === 'light' ? 'dark' : 'light')} />
-      <SourcesPage sources={sources} />
+      <SourcesPage sources={sources} loadError={sourceError} />
       <SiteFooter revisionId={dataset.revisionId} checkedAt={dataset.lastSuccessfulCheckAt} deployedAt={deployedAt} onView={(view) => update({ view })} />
     </div>
   )
@@ -378,7 +430,7 @@ function App() {
           <div className="view-switcher" role="tablist" aria-label="Results view">
             <button type="button" role="tab" aria-selected={state.view === 'official'} className={state.view === 'official' ? 'active-tab' : ''} onClick={() => update({ view: 'official' })}>Official <span>{dataset.sourceRetrieval.rowCount}</span></button>
             <button type="button" role="tab" aria-selected={state.view === 'combined'} className={state.view === 'combined' ? 'active-tab' : ''} onClick={() => update({ view: 'combined' })}>Combined reports <span>{dataset.observations.length}</span></button>
-            <button type="button" role="tab" aria-selected={false} onClick={() => update({ view: 'review' })}>Review queue <span>{candidates.length}</span></button>
+            <button type="button" role="tab" aria-selected={false} onClick={() => update({ view: 'review' })}>Review queue {candidates && <span>{candidates.length}</span>}</button>
               <div className="view-secondary-links"><button type="button" onClick={() => update({ view: 'methodology' })}>Methodology</button><button type="button" onClick={() => update({ view: 'sources' })}>Sources</button></div>
           </div>
 
@@ -431,17 +483,26 @@ function App() {
             {state.xMetric === 'outputTokens' && <div className="timing-scope-note token-scope-note"><strong>Output-token populations differ by source.</strong> Datacurve reports output per scored rollout attempt; exact AA variants report a DeepSWE task-attempt mean without an output-telemetry-specific sample count. Reasoning-token inclusion is unknown for most configurations; strict comparisons require it to be known.</div>}
             {state.includeUsageScenarios && state.strict && <div className="usage-scenario-note" role="note"><strong>Strict comparison excludes usage scenarios.</strong> Only source-reported measurements are considered in strict groups.</div>}
             {state.includeUsageScenarios && !state.strict && state.statistic === 'median' && <div className="usage-scenario-note" role="note"><strong>Scenarios are shown only with the Mean control.</strong> Median remains limited to source-reported measurements. Fireworks source Cost/Task rows do not publish a mean/median statistic and keep that limitation in their scenario label.</div>}
-            {state.includeUsageScenarios && !state.strict && state.statistic === 'mean' && visibleUsageScenarios.length > 0 && <div className="usage-scenario-note" role="note">
-               <strong>Mean-only cost and usage scenarios · separate from measurements.</strong> Hollow diamonds are standalone. Each scenario remains attached to its exact source row; unavailable metrics stay absent.
-              <ul>{visibleUsageScenarios.map(({ observation, scenario }) => {
-                const value = state.xMetric === 'cost'
-                   ? scenario.costUsd === null ? 'no cost estimate' : `$${scenario.costUsd.toFixed(2)} · ${scenario.costUnit}`
-                  : state.xMetric === 'outputTokens'
-                     ? scenario.outputTokensPerScoredAttempt === null ? 'no output-token estimate' : `${new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(scenario.outputTokensPerScoredAttempt)} ${scenario.outputUnit}`
-                     : scenario.timeSecondsPerScoredAttempt === null ? 'no time estimate' : `${new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(scenario.timeSecondsPerScoredAttempt / 60)} min/attempt`
-                const range = state.xMetric === 'cost' ? scenario.costSensitivityRange : state.xMetric === 'outputTokens' ? scenario.outputTokenSensitivityRange : scenario.timeSensitivityRange
-                 return <li key={scenario.id}>{observation.model.reportedName}: {scenario.outputEvidenceType === 'same-source-deepswe-mean' && state.xMetric === 'outputTokens' ? 'same-source AA DeepSWE mean' : `${scenario.confidence === 'low' ? 'low' : 'very low'} qualitative scenario evidence`}; {value}{range ? ' · observed small-sample sensitivity only, not a confidence interval' : ' · no defensible range or prediction interval'}.</li>
-              })}</ul>
+              {state.includeUsageScenarios && !state.strict && state.statistic === 'mean' && visibleUsageScenarios.length > 0 && <div className="usage-scenario-note" role="note">
+                <strong>Mean-only cost and usage scenarios · separate from measurements.</strong> Hollow diamonds are standalone. Each scenario remains attached to its exact source row; unavailable metrics stay absent.
+               <ul>{visibleUsageScenarios.map(({ observation, scenario, resolution }) => {
+                 const value = state.xMetric === 'cost'
+                    ? `$${resolution.value!.toFixed(2)} · ${resolution.unit}`
+                   : state.xMetric === 'outputTokens'
+                      ? `${new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(resolution.value!)} ${resolution.unit}`
+                      : `${new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(resolution.value! / 60)} min/attempt`
+                 const range = state.xMetric === 'cost' ? scenario.costSensitivityRange : state.xMetric === 'outputTokens' ? scenario.outputTokenSensitivityRange : scenario.timeSensitivityRange
+                 const evidence = resolution.relationship === 'same-source-same-benchmark-reference'
+                   ? `same-source ${resolution.statistic} reference`
+                   : resolution.relationship === 'separate-experiment-reference' || resolution.relationship === 'separate-benchmark-reference'
+                     ? 'separate-experiment reference'
+                     : resolution.relationship === 'pooled-suite-proxy'
+                       ? 'pooled-suite proxy'
+                       : resolution.relationship === 'source-reported-unspecified'
+                         ? 'source-reported statistic-unspecified value'
+                         : `configured ${resolution.relationship ?? 'optional'} evidence`
+                  return <li key={`${scenario.id}-${state.xMetric}`}>{observation.model.reportedName}: {evidence}; {value}; source {resolution.sourceIds.join(', ') || 'not recorded'}{range ? ' · observed small-sample sensitivity only, not a confidence interval' : ' · no defensible range or prediction interval'}.</li>
+               })}</ul>
               {state.xMetric === 'outputTokens'
                  ? <p>Output scenarios use separate DeepSWE references, same-source AA DeepSWE means, or explicitly weak output-only Intelligence Index transfers. Coding Agent suite mixed-token totals are never displayed as output tokens.</p>
                 : state.xMetric === 'cost'
@@ -449,7 +510,7 @@ function App() {
                   : <p>Time scenarios use measured per-task wall-clock pairs or an exact-model/effort DeepSWE reference. AA pools multiple benchmarks and Datacurve timer boundaries are unspecified; these are reported-time scenarios, not verified end-to-end durations.</p>}
               <p>Evidence grades are qualitative, not probabilities. Sensitivity envelopes are observed sample ranges, not confidence or prediction intervals. Strict comparisons exclude scenarios.</p>
             </div>}
-            {(state.scoreMetric === 'reported_score_unspecified' || chartHasMixedDefinitions || chartHasUnscaledScores) && <div className="metric-chart-warning" role="note"><strong>Source scores retain their own definitions.</strong> Only explicit percentage/fraction values use the score axis; raw values with unspecified units are omitted. Each mark keeps its source metric and protocol—percent values alone do not make different evaluations comparable.</div>}
+            {(state.scoreMetric === 'reported_score_unspecified' || chartHasMixedDefinitions || chartHasUnscaledScores) && <div className="metric-chart-warning" role="note"><strong>Source scores retain their own definitions.</strong> Only explicit percentage/fraction values use the percentage axis; raw values with unspecified units appear on separate source-specific scales, with no efficiency coordinates or cross-source comparability. Each mark keeps its source metric and protocol—percent values alone do not make different evaluations comparable.</div>}
               {state.strict && <div className="strict-note" role="status">
                 <div className="strict-note-copy"><strong>Strict mode groups exact known protocols.</strong><span>Protocol, task scope, score definition, population, and metric-specific scope must match. Incompatible groups are never overlaid; select one group explicitly.</span></div>
                 <label className="strict-group-picker"><span>Compatible protocol group</span><select value={selectedStrictGroupAvailable ? state.strictGroup : ''} onChange={(event) => update({ strictGroup: event.target.value })}><option value="">{strictGroups.length ? 'Choose a protocol group' : 'No fully specified groups available'}</option>{strictGroups.map((group) => <option value={group.key} key={group.key}>{group.label}</option>)}</select></label>
@@ -458,18 +519,18 @@ function App() {
               </div>}
              <div className="coverage-row" role="status"><span className="coverage-big">{coverage.available}<i> / {coverage.total}</i></span><span>{state.xMetric === 'cost' ? `Source-reported cost coordinates among observations reporting ${scoreMetricLabels[state.scoreMetric]}; mean per scored attempt except screenshot-derived source-chart costs (aggregation unknown). Median view includes only reported medians. Scenarios do not increase source coverage.` : `Source-reported ${state.statistic} ${xMetricLabels[state.xMetric].axis} values among observations reporting ${scoreMetricLabels[state.scoreMetric]}.`}</span><span className="omission-count">{coverage.missing} without source value{visibleUsageScenarios.length ? ` · ${visibleScenarioMarks.length} scenario mark${visibleScenarioMarks.length === 1 ? '' : 's'} for selected X` : ''}</span></div>
 
-            <div className="analysis-grid">
+            <div className="analysis-grid" ref={analysisRef}>
               <div className="chart-card">
-                <div className="chart-card-head"><div><strong>{scoreMetricLabels[state.scoreMetric]}</strong><span>Score axis · explicit percentage/fraction values; reference key gives each source metric</span></div><button className="icon-action" type="button" aria-label="Download current chart as SVG" onClick={exportChartSvg}>↓ SVG</button></div>
+                <div className="chart-card-head"><div><strong>{scoreMetricLabels[state.scoreMetric]}</strong><span>Percentage axis · explicit units; raw source scores have separate scales</span></div><div className="chart-actions"><button className="icon-action" type="button" ref={fullscreenButtonRef} aria-label={chartFullscreen ? 'Exit chart fullscreen' : 'Enter chart fullscreen'} aria-pressed={chartFullscreen} onClick={toggleChartFullscreen}>{chartFullscreen ? 'Exit fullscreen' : 'Fullscreen'}</button><button className="icon-action" type="button" aria-label="Download current chart as SVG" onClick={exportChartSvg}>↓ SVG</button></div></div>
+                {fullscreenStatus && <p className="chart-footnote" role="status">{fullscreenStatus}</p>}
                 <ExplorerChart
                   observations={displayedChartObservations}
-                  usageScenarios={visibleUsageScenarios}
+                  usageResolutions={usageResolutionsByObservationId}
+                  usageScenarios={usageScenariosByObservationId}
                   chartSuppressions={visibleChartSuppressions}
                   suppressedCount={visibleChartSuppressions.size}
                   xMetric={state.xMetric}
                   statistic={state.statistic}
-                  strict={state.strict}
-                  includeUsageScenarios={state.includeUsageScenarios}
                   scoreMetric={state.scoreMetric}
                   scale={state.scale}
                   connections={connections}
@@ -496,7 +557,7 @@ function App() {
                     {availableModels.length === 0 && <li className="legend-empty">No models in the selected source types.</li>}
                   </ul>
                 </section>
-                <EvidencePanel observation={selectedObservation} xMetric={state.xMetric} statistic={state.statistic} scoreMetric={state.scoreMetric} usageScenario={selectedObservation ? usageScenariosByObservationId.get(selectedObservation.id) ?? null : null} chartSuppression={selectedObservation ? visibleChartSuppressions.get(selectedObservation.id) ?? null : null} />
+                 <EvidencePanel observation={selectedObservation} xMetric={state.xMetric} statistic={state.statistic} scoreMetric={state.scoreMetric} usageResolution={selectedObservation ? usageResolutionsByObservationId.get(selectedObservation.id) ?? null : null} usageScenario={selectedObservation ? usageScenariosByObservationId.get(selectedObservation.id) ?? null : null} chartSuppression={selectedObservation ? visibleChartSuppressions.get(selectedObservation.id) ?? null : null} />
               </aside>
             </div>
           </section>
@@ -534,7 +595,7 @@ function App() {
                 </div></details>
               </div>
             </div>
-            <ResultsTable observations={displayedObservations} xMetric={state.xMetric} statistic={state.statistic} scoreMetric={state.scoreMetric} selectedId={state.selectedObservationId} usageScenarios={usageScenariosByObservationId} chartSuppressions={visibleChartSuppressions} onSelect={selectObservation} onIsolate={isolateModel} />
+             <ResultsTable observations={displayedObservations} xMetric={state.xMetric} statistic={state.statistic} scoreMetric={state.scoreMetric} selectedId={state.selectedObservationId} usageResolutions={usageResolutionsByObservationId} usageScenarios={usageScenariosByObservationId} chartSuppressions={visibleChartSuppressions} onSelect={selectObservation} onIsolate={isolateModel} />
           </section>
 
           <section className="share-strip">

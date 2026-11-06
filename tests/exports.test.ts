@@ -97,7 +97,7 @@ describe('approved-data exports', () => {
     const allJson = usageScenarioJsonExport(dataset, dataset.observations, filters, 'all', '2026-09-26T17:00:00Z')
     expect(allJson.exportMetadata.exportType).toBe('usage-scenarios-only')
     expect(allJson.exportMetadata.observationsAreNotModified).toBe(true)
-    expect(allJson.scenarios).toHaveLength(17)
+    expect(allJson.scenarios).toHaveLength(50)
     const lunaRecord = allJson.scenarios.find((record) => record.targetObservationId === luna.id)!
     expect(lunaRecord.recordType).toBe('source_reported_output_with_cost_scenario')
     expect(lunaRecord.measurement.meanCostUsd).toBeNull()
@@ -129,7 +129,16 @@ describe('approved-data exports', () => {
     expect(filteredJson.scenarios).toHaveLength(1)
     expect(filteredJson.scenarios[0]?.targetObservationId).toBe(luna.id)
     const developerOnly = usageScenarioJsonExport(dataset, [dataset.observations.find((row) => row.id === 'openai-gpt-6-luna-v1.1-max')!], filters, 'filtered')
-    expect(developerOnly.scenarios).toEqual([])
+    expect(developerOnly.scenarios).toHaveLength(1)
+    expect(developerOnly.scenarios[0]?.recordType).toBe('estimated_usage_scenario')
+    for (const id of ['google-gemini-4-argon-v1.1', 'mistral-large-4-preview-v1.1', 'anthropic-claude-sonnet-5.5-v1.1']) {
+      const record = allJson.scenarios.find((row) => row.targetObservationId === id)!
+      expect(record.measurement.meanCostUsd).toBeNull()
+      expect(record.measurement.meanOutputTokens).toBeNull()
+      expect(record.recordType).toBe('estimated_usage_scenario')
+      expect(record.scenario.sources.some((source) => source.publisher === 'Artificial Analysis' && source.accessedOn === '2026-10-08' && source.hashStatus === 'validated')).toBe(true)
+      expect(record.scenario.meanReportedSecondsPerScoredAttempt).toBeGreaterThan(0)
+    }
 
     const csv = usageScenarioCsvExport(dataset, [luna, opus], filters, 'filtered', '2026-09-26T17:00:00Z')
     expect(csv).toContain('# export_type=usage-scenarios-only')
@@ -149,5 +158,43 @@ describe('approved-data exports', () => {
     expect(csv).toContain('aa-codex-vs-kimi-code-cli')
     const csvRows = csv.trimEnd().split('\n').filter((line) => !line.startsWith('#'))
     expect(new Set(csvRows.map(csvFieldCount)).size).toBe(1)
+  })
+
+  it('keeps per-metric alternatives in evidence exports when approved values win or scenarios are disabled', () => {
+    const luna = dataset.observations.find((row) => row.id === 'aa-codex-gpt-6-luna-max-v1.1')!
+    const overlapping = structuredClone(luna)
+    overlapping.metrics.outputTokens.value = 42
+    overlapping.metrics.outputTokens.statistic = 'mean'
+    overlapping.metrics.outputTokens.unit = 'output tokens'
+    overlapping.metrics.outputTokens.missingReason = null
+
+    const approvedFilters = { ...filters, xMetric: 'outputTokens' as const, statistic: 'mean' as const, includeUsageScenarios: true }
+    const ordinaryJson = filteredJsonExport(dataset, [overlapping], approvedFilters)
+    const ordinaryCsv = filteredCsvExport(dataset, [overlapping], approvedFilters)
+    expect(ordinaryJson.observations[0]?.metrics.outputTokens.value).toBe(42)
+    expect(ordinaryCsv).toContain('"42"')
+    expect(ordinaryCsv).not.toContain('scenario_mean_output_tokens')
+
+    const approvedScenario = usageScenarioJsonExport(dataset, [overlapping], approvedFilters, 'filtered')
+    const record = approvedScenario.scenarios[0]!
+    expect(record.measurement.meanOutputTokens).toBe(42)
+    expect(record.selectedMetricResolution.evidenceKind).toBe('approved-measurement')
+    expect(record.selectedMetricResolution.value).toBe(42)
+    expect(record.selectedMetricResolution.alternatives[0]?.factIds).toContain('aa-output-gpt-6-luna-max')
+    expect(record.scenario.metricConfiguration.outputTokens.sourceIds).toContain('aa-codex-vs-kimi-code-cli')
+    expect(record.scenario.sources.some((source) => source.responseSha256 && source.hashStatus === 'validated')).toBe(true)
+
+    const excludedFilters = { ...approvedFilters, strict: true, statistic: 'median' as const, includeUsageScenarios: false }
+    const excluded = usageScenarioJsonExport(dataset, [luna], excludedFilters, 'filtered')
+    expect(excluded.scenarios).toHaveLength(1)
+    expect(excluded.scenarios[0]?.selectedMetricResolution.value).toBeNull()
+    expect(excluded.scenarios[0]?.selectedMetricResolution.alternatives[0]?.eligible).toBe(false)
+    expect(excluded.scenarios[0]?.selectedMetricResolution.alternatives[0]?.exclusionReason).toContain('strict mode')
+
+    const csv = usageScenarioCsvExport(dataset, [luna], excludedFilters, 'filtered')
+    expect(csv).toContain('metric_configuration_json')
+    expect(csv).toContain('selected_metric_resolution_json')
+    expect(csv).toContain('aa-output-gpt-6-luna-max')
+    expect(csv).toContain('Optional usage scenarios are excluded in strict mode.')
   })
 })

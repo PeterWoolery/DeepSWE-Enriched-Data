@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
-import { datacurveChartPrecedence, getEfficiencyCoverage, scoreResult } from '../src/lib/comparison'
+import { datacurveChartPrecedence, displayScoreResult, getEfficiencyCoverage, hasPercentageScoreScale, scoreResult } from '../src/lib/comparison'
 import type { Dataset } from '../src/lib/schema'
 
 interface ExportedObservation {
@@ -22,6 +22,59 @@ async function loadDataset(page: import('@playwright/test').Page) {
   return page.evaluate(async () => await (await fetch('data/observations.json')).json() as ExportedDataset)
 }
 
+test('auxiliary failures leave approved results available and identify the failed view', async ({ page }) => {
+  for (const [asset, view, message, failure] of [
+    ['candidates', 'review', 'Candidate queue could not be loaded', 'http'],
+    ['candidates', 'review', 'Candidate queue could not be loaded', 'network'],
+    ['candidates', 'review', 'Candidate queue could not be loaded', 'invalid'],
+    ['source-registry', 'sources', 'Source register could not be loaded', 'http'],
+    ['source-registry', 'sources', 'Source register could not be loaded', 'network'],
+    ['source-registry', 'sources', 'Source register could not be loaded', 'invalid'],
+  ] as const) {
+    const pattern = `**/data/${asset}.json`
+    await page.route(pattern, (route) => failure === 'network' ? route.abort() : route.fulfill(failure === 'http'
+      ? { status: 503, body: 'Unavailable' }
+      : { status: 200, contentType: 'application/json', body: JSON.stringify(asset === 'candidates' ? { candidates: 'bad' } : { sources: [{}] }) }))
+    await page.goto('?view=official')
+    await expect(page.locator('.plot-point').first()).toBeVisible()
+    await expect(page.locator('.results-table tbody tr')).toHaveCount(70)
+    await page.goto(`?view=${view}`)
+    await expect(page.getByRole('alert')).toContainText(message)
+    await page.goto(`?view=${view === 'review' ? 'sources' : 'review'}`)
+    if (view === 'review') await expect(page.locator('.source-register-row').first()).toBeVisible()
+    else await expect(page.locator('.candidate-card').first()).toBeVisible()
+    await page.unroute(pattern)
+  }
+})
+
+test('pending auxiliary requests do not block approved results or imply empty views', async ({ page }) => {
+  let release!: () => void
+  const pending = new Promise<void>((resolve) => { release = resolve })
+  await page.route('**/data/{candidates,source-registry}.json', async (route) => {
+    await pending
+    await route.continue().catch(() => {})
+  })
+  await page.goto('?view=official', { waitUntil: 'domcontentloaded' })
+  try {
+    await expect(page.locator('.plot-point').first()).toBeVisible()
+    await expect(page.getByRole('tab', { name: /Review queue/ })).not.toContainText('0')
+    await page.getByRole('tab', { name: /Review queue/ }).click()
+    await expect(page.getByRole('status').filter({ hasText: 'Loading candidate queue' })).toBeVisible()
+    await page.getByRole('button', { name: 'Sources', exact: true }).first().click()
+    await expect(page.getByRole('status').filter({ hasText: 'Loading source register' })).toBeVisible()
+    await expect(page.locator('.source-summary')).toHaveCount(0)
+  } finally {
+    release()
+  }
+})
+
+test('invalid approved data remains fatal', async ({ page }) => {
+  await page.route('**/data/observations.json', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }))
+  await page.goto('./')
+  await expect(page.getByRole('alert')).toContainText('APPROVED SNAPSHOT UNAVAILABLE')
+  await expect(page.locator('.results-table')).toHaveCount(0)
+})
+
 async function noDataSymbolOverlaps(page: Page) {
   return page.locator('.no-data-point').evaluateAll((groups) => {
     const bounds = groups.map((group) => {
@@ -41,6 +94,76 @@ async function noDataSymbolOverlaps(page: Page) {
     return overlaps
   })
 }
+
+test('wheel zoom anchors the X axis at the cursor and leaves scrolling outside the plot alone', async ({ page }) => {
+  for (const scale of ['linear', 'log']) {
+    await page.goto(`?view=official&scale=${scale}`)
+    const chart = page.locator('.effort-chart')
+    await chart.scrollIntoViewIfNeeded()
+    const initialPath = await page.locator('.curve-path').first().getAttribute('d')
+    const initialCount = await page.locator('.plot-point').count()
+    const anchor = await chart.evaluate((svg) => {
+      const mark = Array.from(svg.querySelectorAll('.plot-point')).find((group) => {
+        const x = Number(group.querySelector('.point-hit-area')!.getAttribute('cx'))
+        return x > 250 && x < 650
+      })!
+      const hit = mark.querySelector('.point-hit-area')!
+      const x = Number(hit.getAttribute('cx'))
+      const y = Number(hit.getAttribute('cy'))
+      const screen = new DOMPoint(x, y).matrixTransform((svg as SVGSVGElement).getScreenCTM()!)
+      return { id: mark.getAttribute('data-observation-id'), x, y, screenX: screen.x, screenY: screen.y }
+    })
+    const mark = page.locator(`.plot-point[data-observation-id="${anchor.id}"] .point-hit-area`)
+    await page.mouse.move(anchor.screenX, anchor.screenY)
+    const scrollY = await page.evaluate(() => window.scrollY)
+    await page.mouse.wheel(0, -100)
+    await expect(page.locator('.curve-path').first()).not.toHaveAttribute('d', initialPath!)
+    // Native mouse coordinates are rounded to screen pixels by Chromium.
+    expect(Math.abs(Number(await mark.getAttribute('cx')) - anchor.x)).toBeLessThan(1)
+    expect(Number(await mark.getAttribute('cy'))).toBe(anchor.y)
+    expect(await page.evaluate(() => window.scrollY)).toBe(scrollY)
+    await page.mouse.wheel(0, 100)
+    await expect(page.getByRole('button', { name: 'Reset zoom' })).toBeDisabled()
+    await expect(page.locator('.plot-point')).toHaveCount(initialCount)
+
+    // Line/page deltas are handled too; axes and the no-data gutter do not consume wheels.
+    for (const deltaMode of [0, 1, 2]) {
+      const prevented = await chart.evaluate((svg, { anchor, deltaMode }) => {
+        const event = new WheelEvent('wheel', { bubbles: true, cancelable: true, clientX: anchor.screenX, clientY: anchor.screenY, deltaY: -1, deltaMode })
+        svg.dispatchEvent(event)
+        return event.defaultPrevented
+      }, { anchor, deltaMode })
+      expect(prevented).toBe(true)
+      await expect(page.getByRole('button', { name: 'Reset zoom' })).toBeEnabled()
+      await page.getByRole('button', { name: 'Reset zoom' }).click()
+      await expect(page.locator('.curve-path').first()).toHaveAttribute('d', initialPath!)
+    }
+    const outsidePrevented = await chart.evaluate((svg) => [20, 950].map((x) => {
+      const point = new DOMPoint(x, 200).matrixTransform((svg as SVGSVGElement).getScreenCTM()!)
+      const event = new WheelEvent('wheel', { bubbles: true, cancelable: true, clientX: point.x, clientY: point.y, deltaY: -100 })
+      svg.dispatchEvent(event)
+      return event.defaultPrevented
+    }))
+    expect(outsidePrevented).toEqual([false, false])
+
+    await page.getByRole('button', { name: 'Zoom chart in' }).focus()
+    await page.getByRole('button', { name: 'Zoom chart in' }).press('Enter')
+    await expect(page.getByRole('button', { name: 'Reset zoom' })).toBeEnabled()
+    await page.getByRole('button', { name: 'Output tokens per task', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Reset zoom' })).toBeDisabled()
+    await page.getByRole('button', { name: 'Cost per task', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Reset zoom' })).toBeDisabled()
+    await expect(page.locator('.curve-path').first()).toHaveAttribute('d', initialPath!)
+
+    await page.getByRole('button', { name: 'Zoom chart in' }).click()
+    const search = page.getByRole('searchbox', { name: 'Search models / publishers' })
+    await search.fill('Astra')
+    await expect(page.getByRole('button', { name: 'Reset zoom' })).toBeDisabled()
+    await search.fill('')
+    await expect(page.getByRole('button', { name: 'Reset zoom' })).toBeDisabled()
+    await expect(page.locator('.curve-path').first()).toHaveAttribute('d', initialPath!)
+  }
+})
 
 test('official numeric effort curve is accessible and pass@4 evidence stays metric-specific', async ({ page }) => {
   await page.goto('?view=official')
@@ -102,6 +225,45 @@ test('selected measured and estimated results show axis guides for the active X 
   await expect(estimatedGuide).toHaveClass(/is-estimated/)
   await expect(estimatedGuide.locator('.selected-guide-x, .selected-guide-y')).toHaveCount(2)
   await expect(estimatedGuide.locator('[data-guide-axis="x"]')).toContainText('EST ·')
+})
+
+test('approved usage wins per metric, zero stays selected on log axes, and other scenario metrics remain available', async ({ page }) => {
+  const source = JSON.parse(await readFile(new URL('../data/approved/dataset.json', import.meta.url), 'utf8')) as Dataset
+  const fixture: Dataset = structuredClone(source)
+  const target = fixture.observations.find((row) => row.id === 'aa-codex-gpt-6-luna-max-v1.1')!
+  target.metrics.outputTokens.value = 0
+  target.metrics.outputTokens.reportedValue = 0
+  target.metrics.outputTokens.unit = 'output tokens'
+  target.metrics.outputTokens.statistic = 'mean'
+  target.metrics.outputTokens.missingReason = null
+  await page.route('**/data/observations.json', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture) }))
+  await page.goto('?view=combined&q=GPT-6%20Luna&x=outputTokens')
+
+  const row = page.locator(`.results-table tr[data-observation-id="${target.id}"]`)
+  const measured = page.locator(`.plot-point[data-observation-id="${target.id}"]`)
+  const optional = page.locator(`.estimated-point[data-observation-id="${target.id}"]`)
+  await expect(measured).toHaveCount(1)
+  await expect(optional).toHaveCount(0)
+  const outputColumn = await page.getByRole('columnheader', { name: 'mean output tokens' }).evaluate((header) => (header as HTMLTableCellElement).cellIndex)
+  await expect(row.locator('td, th').nth(outputColumn).locator('span').first()).toHaveText('0')
+  await row.locator('.table-model-button').click()
+  await expect(page.locator('.selected-usage-evidence')).toContainText('0 · mean · approved selected-statistic measurement')
+  await expect(page.locator('.selected-usage-evidence')).toContainText('aa-output-gpt-6-luna-max')
+  await expect(page.locator('.usage-evidence')).toContainText('APPROVED MEAN MEASUREMENT · OPTIONAL EVIDENCE RETAINED')
+
+  await page.getByRole('button', { name: 'Log', exact: true }).click()
+  await expect(measured).toHaveCount(0)
+  await expect(optional).toHaveCount(0)
+  await expect(page.locator('.chart-footnote')).toContainText('zero omitted on log scale')
+
+  await page.getByRole('button', { name: 'Linear', exact: true }).click()
+  await page.getByRole('button', { name: 'Cost per task', exact: true }).click()
+  await expect(page.locator(`.estimated-point[data-observation-id="${target.id}"]`)).toHaveCount(1)
+  await page.getByRole('button', { name: 'Output tokens per task', exact: true }).click()
+  await page.getByRole('button', { name: 'Median', exact: true }).click()
+  await expect(optional).toHaveCount(0)
+  await expect(page.locator('.selected-usage-evidence')).toContainText('Optional usage scenarios provide mean-only evidence; medians are not inferred.')
+  await expect(page.locator('.usage-evidence')).toContainText('Source-reported mean')
 })
 
 test('GPT-6.1 Sol screenshot curve renders five connected approximate marks with source-specific units', async ({ page }) => {
@@ -174,13 +336,15 @@ test('default view surfaces supplemental reports with their reported score metri
   const approvedCount = (await loadDataset(page)).observations.length
   await expect(table.locator('tr')).toHaveCount(approvedCount)
   await expect(page.getByRole('tab', { name: /Combined reports/ })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.locator('.estimated-point[data-observation-id="openai-gpt-6-luna-v1.1-max"]')).toHaveCount(1)
+  await page.getByRole('checkbox', { name: /Include usage scenarios/ }).uncheck()
 
   const luna = table.locator('tr[data-observation-id="openai-gpt-6-luna-v1.1-max"]')
   await expect(luna).toHaveCount(1)
   await expect(luna).toHaveAttribute('data-observation-id', 'openai-gpt-6-luna-v1.1-max')
   await expect(luna.locator('td').nth(2)).toContainText('66.6%')
   await expect(luna.locator('td').nth(2)).toContainText('Different metric: Developer-reported DeepSWE score; exact score metric not specified')
-  await expect(luna.locator('td').nth(3)).toContainText('Mean task cost is not inferred')
+  await expect(luna.locator('td').nth(3)).toContainText('Optional usage scenarios are disabled')
   await expect(luna.locator('td').nth(5)).toContainText('developer')
   await expect(luna.locator('.row-evidence a')).toHaveAttribute('href', 'https://openai.com/index/introducing-gpt-6-sol-and-luna/')
   await expect(page.locator('.plot-point[data-observation-id="openai-gpt-6-luna-v1.1-max"]')).toHaveCount(0)
@@ -197,7 +361,7 @@ test('default view surfaces supplemental reports with their reported score metri
   await expect(opus).toHaveAttribute('data-observation-id', 'anthropic-claude-opus-5.5-v1.1')
   await expect(opus.locator('td').nth(2)).toContainText('74.2%')
   await expect(opus.locator('td').nth(2)).toContainText('Different metric: Developer-reported average score over five trials; exact score metric not specified')
-  await expect(opus.locator('td').nth(3)).toContainText('Mean task cost is not inferred')
+  await expect(opus.locator('td').nth(3)).toContainText('Optional usage scenarios are disabled')
   await expect(opus.locator('td').nth(5)).toContainText('developer')
   await expect(opus.locator('.row-evidence a')).toHaveAttribute('href', /Claude%20Opus%205\.5%20System%20Card\.pdf/)
   await expect(page.locator('.plot-point[data-observation-id="anthropic-claude-opus-5.5-v1.1"]')).toHaveCount(0)
@@ -291,9 +455,13 @@ test('Datacurve precedence removes duplicate chart marks without hiding source r
 })
 
 test('no-data marks use a separate gutter through X/statistic/scale changes', async ({ page }) => {
-  await page.goto('./')
-  await expect(page.locator('.no-data-point')).toHaveCount(22)
-  await expect(page.locator('.no-data-lane-count')).toHaveText('22')
+  await page.goto('?scenarios=0')
+  const dataset = JSON.parse(await readFile(new URL('../data/approved/dataset.json', import.meta.url), 'utf8')) as Dataset
+  const precedence = datacurveChartPrecedence(dataset.observations, dataset.sourceRetrieval.sourceId)
+  const missingCount = dataset.observations.filter((row) => !precedence.has(row.id) && hasPercentageScoreScale(displayScoreResult(row, 'pass_at_1')) && row.metrics.cost.value === null).length
+  await expect(page.locator('.no-data-point')).toHaveCount(missingCount)
+  await expect(page.locator('.no-data-lane-count')).toHaveText(String(missingCount))
+  await expect(page.locator('.no-data-point[data-observation-id="google-gemini-4-argon-v1.1"]')).toHaveCount(1)
   expect(await noDataSymbolOverlaps(page)).toEqual([])
   const lunaReference = page.locator('.no-data-point[data-observation-id="openai-gpt-6-luna-v1.1-max"]')
   const opusReference = page.locator('.no-data-point[data-observation-id="anthropic-claude-opus-5.5-v1.1"]')
@@ -310,12 +478,12 @@ test('no-data marks use a separate gutter through X/statistic/scale changes', as
   await expect(lunaReference).toHaveCount(1)
   await expect(opusReference).toHaveCount(1)
 
-  await page.goto('?score=pass_at_4')
+  await page.goto('?score=pass_at_4&scenarios=0')
   const fallback = page.locator('.no-data-entry[data-observation-id="openai-gpt-6-luna-v1.1-max"]')
   await expect(fallback).toHaveAttribute('data-score-metric', 'reported_score_unspecified')
   await expect(fallback).toHaveAttribute('aria-label', /Different metric from selected pass@4/)
 
-  await page.goto('?q=luna&publisher=OpenAI')
+  await page.goto('?q=luna&publisher=OpenAI&scenarios=0')
   await expect(page.locator('.results-table tbody tr')).toHaveCount(1)
   await expect(page.locator('.plot-point')).toHaveCount(0)
   await expect(page.locator('.no-data-point')).toHaveCount(1)
@@ -389,22 +557,23 @@ test('all three X metrics, statistic, scale, and connections survive a shared-UR
 
 test('publisher/model filters and strict mode do not combine unknown protocol groups', async ({ page }) => {
   await page.goto('?view=combined')
-  const approvedCount = (await loadDataset(page)).observations.length
+  const dataset = JSON.parse(await readFile(new URL('../data/approved/dataset.json', import.meta.url), 'utf8')) as Dataset
+  const approvedCount = dataset.observations.length
   await expect(page.locator('.results-table tbody tr')).toHaveCount(approvedCount)
   const versionUnknownPaperRow = page.locator('.results-table tbody tr').filter({ hasText: '70.0%' })
   await expect(versionUnknownPaperRow.locator('td').nth(0)).toContainText('unspecified')
 
   await page.getByRole('combobox', { name: /^Benchmark version$/ }).selectOption('1.1')
   await expect(page).toHaveURL(/version=1.1/)
-  await expect(page.locator('.results-table tbody tr')).toHaveCount(113)
+  await expect(page.locator('.results-table tbody tr')).toHaveCount(dataset.observations.filter((row) => row.benchmark.version === '1.1').length)
   await page.getByRole('combobox', { name: /^Harness \/ protocol$/ }).selectOption('mini-swe-agent')
-  await expect(page.locator('.results-table tbody tr')).toHaveCount(72)
+  await expect(page.locator('.results-table tbody tr')).toHaveCount(dataset.observations.filter((row) => row.benchmark.version === '1.1' && row.series.harness === 'mini-swe-agent').length)
   await page.getByRole('combobox', { name: /^Harness \/ protocol$/ }).selectOption('all')
 
   const sourceToggles = page.locator('.source-filter input[type="checkbox"]')
   await sourceToggles.nth(0).uncheck()
   await expect(page).toHaveURL(/sources=/)
-  await expect(page.locator('.results-table tbody tr')).toHaveCount(43)
+  await expect(page.locator('.results-table tbody tr')).toHaveCount(dataset.observations.filter((row) => row.benchmark.version === '1.1' && row.sourceCategory !== 'organizer').length)
   await sourceToggles.nth(0).check()
 
   await page.getByRole('searchbox', { name: 'Search models / publishers' }).fill('Astra')
@@ -534,7 +703,9 @@ test('score-only reports, reviewed evidence and all/filtered downloads keep attr
   await expect(page.locator('.results-table tbody tr')).toHaveCount(approvedCount)
   await expect(page.locator('.score-only-list li')).toHaveCount(scoreOnlyCount)
   await expect(page.locator('.metric-warning')).toContainText('unspecified units')
-  await expect(page.locator('.metric-chart-warning')).toContainText('raw values with unspecified units are omitted')
+  await expect(page.locator('.metric-chart-warning')).toContainText('raw values with unspecified units appear on separate source-specific scales')
+  await expect(page.locator('.raw-score-region[data-raw-source-id="meta-muse-wonder-model-page"]')).toHaveCount(1)
+  await expect(page.locator('.raw-score-region[data-raw-source-id="deepseek-v4-1-flash-technical-report"]')).toHaveCount(1)
   await expect(page.locator('.legend-symbol.source-developer').first()).toBeVisible()
   await expect(page.locator('.legend-symbol.source-independent').first()).toBeVisible()
   await expect(page.locator('.legend-card .count-stamp')).toHaveText(String(await page.locator('.legend-list input[type="checkbox"]').count()))
@@ -585,6 +756,140 @@ test('score-only reports, reviewed evidence and all/filtered downloads keep attr
   expect(filteredCsv).toContain('evidence_locator')
 })
 
+test('Muse raw-only chart retains source scores, missing usage and accessible evidence selection', async ({ page }) => {
+  await page.goto('?q=Muse%20Wonder&scenarios=0')
+  const wonder = page.locator('.raw-score-point[data-observation-id="meta-muse-wonder-v1.1-max"]')
+  const full = page.locator('.raw-score-point[data-observation-id="meta-muse-wonder-full-v1.1-max"]')
+  await expect(wonder).toBeVisible()
+  await expect(full).toBeVisible()
+  await expect(wonder.locator('.raw-score-value')).toHaveText('78.8')
+  await expect(full.locator('.raw-score-value')).toHaveText('79.0')
+  await expect(page.locator('.raw-score-region')).toHaveCount(1)
+  await expect(page.locator('.raw-score-region')).toContainText('Cost, output tokens and time not reported.')
+  await expect(wonder).toHaveAttribute('aria-label', /unit, statistic and denominator unspecified/)
+  await expect(page.locator('.plot-point, .no-data-point, .estimated-point, .curve-path, .y-title')).toHaveCount(0)
+  await expect(page.locator('.chart-empty')).toHaveCount(0)
+  const wonderX = Number(await wonder.locator('.point-hit-area').getAttribute('cx'))
+  const fullX = Number(await full.locator('.point-hit-area').getAttribute('cx'))
+  expect(fullX).toBeGreaterThan(wonderX)
+
+  await wonder.locator('.point-hit-area').click()
+  await expect(page.locator('.evidence-score strong')).toHaveText('78.8')
+  await expect(wonder).toHaveAttribute('aria-pressed', 'true')
+  await full.focus()
+  await full.press('Enter')
+  await expect(page.locator('.evidence-score strong')).toHaveText('79.0')
+  await expect(full).toHaveAttribute('aria-pressed', 'true')
+  await wonder.focus()
+  await wonder.press('Space')
+  await expect(page.locator('.evidence-score strong')).toHaveText('78.8')
+  await expect(page.locator('.selected-guide')).toHaveCount(0)
+
+  for (const label of ['Output tokens per task', 'Time per task', 'Cost per task', 'Median', 'Log', 'Mean', 'Linear']) {
+    await page.getByRole('button', { name: label, exact: true }).click()
+    await expect(page.locator('.raw-score-point')).toHaveCount(2)
+    await expect(page.locator('.selected-guide')).toHaveCount(0)
+  }
+  const wonderCheckbox = page.locator('.legend-item').filter({ has: page.locator('.legend-name').filter({ hasText: /^Muse Wonder(?! Full)/ }) }).locator('input')
+  // An empty selection means all models; checking one isolates that model.
+  await wonderCheckbox.check()
+  await expect(wonder).toBeVisible()
+  await expect(full).toHaveCount(0)
+  await wonderCheckbox.uncheck()
+  await expect(full).toBeVisible()
+  await full.locator('.point-hit-area').dblclick()
+  await expect(page.locator('.raw-score-point')).toHaveCount(1)
+  await expect(full).toBeVisible()
+})
+
+test('whole-SVG zoom enlarges numeric and Muse-only charts, resets and exports intrinsic dimensions', async ({ page }) => {
+  for (const query of ['?view=official&q=astra', '?q=Muse%20Wonder&scenarios=0']) {
+    await page.goto(query)
+    const chart = page.locator('#effort-curve')
+    await expect(chart).toBeVisible()
+    const initial = (await chart.boundingBox())!
+    const viewBox = await chart.getAttribute('viewBox')
+    const scroll = page.getByRole('region', { name: 'Scrollable chart', exact: true })
+    await expect(scroll).toHaveAttribute('tabindex', '0')
+    await expect(page.getByRole('button', { name: 'Reduce chart magnification', exact: true })).toBeDisabled()
+    await page.getByRole('button', { name: 'Magnify chart', exact: true }).click()
+    await expect(page.locator('.chart-zoom-toolbar output')).toHaveText('125%')
+    const zoomed = (await chart.boundingBox())!
+    expect(zoomed.width / initial.width).toBeCloseTo(1.25, 2)
+    expect(zoomed.height / initial.height).toBeCloseTo(1.25, 2)
+    await expect(chart).toHaveAttribute('viewBox', viewBox!)
+    for (let step = 0; step < 7; step += 1) await page.getByRole('button', { name: 'Magnify chart', exact: true }).click()
+    await expect(page.locator('.chart-zoom-toolbar output')).toHaveText('300%')
+    await expect(page.getByRole('button', { name: 'Magnify chart', exact: true })).toBeDisabled()
+    await scroll.focus()
+    await scroll.press('ArrowRight')
+    await expect.poll(() => scroll.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0)
+
+    if (query.includes('Muse')) {
+      const download = page.waitForEvent('download')
+      await page.getByRole('button', { name: 'Download current chart as SVG' }).click()
+      const svg = await readFile((await (await download).path())!, 'utf8')
+      expect(svg).toContain('RAW SOURCE SCORES · UNIT UNSPECIFIED')
+      expect(svg).toContain('78.8')
+      expect(svg).toContain('79.0')
+      expect(svg).toContain('width="1160"')
+      expect(svg).not.toContain('width: 300%')
+      expect(svg).not.toContain('78.8%')
+      expect(svg).not.toContain('79.0%')
+    }
+    await page.getByRole('button', { name: 'Reduce chart magnification', exact: true }).click()
+    await expect(page.locator('.chart-zoom-toolbar output')).toHaveText('275%')
+    await page.getByRole('button', { name: 'Reset magnification', exact: true }).click()
+    await expect(page.locator('.chart-zoom-toolbar output')).toHaveText('100%')
+    expect((await chart.boundingBox())!.width).toBeCloseTo(initial.width, 1)
+    await expect(page.getByRole('button', { name: 'Reset magnification', exact: true })).toBeDisabled()
+  }
+})
+
+test('native chart fullscreen keeps evidence available and synchronizes browser exit and button exit focus', async ({ page }) => {
+  await page.goto('?q=Muse%20Wonder&scenarios=0')
+  const enter = page.getByRole('button', { name: 'Enter chart fullscreen', exact: true })
+  await enter.focus()
+  await enter.press('Enter')
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement?.classList.contains('analysis-grid') ?? false)).toBe(true)
+  const exit = page.getByRole('button', { name: 'Exit chart fullscreen', exact: true })
+  await expect(exit).toHaveAttribute('aria-pressed', 'true')
+  await page.locator('.raw-score-point').first().locator('.point-hit-area').click()
+  await expect(page.locator('.evidence-score strong')).toHaveText('78.8')
+  const evidence = page.locator('.analysis-grid .evidence-panel')
+  await evidence.locator('.evidence-score').scrollIntoViewIfNeeded()
+  await expect(evidence.locator('.evidence-score')).toBeInViewport()
+  // Synthetic Escape does not invoke browser-chrome fullscreen exit in headless Chromium.
+  // Exit through the native API to verify the same fullscreenchange synchronization.
+  await page.evaluate(() => document.exitFullscreen())
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true)
+  await expect(enter).toBeFocused()
+  await page.setViewportSize({ width: 375, height: 820 })
+  await enter.click()
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement?.classList.contains('analysis-grid') ?? false)).toBe(true)
+  await expect(exit).toBeVisible()
+  await evidence.locator('.evidence-score').scrollIntoViewIfNeeded()
+  await expect(evidence.locator('.evidence-score')).toBeInViewport()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375)
+  await exit.click()
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true)
+  await expect(enter).toBeFocused()
+})
+
+test('fullscreen request failures are reported to the user', async ({ page }) => {
+  await page.goto('?q=Muse%20Wonder')
+  await expect(page.locator('.analysis-grid')).toBeVisible()
+  await page.evaluate(() => {
+    document.querySelector<HTMLElement>('.analysis-grid')!.requestFullscreen = () => Promise.reject(new Error('Browser denied fullscreen'))
+  })
+  await page.getByRole('button', { name: 'Enter chart fullscreen', exact: true }).click()
+  await expect(page.locator('.chart-card > [role="status"]')).toContainText('The browser could not change fullscreen mode')
+  await expect(page.getByRole('button', { name: 'Enter chart fullscreen', exact: true })).toBeVisible()
+  await page.evaluate(() => Object.defineProperty(document, 'fullscreenEnabled', { configurable: true, value: false }))
+  await page.getByRole('button', { name: 'Enter chart fullscreen', exact: true }).click()
+  await expect(page.locator('.chart-card > [role="status"]')).toContainText('Fullscreen is unavailable in this browser')
+})
+
 test('SVG export, submission draft, methodology/source pages, and mobile layout work', async ({ page }) => {
   await page.goto('./')
   await page.locator('.plot-point').first().click()
@@ -601,7 +906,7 @@ test('SVG export, submission draft, methodology/source pages, and mobile layout 
   expect(svg).toContain('66.6%')
 
   await page.getByRole('tab', { name: /Review queue/ }).click()
-  await expect(page.locator('.candidate-card')).toHaveCount(2)
+  await expect(page.locator('.candidate-card')).toHaveCount(6)
   await page.getByLabel('Model name as source reports it').fill('Browser Test Model')
   await page.getByLabel('Publisher / evaluator').fill('Test Publisher')
   await page.getByLabel('Source document title').fill('Test evidence')
@@ -631,7 +936,7 @@ test('SVG export, submission draft, methodology/source pages, and mobile layout 
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.width)
 })
 
-test('cost-only source scenarios preserve their basis and leave unsupported X metrics without numeric guides', async ({ page }) => {
+test('source-reported cost remains distinct from independent output and time transfers', async ({ page }) => {
   await page.goto('?view=combined&q=Fireworks')
   const reportId = 'fireworks-deepswe-deepseek-v4.1-flash-max'
   const point = page.locator(`.estimated-point[data-observation-id="${reportId}"]`)
@@ -643,13 +948,15 @@ test('cost-only source scenarios preserve their basis and leave unsupported X me
   const evidence = page.locator('.usage-evidence')
   await expect(evidence).toContainText('SOURCE-REPORTED COST SCENARIO')
   await expect(evidence).toContainText('not normalized as a mean/median cost per scored attempt')
-  await expect(evidence).not.toContainText('Mean output tokens')
-  await expect(evidence).not.toContainText('Mean reported time')
+  await expect(evidence).toContainText('Mean reported time')
+  await expect(evidence).toContainText('separate II workload')
 
   const missingOutput = page.locator(`.no-data-point[data-observation-id="${reportId}"]`)
   await page.getByRole('button', { name: 'Output tokens per task', exact: true }).click()
+  await expect(page.locator(`.estimated-point[data-observation-id="${reportId}"]`)).toHaveCount(1)
+  await page.getByRole('checkbox', { name: /Include usage scenarios/ }).uncheck()
   await expect(page.locator(`.estimated-point[data-observation-id="${reportId}"]`)).toHaveCount(0)
-  await expect(missingOutput).toHaveAttribute('aria-label', /scenario exists.*no output tokens per task estimate is available/)
+  await expect(missingOutput).toHaveAttribute('aria-label', /not selected/)
   await missingOutput.click()
   const noDataGuide = page.locator(`.selected-guide[data-selected-guide-for="${reportId}"]`)
   await expect(noDataGuide).toHaveAttribute('data-selected-guide-type', 'no-data')
@@ -659,9 +966,18 @@ test('cost-only source scenarios preserve their basis and leave unsupported X me
 
 test('usage scenarios stay separate from measurements and export independently', async ({ page }) => {
   await page.goto('?view=combined')
+  const dataset = JSON.parse(await readFile(new URL('../data/approved/dataset.json', import.meta.url), 'utf8')) as Dataset
+  const research = JSON.parse(await readFile(new URL('../data/research/usage-proxy-cross-platform-20260927.json', import.meta.url), 'utf8'))
+  const scenarioTargets = research.scenarioConfig.targets as { observationId: string; metrics: Record<string, { selection: string }> }[]
+  const precedence = datacurveChartPrecedence(dataset.observations, dataset.sourceRetrieval.sourceId)
+  const chartRows = dataset.observations.filter((row) => !precedence.has(row.id) && hasPercentageScoreScale(displayScoreResult(row, 'pass_at_1')))
+  const optionalCount = (metric: 'cost' | 'outputTokens' | 'time') => chartRows.filter((row) => {
+    const target = scenarioTargets.find((item) => item.observationId === row.id)
+    return row.metrics[metric].value === null && (target?.metrics[metric]?.selection !== undefined && target.metrics[metric]!.selection !== 'none' || research.efficiencyExtension.targets.some((item: { observationId: string; metrics: string[] }) => item.observationId === row.id && item.metrics.includes(metric)))
+  }).length
   const scenarioToggle = page.getByRole('checkbox', { name: /Include usage scenarios/ })
   await expect(scenarioToggle).toBeChecked()
-  await expect(page.locator('.estimated-point')).toHaveCount(9)
+  await expect(page.locator('.estimated-point')).toHaveCount(optionalCount('cost'))
 
   const lunaId = 'aa-codex-gpt-6-luna-max-v1.1'
   const opusId = 'artificial-analysis-claude-code-opus-5.5-max-v1.1'
@@ -678,8 +994,7 @@ test('usage scenarios stay separate from measurements and export independently',
   await expect(page.locator(`.no-data-point[data-observation-id="${lunaId}"]`)).toHaveCount(0)
 
   const lunaRow = page.locator(`.results-table tr[data-observation-id="${lunaId}"]`)
-  await expect(lunaRow.locator('td').nth(3)).toContainText('Mean task cost is not inferred')
-  await expect(lunaRow.locator('td').nth(3)).toContainText('Estimated scenario')
+  await expect(lunaRow.locator('td').nth(3)).toContainText('Configured optional transfer · selected optional coordinate')
   await expect(lunaRow.locator('td').nth(3)).toContainText('$0.21 · USD per scored rollout attempt')
   await expect(lunaRow.locator('td').nth(3)).toContainText('not a confidence interval')
   await lunaEstimate.click()
@@ -688,20 +1003,22 @@ test('usage scenarios stay separate from measurements and export independently',
   await expect(page.locator('.usage-evidence')).toContainText('ESTIMATED USAGE SCENARIO · NOT MEASURED')
   await expect(page.locator('.usage-evidence')).toContainText('10,200,000 tokens/task')
   await expect(page.locator('.usage-evidence')).toContainText('not used as an output count')
-  await expect(page.locator('.usage-evidence a')).toHaveCount(3)
+  await expect(page.locator('.usage-source-evidence')).toContainText('aa-codex-vs-kimi-code-cli')
+  await expect(page.locator('.usage-source-evidence')).toContainText('datacurve-v1.1-json')
+  await expect(page.locator('.usage-source-evidence a').first()).toHaveAttribute('href', /^https:/)
 
   await scenarioToggle.uncheck()
   await expect(page).toHaveURL(/scenarios=0/)
   await expect(page.locator('.estimated-point')).toHaveCount(0)
   await expect(page.locator(`.no-data-point[data-observation-id="${lunaId}"]`)).toHaveCount(1)
-  await expect(page.locator('.no-data-lane-count')).toHaveText('31')
+  await expect(page.locator('.no-data-lane-count')).toHaveText(String(chartRows.filter((row) => row.metrics.cost.value === null).length))
   expect(await noDataSymbolOverlaps(page)).toEqual([])
   await page.reload()
   await expect(scenarioToggle).not.toBeChecked()
 
   await page.goto('?view=combined&x=outputTokens')
-  await expect(page.locator('.estimated-point')).toHaveCount(8)
-  await expect(page.locator('.estimated-point[data-x-metric="outputTokens"]')).toHaveCount(8)
+  await expect(page.locator('.estimated-point')).toHaveCount(optionalCount('outputTokens'))
+  await expect(page.locator('.estimated-point[data-x-metric="outputTokens"]')).toHaveCount(optionalCount('outputTokens'))
   await expect(page.locator('.x-tick-label')).not.toHaveCount(0)
   await expect(page.locator('.usage-scenario-note')).toContainText('Coding Agent suite mixed-token totals')
   await expect(lunaEstimate).toHaveAttribute('aria-label', /108,272 AA DeepSWE v1\.1 output tokens \/ task attempt/)
@@ -709,7 +1026,7 @@ test('usage scenarios stay separate from measurements and export independently',
   await expect(opusEstimate).toHaveAttribute('aria-label', /No defensible sensitivity range or prediction interval/)
 
   await page.getByRole('button', { name: 'Time per task', exact: true }).click()
-  await expect(page.locator('.estimated-point')).toHaveCount(3)
+  await expect(page.locator('.estimated-point')).toHaveCount(optionalCount('time'))
   await expect(page.locator('.usage-scenario-note')).toContainText('Time scenarios use measured per-task wall-clock pairs')
   await page.getByRole('button', { name: 'Median', exact: true }).click()
   await expect(page.locator('.estimated-point')).toHaveCount(0)
@@ -731,8 +1048,8 @@ test('usage scenarios stay separate from measurements and export independently',
   const scenarioPath = await (await scenarioDownload).path()
   const scenarioExport = JSON.parse(await readFile(scenarioPath!, 'utf8'))
   expect(scenarioExport.exportMetadata.exportType).toBe('usage-scenarios-only')
-  expect(scenarioExport.scenarios).toHaveLength(17)
-  expect(scenarioExport.scenarios.every((item: { recordType: string; measurement: { meanCostUsd: number | null }; scenario: { costUsd: number; costUnit: string } }) => ['estimated_usage_scenario', 'source_reported_cost_scenario', 'source_reported_output_with_cost_scenario'].includes(item.recordType) && item.measurement.meanCostUsd === null && item.scenario.costUsd > 0 && item.scenario.costUnit.length > 0)).toBe(true)
+  expect(scenarioExport.scenarios.map((item: { targetObservationId: string }) => item.targetObservationId).sort()).toEqual([...new Set<string>([...scenarioTargets.map((row) => row.observationId), ...research.efficiencyExtension.targets.map((row: { observationId: string }) => row.observationId)])].sort())
+  expect(scenarioExport.scenarios.every((item: { targetObservationId: string; recordType: string; measurement: { meanCostUsd: number | null }; scenario: { costUsd: number | null; costUnit: string } }) => ['estimated_usage_scenario', 'source_reported_cost_scenario', 'source_reported_output_with_cost_scenario'].includes(item.recordType) && item.measurement.meanCostUsd === dataset.observations.find((row) => row.id === item.targetObservationId)!.metrics.cost.value && item.scenario.costUnit.length > 0 && (item.targetObservationId === 'datacurve-paper-minimax-m2.7-default-version-unknown' ? item.scenario.costUsd === null : typeof item.scenario.costUsd === 'number' && Number.isFinite(item.scenario.costUsd) && item.scenario.costUsd > 0))).toBe(true)
   expect(scenarioExport.scenarios.filter((item: { recordType: string }) => item.recordType === 'source_reported_output_with_cost_scenario')).toHaveLength(10)
   expect(scenarioExport.scenarios.filter((item: { recordType: string }) => item.recordType === 'source_reported_cost_scenario')).toHaveLength(4)
   const deepseekOutput = scenarioExport.scenarios.find((item: { targetObservationId: string }) => item.targetObservationId === 'aa-codex-deepseek-v4-pro-0813-max-v1.1')
@@ -769,7 +1086,7 @@ test('AA DeepSWE output and suppressed Google cross-run evidence stay attached t
   await expect(luna).toHaveAttribute('aria-label', /cost\/time scenarios are cross-benchmark transfers, not AA DeepSWE measurements/)
   await expect(luna).not.toHaveAttribute('aria-label', /only its dollar cost is pooled across the suite/)
   const opusRow = page.locator('.results-table tr[data-observation-id="aa-claude-code-opus-5-max-v1.1"]')
-  await expect(opusRow).toContainText('Same-source AA DeepSWE mean')
+  await expect(opusRow).toContainText('Same-source AA DeepSWE output mean')
   await opusRow.getByRole('button', { name: 'Details' }).click()
   await expect(page.locator('.usage-evidence')).toContainText('Same-model, same-max Datacurve mean USD per scored attempt')
   await expect(page.locator('.usage-evidence')).toContainText('Source-reported mean · AA DeepSWE v1.1 output tokens / task attempt')
@@ -783,4 +1100,28 @@ test('AA DeepSWE output and suppressed Google cross-run evidence stay attached t
   await expect(googleRow).toContainText('143,243 output tokens')
   await googleRow.getByRole('button', { name: 'Details' }).click()
   await expect(page.locator('.usage-evidence')).toContainText('mini_swe_agent_gemini_3_8_flash_high')
+})
+
+test('filtered scenario evidence export retains median/strict alternatives and precedence-suppressed rows', async ({ page }) => {
+  const dataset = JSON.parse(await readFile(new URL('../data/approved/dataset.json', import.meta.url), 'utf8')) as Dataset
+  const research = JSON.parse(await readFile(new URL('../data/research/usage-proxy-cross-platform-20260927.json', import.meta.url), 'utf8'))
+  for (const scenario of [
+    { url: '?view=combined&stat=median&scenarios=0', excluded: 'medians are not inferred' },
+    { url: '?view=combined&strict=1&scenarios=0', excluded: 'excluded in strict mode' },
+  ]) {
+    await page.goto(scenario.url)
+    await page.locator('.scenario-export-group summary').click()
+    const download = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Filtered scenarios JSON' }).click()
+    const path = await (await download).path()
+    const exported = JSON.parse(await readFile(path!, 'utf8'))
+    expect(research.scenarioConfig.approvedDatasetRevision).toBe(dataset.revisionId)
+    expect(exported.scenarios.map((row: { targetObservationId: string }) => row.targetObservationId).sort()).toEqual([...new Set<string>([...research.scenarioConfig.targets.map((row: { observationId: string }) => row.observationId), ...research.efficiencyExtension.targets.map((row: { observationId: string }) => row.observationId)])].sort())
+    expect(exported.scenarios.some((row: { targetObservationId: string }) => row.targetObservationId === 'google-gemini-3.8-flash-high-v1.1')).toBe(true)
+    const luna = exported.scenarios.find((row: { targetObservationId: string }) => row.targetObservationId === 'aa-codex-gpt-6-luna-max-v1.1')
+    expect(luna.selectedMetricResolution.value).toBeNull()
+    expect(luna.selectedMetricResolution.alternatives[0].eligible).toBe(false)
+    expect(luna.selectedMetricResolution.alternatives[0].exclusionReason).toContain(scenario.excluded)
+    expect(luna.scenario.metricConfiguration.outputTokens.factIds).toContain('aa-output-gpt-6-luna-max')
+  }
 })

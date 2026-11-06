@@ -1,0 +1,251 @@
+{
+  "schemaVersion": 1,
+  "researchDate": "2026-09-29",
+  "purpose": "Research-only output-token/USD estimates and explicitly unresolved targets; no application or approved-observation changes",
+  "approvedDatasetSha256": "3e63671899af8ebbbcd6388cac3d8ec69cecf1b0aa747b4baa9a6ae7957dd710",
+  "existingScenarioResearch": {
+    "path": "data/research/usage-proxy-cross-platform-20260927.json",
+    "sha256": "80cf13ee61df3a17b270ee0929de88416d56966a5caaaca0ea26c620ae3f05f6",
+    "use": "The seven previously researched AA scenarios, exact per-model input rows, scored-attempt denominators, and sensitivity/holdout calculations are referenced here; not independently remeasured or applied to approved fields."
+  },
+  "metricDefinitions": {
+    "target": "DeepSWE v1.1 output tokens and USD per scored rollout attempt (unless costUnit explicitly says otherwise)",
+    "output": "output-only tokens; not AA Coding Agent pooled mixed-category tokens, not total context tokens",
+    "cost": "USD; AA Coding suite cost per task is not DeepSWE-only; Fireworks source-reported Cost/Task has unspecified accounting/attempt denominator",
+    "confidence": "Qualitative scope/evidence judgment, never a probability. Sensitivity values are arithmetic alternatives from stated empirical factors, not confidence or prediction intervals.",
+    "forbiddenConversion": "No dollars-to-output conversion without fresh/cache-read/cache-write/output mix; no score-to-usage or token-rate-to-runtime conversion."
+  },
+  "sources": [
+    {
+      "id": "datacurve-feed",
+      "url": "https://deepswe.datacurve.ai/artifacts/v1.1/leaderboard-live.json",
+      "retrievedOn": "2026-09-26",
+      "sha256": "a7c15d66288fd249c020b9931c017b92d1a3b90e480b3ff34974b752bd030019",
+      "locator": "rows[config=mini_swe_agent_claude_fable_5_max], and exact configuration IDs in existingScenarioResearch"
+    },
+    {
+      "id": "aa-method",
+      "url": "https://artificialanalysis.ai/methodology/coding-agents-benchmarking",
+      "retrievedOn": "2026-09-29",
+      "sha256": "b5738bc67641cfca61dfbf902e44197a999ee0a4f77e8fc22d357496b35d8017",
+      "locator": "Coding Agent Index v1.5 / Efficiency Metrics: pooled per-task-attempt across DeepSWE 113, Terminal-Bench 4.0 66, SWE-Atlas-QnA 124"
+    },
+    {
+      "id": "aa-claude-code",
+      "url": "https://artificialanalysis.ai/agents/coding-agents/comparisons/claude-code-vs-codex",
+      "retrievedOn": "2026-09-29",
+      "sha256": "2150113e1b5c0e7a08d60defd83cbca160663769d15625a133e104c6bf8156e0",
+      "locator": "Model Variants: Fable 5.1 (max) (with fallback) DeepSWE 64%, Cost/Task $12.39, Tokens/Task 5.7M mixed; Opus 5.5 (max) $13.04, Opus 5 (max) $10.79"
+    },
+    {
+      "id": "aa-codex",
+      "url": "https://artificialanalysis.ai/agents/coding-agents/comparisons/codex-vs-kimi-code-cli",
+      "retrievedOn": "2026-09-29",
+      "sha256": "38e53b663085602e147094f4afd61cc6a7f67fa0156921f3bcc9b9d8a7593d8f",
+      "locator": "Model Variants: GPT-6 Sol max $2.99/task; Luna max $0.18/task; GPT-5.6 Sol max $6.35, Luna max $0.44; Astra max $7.47"
+    },
+    {
+      "id": "aa-gpt6-output-prices",
+      "url": "https://artificialanalysis.ai/articles/gpt-6-sol-and-luna-push-the-cost-efficiency-frontier",
+      "publishedOn": "2026-09-22",
+      "retrievedOn": "2026-09-29",
+      "sha256": "09ec95e16f41c933c69546350eabefd8192d13b57f8d3ccb7a1c24b4f5e4525d",
+      "locator": "Key takeaways: Intelligence Index output tokens/task ~31k Sol, ~51k Luna, prior ~29k Sol, ~41k Luna; GPT-6 Sol $2/$10 and Luna $0.10/$0.50 per million input/output tokens"
+    },
+    {
+      "id": "aa-opus-output-prices",
+      "url": "https://artificialanalysis.ai/articles/claude-opus-5-5",
+      "publishedOn": "2026-09-22",
+      "retrievedOn": "2026-09-29",
+      "sha256": "a02d8cc8370173b1c44a94e7dc1a3857665021a9432856595bc1d2b0efd13fbb",
+      "locator": "Key takeaways: Intelligence Index output/task ~119k Opus 5.5 versus ~73k Opus 5; $4/$20 versus $5/$25 per million input/output"
+    },
+    {
+      "id": "aa-fable-output",
+      "url": "https://artificialanalysis.ai/articles/benchmarking-gpt-6-astra",
+      "publishedOn": "2026-09-09",
+      "retrievedOn": "2026-09-29",
+      "sha256": "137ecd8da63371fa050bd46b61c270de4d8f7becd6c30732c2ef3b1f05382c02",
+      "locator": "Intelligence Index: Fable 5.1 max with fallback ~78k output tokens/task"
+    },
+    {
+      "id": "aa-fable-ratio",
+      "url": "https://artificialanalysis.ai/articles/claude-fable-5-1",
+      "publishedOn": "2026-09-01",
+      "retrievedOn": "2026-09-29",
+      "sha256": "a68bf6079a2fe8709a363019baeecb21f5f7f66759ee0737e30b0ddf70dc9831",
+      "locator": "Key takeaways: Fable 5.1 max with default fallback ~1.7x Fable 5 output tokens on AA Intelligence Index; fallback ~4% of output tokens"
+    },
+    {
+      "id": "firecrawl-fable-max",
+      "url": "https://www.firecrawl.dev/blog/is-fable-5-1-cheaper-than-fable-5",
+      "publishedOn": "2026-09-07",
+      "retrievedOn": "2026-09-29",
+      "sha256": "e00d71e9e3839ab8e7640605fa3fa905d789531b7fc460b79eab9f7b8da5f55a",
+      "locator": "Does Fable 5.1 use more output tokens than Fable 5? Three tool-disabled prompts at max: 10,026 vs 7,727 output; 57 API-billed runs elsewhere in article are not DeepSWE"
+    },
+    {
+      "id": "anthropic-pricing",
+      "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "retrievedOn": "2026-09-29",
+      "sha256": "a119cdb70d4a23f93dfd89047df5e545c8e9f0d2a890e23a62db6774d1ceba0c",
+      "locator": "Model pricing table: Fable 5.1 $10/M input $50/M output $0.25/M hits, 5m write $12.50/M, 1h write $20/M; Opus 5.5 $4/$20 and $0.20/M hits"
+    },
+    {
+      "id": "anthropic-opus-5.5-card",
+      "url": "https://www-cdn.anthropic.com/fc1b44717c85dc068bc6ba5024219938094694bd/Claude%20Opus%205.5%20System%20Card.pdf",
+      "retrievedOn": "2026-09-26",
+      "sha256": "7311c9c6bbb16d012f1c12c7418b05949fcf7ae3e30d2c40f22050074b2a7378",
+      "locator": "PDF printed p.175 §8.3: average 74.2% over five trials; effort, per-task usage and cost not reported",
+      "retained": false
+    },
+    {
+      "id": "anthropic-opus-5-card",
+      "url": "https://www.anthropic.com/claude-opus-5-system-card",
+      "retrievedOn": "2026-09-26",
+      "sha256": "0950dae1ba6b341e4f1a009e535e0f025625efeca21bd043a9a5ae148a3f2e6b",
+      "locator": "PDF printed p.154 §8.3 Fig. 8.3.A; five labeled effort results; cost axis has no precise row-level numeric cost",
+      "retained": false
+    },
+    {
+      "id": "anthropic-fable-5.1-card",
+      "url": "https://www.anthropic.com/claude-fable-5-1-mythos-5-1-system-card",
+      "retrievedOn": "2026-09-26",
+      "sha256": "b0d59edc7a60eef32a879c13d713cce60c3fefd7e6b5183afdc8b835af3c8c39",
+      "locator": "PDF printed p.168 §8.3: 67.4% average over five trials, 113 tasks; effort/harness/usage unspecified",
+      "retained": false
+    },
+    {
+      "id": "openai-announcement",
+      "url": "https://openai.com/index/introducing-gpt-6-sol-and-luna/",
+      "retrievedOn": "2026-09-26",
+      "sha256": "27c60ffddb3d37dd734f1a06f0aba0f33770772eb9a03f53285318476ecde5ee",
+      "retrievalOn2026_09_29": "HTTP 403; prior capture only",
+      "locator": "Coding paragraph: GPT-6 Sol max 68.8%, Luna max 66.6%; no exact task usage or USD"
+    },
+    {
+      "id": "tinfield-card",
+      "url": "https://huggingface.co/badtheorylabs/Tinfield-1",
+      "retrievedOn": "2026-09-29",
+      "sha256": "29746a01668e51f94f436c28e7d82758ea539803467f83415923f0fc5fe37677",
+      "locator": "Evaluation / DeepSWE v1.1: Tinfield 1 raw 62, mini-swe-agent full 113 tasks k=5; no cost/tokens"
+    },
+    {
+      "id": "paper",
+      "url": "https://arxiv.org/html/2607.07946v1",
+      "retrievedOn": "2026-09-29",
+      "sha256": "b0de495822736e0c136786ec93133bb75f39e82faf0e61ddc61370efe04959ee",
+      "locator": "§6.2 Figure 8: plot of per-trial median output tokens/USD; no printed per-model numeric values or version declaration"
+    },
+    {
+      "id": "fireworks-deepswe",
+      "url": "https://fireworks.ai/blog/DeepSeek-V4.1-Flash-Astra",
+      "retrievedOn": "2026-09-26",
+      "sha256": "c94d19c5313f1a1609ef595533ee6cce0b8a5aa10741e501c2bfc6883d54cccc",
+      "locator": "DeepSeek on the DeepSWE Pareto Frontier table; same-row Opus 5 max $11.838/Task and GPT-6 Astra xhigh $6.524/Task, cost accounting unknown"
+    },
+    {
+      "id": "together-fable5",
+      "url": "https://www.together.ai/blog/deepseek-v4-pro-0813-vs-claude-fable-5-on-deepswe-cost-coding-and-routing",
+      "retrievedOn": "2026-09-29",
+      "sha256": "fa412c84f29ccbe647148cc792cc69a775d6de6633aa8dda8aaccbe59414ae0e",
+      "locator": "DeepSWE Fable 5 max (not Fable 5.1) ~115k output, $21.63 per rollout; 113 tasks, 452 rollouts; corroborative only"
+    }
+  ],
+  "additionalPlatformContext": {
+    "anthropicExampleUrl": "https://claude.com/blog/what-a-task-costs-on-opus-5-5",
+    "anthropicExampleSha256": "d0e9c266840eaddb7b4a161234f8d8b64744b6d634f09d2c6045b2c679fdf2cf",
+    "anthropicExampleRetrievedOn": "2026-09-29",
+    "anthropicExampleLocator": "What does a task cost? says counts are illustrations, 2.2M input/60k output/91% cache read sample is not DeepSWE",
+    "rule": "Do not derive a target bill from these examples or list prices without target-specific cache/read/write/output counts."
+  },
+  "numericInputsAndFormulas": {
+    "fableResearchOnly": {
+      "referenceConfigurationId": "mini_swe_agent_claude_fable_5_max",
+      "referenceModel": "Claude Fable 5, not 5.1",
+      "referenceEffort": "max",
+      "referenceHarness": "mini-swe-agent",
+      "referenceMeanOutputTokensPerScoredAttempt": 118592.77293577982,
+      "referenceScoredAttempts": 436,
+      "referenceMeanCostUsdPerScoredAttemptNotTransferred": 21.634702092592594,
+      "referenceCostBasis": null,
+      "hypothesisToolDisabled": {
+        "fable5_1MaxOutputTokensThreePrompts": 10026,
+        "fable5MaxOutputTokensThreePrompts": 7727,
+        "formula": "118592.77293577982 * (10026 / 7727)",
+        "outputTokensPerScoredAttemptIfRatioTransfers": 153877.46103974746,
+        "limitations": "Three tool-disabled prompts rather than agentic DeepSWE attempts; possible different fallback routing; single predecessor version."
+      },
+      "hypothesisAaIntelligence": {
+        "aaFable5_1WithFallbackOutputTokensPerIntelligenceIndexTaskApprox": 78000,
+        "aaFable5_1ToFable5OutputRatioApprox": 1.7,
+        "formula": "118592.77293577982 * 1.7",
+        "outputTokensPerScoredAttemptIfRatioTransfersApprox": 201607.7139908257,
+        "limitations": "AA ratio is approximate and from the separate Intelligence Index; default fallback served ~4% of AA output. Not a second DeepSWE sample or bound."
+      },
+      "combinedPointEstimate": null,
+      "uncertainty": "Two noncommensurate sensitivity hypotheses, NOT a range/CI/probability. No matched DeepSWE Fable 5.1 result or price basis; no DeepSWE USD estimate."
+    },
+    "existingOpenaiCalibration": {
+      "outputCalibrationPairs": [
+        { "model": "GPT-5.6 Sol max", "aaIntelligenceOutputTokensPerTaskApprox": 29000, "datacurveMeanOutputPerScoredAttempt": 60013.64444444444, "scoredAttempts": 450 },
+        { "model": "GPT-5.6 Luna max", "aaIntelligenceOutputTokensPerTaskApprox": 41000, "datacurveMeanOutputPerScoredAttempt": 73399.70758928571, "scoredAttempts": 448 }
+      ],
+      "outputFormula": "target AA Intelligence output * ((60013.64444444444/29000 + 73399.70758928571/41000)/2)",
+      "costCalibrationPairs": [
+        { "model": "GPT-6 Astra max", "aaPooledUsdPerTask": 7.47, "datacurveUsdPerScoredAttempt": 7.497827996681416, "costBasisReported": true },
+        { "model": "GPT-5.6 Sol max", "aaPooledUsdPerTask": 6.35, "datacurveUsdPerScoredAttempt": 8.386436346666667, "costBasisReported": false },
+        { "model": "GPT-5.6 Luna max", "aaPooledUsdPerTask": 0.44, "datacurveUsdPerScoredAttempt": 3.028116810267857, "costBasisReported": false }
+      ],
+      "costFormula": "target AA Coding suite USD/task * sum(aaUsd*datacurveUsd)/sum(aaUsd^2) across the three cost pairs",
+      "costSlope": 1.1482398468916322,
+      "outputLeaveOneOutMapePercent": 14.543611181332372,
+      "costLeaveOneOutMapePercent": 46.724032053043665
+    },
+    "existingOpus5_5Calibration": {
+      "targetAaOutputTokensIntelligenceApprox": 119000,
+      "referenceAaOpus5OutputTokensIntelligenceApprox": 73000,
+      "referenceDatacurveOpus5MaxOutputTokensPerScoredAttempt": 117565.6936936937,
+      "referenceDatacurveScoredAttempts": 444,
+      "outputFormula": "119000 * (117565.6936936937 / 73000)",
+      "targetAaCodingSuiteUsdPerTask": 13.04,
+      "referenceAaOpus5CodingSuiteUsdPerTask": 10.79,
+      "referenceDatacurveOpus5MaxUsdPerScoredAttempt": 11.837583271396396,
+      "referenceDatacurveCostBasis": null,
+      "costFormula": "13.04 * (11.837583271396396 / 10.79)",
+      "limitation": "One adjacent-version pair; no holdout, no defensible interval."
+    }
+  },
+  "outcomes": [
+    { "id": "aa-codex-gpt-6-sol-max-v1.1", "disposition": "existing-cross-platform-scenario", "model": "GPT-6 Sol", "effort": "max", "harness": "Codex", "outputTokensPerScoredAttempt": 59824.92817983883, "usdPerScoredAttempt": 3.4332371422059804, "outputFactorSensitivity": [55497.33988458188, 64152.516475095785], "costFactorSensitivity": [3.001138649274088, 20.57743014250203], "sourceIds": ["aa-method", "aa-codex", "aa-gpt6-output-prices", "datacurve-feed"], "note": "Low evidence; no target DeepSWE usage run; cost LOO MAPE 46.7%. Sensitivities are not intervals." },
+    { "id": "aa-codex-gpt-6-luna-max-v1.1", "disposition": "existing-cross-platform-scenario", "model": "GPT-6 Luna", "effort": "max", "harness": "Codex", "outputTokensPerScoredAttempt": 98421.65603779937, "usdPerScoredAttempt": 0.20668317244049378, "outputFactorSensitivity": [91302.07529398955, 105541.2367816092], "costFactorSensitivity": [0.18067055413690158, 1.2387750587459414], "sourceIds": ["aa-method", "aa-codex", "aa-gpt6-output-prices", "datacurve-feed"], "note": "Low evidence; cost fit unsteady. Sensitivities are not intervals." },
+    { "id": "artificial-analysis-claude-code-opus-5.5-max-v1.1", "disposition": "existing-single-pair-scenario", "model": "Opus 5.5", "effort": "max", "harness": "Claude Code", "outputTokensPerScoredAttempt": 191648.18561026783, "usdPerScoredAttempt": 14.306032053661632, "sourceIds": ["aa-method", "aa-claude-code", "aa-opus-output-prices", "datacurve-feed"], "note": "Very low evidence; one Opus 5 max adjacent-version pair; no range." },
+    { "id": "aa-claude-code-fable-5.1-max-v1.1", "disposition": "existing-suite-cost-only-plus-research-output-sensitivity", "model": "Fable 5.1 (max) (with fallback)", "effort": "max", "harness": "Claude Code", "outputTokensPerScoredAttempt": null, "outputSensitivityHypotheses": [153877.46103974746, 201607.7139908257], "usdPerScoredAttempt": null, "aaPooledSuiteUsdPerTask": 12.39, "sourceIds": ["datacurve-feed", "aa-method", "aa-claude-code", "aa-fable-ratio", "aa-fable-output", "firecrawl-fable-max", "anthropic-pricing"], "note": "Output hypotheses are separate unsupported workload transfers, not an interval or point prediction; $12.39/task is AA suite-only. No DeepSWE USD scenario." },
+    { "id": "openai-gpt-6-sol-v1.1-max", "disposition": "research-only-conditional-cross-harness", "model": "GPT-6 Sol", "effort": "max", "harness": null, "outputTokensPerScoredAttempt": null, "usdPerScoredAttempt": null, "conditionalProxy": { "referenceObservationId": "aa-codex-gpt-6-sol-max-v1.1", "outputTokensPerScoredAttempt": 59824.92817983883, "usdPerScoredAttempt": 3.4332371422059804 }, "sourceIds": ["openai-announcement", "aa-codex", "aa-gpt6-output-prices", "datacurve-feed"], "note": "Same named model and max effort; source experiment/harness unknown. Score 68.8% is NOT a usage input. Very-low scope confidence, no approved estimate." },
+    { "id": "openai-gpt-6-luna-v1.1-max", "disposition": "research-only-conditional-cross-harness", "model": "GPT-6 Luna", "effort": "max", "harness": null, "outputTokensPerScoredAttempt": null, "usdPerScoredAttempt": null, "conditionalProxy": { "referenceObservationId": "aa-codex-gpt-6-luna-max-v1.1", "outputTokensPerScoredAttempt": 98421.65603779937, "usdPerScoredAttempt": 0.20668317244049378 }, "sourceIds": ["openai-announcement", "aa-codex", "aa-gpt6-output-prices", "datacurve-feed"], "note": "Same named model and max effort; source experiment/harness unknown. Score 66.6% is NOT a usage input. Very-low scope confidence, no approved estimate." },
+    { "id": "anthropic-claude-opus-5.5-v1.1", "disposition": "unestimated-effort-and-harness-unknown", "model": "Claude Opus 5.5", "effort": null, "outputTokensPerScoredAttempt": null, "usdPerScoredAttempt": null, "sourceIds": ["anthropic-opus-5.5-card", "anthropic-pricing"], "note": "System-card average 74.2% over five trials has no effort/harness/cost/output. AA Opus 5.5 max is a different observation; do not assign its max scenario." },
+    { "id": "anthropic-claude-fable-5.1-v1.1", "disposition": "unestimated-effort-and-harness-unknown", "model": "Claude Fable 5.1", "effort": null, "outputTokensPerScoredAttempt": null, "usdPerScoredAttempt": null, "sourceIds": ["anthropic-fable-5.1-card", "anthropic-pricing"], "note": "67.4% average over five trials gives no effort, fallback, harness, output or bill; do not assign AA max-with-fallback scenarios." },
+    { "id": "anthropic-claude-opus-5-low-v1.1", "disposition": "chart-superseded-by-official", "referenceConfigurationId": "mini_swe_agent_claude_opus_5_low", "outputTokensPerScoredAttempt": null, "usdPerScoredAttempt": null, "sourceIds": ["anthropic-opus-5-card", "datacurve-feed"] },
+    { "id": "anthropic-claude-opus-5-medium-v1.1", "disposition": "chart-superseded-by-official", "referenceConfigurationId": "mini_swe_agent_claude_opus_5_medium", "outputTokensPerScoredAttempt": null, "usdPerScoredAttempt": null, "sourceIds": ["anthropic-opus-5-card", "datacurve-feed"] },
+    { "id": "anthropic-claude-opus-5-high-v1.1", "disposition": "chart-superseded-by-official", "referenceConfigurationId": "mini_swe_agent_claude_opus_5_high", "outputTokensPerScoredAttempt": null, "usdPerScoredAttempt": null, "sourceIds": ["anthropic-opus-5-card", "datacurve-feed"] },
+    { "id": "anthropic-claude-opus-5-xhigh-v1.1", "disposition": "chart-superseded-by-official", "referenceConfigurationId": "mini_swe_agent_claude_opus_5_xhigh", "outputTokensPerScoredAttempt": null, "usdPerScoredAttempt": null, "sourceIds": ["anthropic-opus-5-card", "datacurve-feed"] },
+    { "id": "anthropic-claude-opus-5-max-v1.1", "disposition": "chart-superseded-by-official", "referenceConfigurationId": "mini_swe_agent_claude_opus_5_max", "outputTokensPerScoredAttempt": null, "usdPerScoredAttempt": null, "sourceIds": ["anthropic-opus-5-card", "datacurve-feed"] },
+    { "id": "aa-claude-code-opus-5-max-v1.1", "disposition": "existing-cross-harness-scenario-chart-superseded", "referenceConfigurationId": "mini_swe_agent_claude_opus_5_max", "outputTokensPerScoredAttempt": 117565.6936936937, "usdPerScoredAttempt": 11.837583271396396, "sourceIds": ["aa-claude-code", "datacurve-feed"] },
+    { "id": "aa-codex-gpt-6-astra-max-v1.1", "disposition": "existing-cross-harness-scenario-chart-superseded", "referenceConfigurationId": "mini_swe_agent_gpt_6_astra_max", "outputTokensPerScoredAttempt": 61148.50663716814, "usdPerScoredAttempt": 7.497827996681416, "sourceIds": ["aa-codex", "datacurve-feed"] },
+    { "id": "aa-codex-gpt-5.6-sol-max-v1.1", "disposition": "existing-cross-harness-scenario-chart-superseded", "referenceConfigurationId": "mini_swe_agent_gpt_5_6_sol_max", "outputTokensPerScoredAttempt": 60013.64444444444, "usdPerScoredAttempt": 8.386436346666667, "sourceIds": ["aa-codex", "datacurve-feed"] },
+    { "id": "aa-codex-gpt-5.6-luna-max-v1.1", "disposition": "existing-cross-harness-scenario-chart-superseded", "referenceConfigurationId": "mini_swe_agent_gpt_5_6_luna_max", "outputTokensPerScoredAttempt": 73399.70758928571, "usdPerScoredAttempt": 3.028116810267857, "sourceIds": ["aa-codex", "datacurve-feed"] },
+    { "id": "fireworks-deepswe-claude-opus-5-max", "disposition": "source-cost-only-chart-superseded", "referenceConfigurationId": "mini_swe_agent_claude_opus_5_max", "outputTokensPerScoredAttempt": null, "usdPerScoredAttempt": null, "sourceReportedUsdPerTaskUnknownAccounting": 11.838, "sourceIds": ["fireworks-deepswe", "datacurve-feed"] },
+    { "id": "fireworks-deepswe-gpt-6-astra-xhigh", "disposition": "source-cost-only-chart-superseded", "referenceConfigurationId": "mini_swe_agent_gpt_6_astra_xhigh", "outputTokensPerScoredAttempt": null, "usdPerScoredAttempt": null, "sourceReportedUsdPerTaskUnknownAccounting": 6.524, "sourceIds": ["fireworks-deepswe", "datacurve-feed"] },
+    { "id": "badtheorylabs-tinfield-1-v1.1", "disposition": "unestimated-no-usage-or-bill", "model": "Tinfield 1", "effort": null, "harness": "mini-swe-agent", "outputTokensPerScoredAttempt": null, "usdPerScoredAttempt": null, "sourceIds": ["tinfield-card"], "note": "k=5/full 113 tasks but no attempt output tokens, cost or comparable provider rate; architecture/model lineage cannot supply usage." },
+    { "id": "datacurve-paper-gpt-5.5-xhigh-version-unknown", "disposition": "unestimated-separate-version-unknown-experiment", "outputTokensPerScoredAttempt": null, "usdPerScoredAttempt": null, "sourceIds": ["paper"], "note": "Paper 70.0%, separate from v1.1 official 67.035%; Figure 8 unnumbered medians, not task-level means." },
+    { "id": "datacurve-paper-gpt-5.4-xhigh-version-unknown", "disposition": "unestimated-paper-no-numeric-usage", "outputTokensPerScoredAttempt": null, "usdPerScoredAttempt": null, "sourceIds": ["paper"] },
+    { "id": "datacurve-paper-gpt-5.4-mini-xhigh-version-unknown", "disposition": "unestimated-paper-no-numeric-usage", "outputTokensPerScoredAttempt": null, "usdPerScoredAttempt": null, "sourceIds": ["paper"] },
+    { "id": "datacurve-paper-claude-opus-4.6-max-version-unknown", "disposition": "unestimated-paper-no-numeric-usage", "outputTokensPerScoredAttempt": null, "usdPerScoredAttempt": null, "sourceIds": ["paper"] },
+    { "id": "datacurve-paper-claude-opus-4.7-max-version-unknown", "disposition": "unestimated-paper-no-numeric-usage", "outputTokensPerScoredAttempt": null, "usdPerScoredAttempt": null, "sourceIds": ["paper"] },
+    { "id": "datacurve-paper-claude-sonnet-4.6-high-version-unknown", "disposition": "unestimated-paper-no-numeric-usage", "outputTokensPerScoredAttempt": null, "usdPerScoredAttempt": null, "sourceIds": ["paper"] },
+    { "id": "datacurve-paper-claude-haiku-4.5-default-version-unknown", "disposition": "unestimated-paper-no-numeric-usage", "outputTokensPerScoredAttempt": null, "usdPerScoredAttempt": null, "sourceIds": ["paper"], "note": "Provider default effort, not max." },
+    { "id": "datacurve-paper-minimax-m2.7-default-version-unknown", "disposition": "unestimated-paper-no-numeric-usage", "outputTokensPerScoredAttempt": null, "usdPerScoredAttempt": null, "sourceIds": ["paper"], "note": "Provider default effort, not max." }
+  ],
+  "coverageRule": "Only approved source-specific observations outside Meta, Google, xAI, DeepSeek, Xiaomi, Qwen, Moonshot/Kimi, Step and GLM; chart-superseded rows retained with explicit disposition. No aliases or user-data/local-run transfer.",
+  "nonStatisticalUncertainty": "Two-factor output and three-factor cost envelopes in existing OpenAI scenarios are small-sample arithmetic sensitivities; Fable hypotheses are from different non-DeepSWE workloads and are not even an empirical envelope. No fabricated confidence intervals, effort settings, price mixes, or target measurements."
+}
