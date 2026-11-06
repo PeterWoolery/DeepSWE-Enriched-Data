@@ -56,6 +56,26 @@ describe('approved observation boundaries', () => {
     expect(dataset.observations.filter((row) => /muse-spark-1-[12]/i.test(row.model.reportedName))).toHaveLength(2)
   })
 
+  it('keeps the Google Gemini 4 developer result distinct from measured usage and unspecified evaluation details', () => {
+    const gemini = dataset.observations.find((row) => row.id === 'google-gemini-4-argon-v1.1')!
+    expect(gemini.model).toMatchObject({ reportedName: 'Gemini 4 Argon', canonicalId: null, snapshot: null })
+    expect(gemini.result).toMatchObject({ metric: 'pass_at_1', value: 0.779, reportedValue: 77.9, reportedUnit: '%', denominatorCount: null })
+    expect(gemini.benchmark).toMatchObject({ version: '1.1', scope: 'unknown', taskCount: null, runs: null })
+    expect(gemini.effort.reportedLabel).toBeNull()
+    expect(gemini.result.confidenceInterval.low).toBeNull()
+    expect(gemini.series).toMatchObject({ harness: 'mini-swe agent harness', connectable: false })
+    expect(Object.values(gemini.metrics).every((metric) => metric.value === null)).toBe(true)
+    expect(gemini).toMatchObject({ publisher: 'Google DeepMind', evaluator: 'Google DeepMind', sourceCategory: 'developer' })
+    expect(gemini.provenance).toMatchObject({
+      sourceId: 'google-gemini-4-argon-announcement',
+      url: 'https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-4-argon/',
+      contentSha256: 'cf2ecb2c2a5b8aca96928e2af37db3f25e24695d59406fbd51942a43c5c1864d',
+      independentReplication: 'not-independently-reproduced',
+    })
+    expect(gemini.provenance.notes.join(' ')).toContain('highest thinking settings')
+    expect(gemini.provenance.notes.join(' ')).toContain('An exact named thinking setting is not stated')
+  })
+
   it('does not attach composite costs to score-only reports and keeps the known site/feed mismatch', () => {
     const independent = dataset.observations.find((row) => row.id === 'artificial-analysis-claude-code-opus-5.5-max-v1.1')!
     expect(independent.metrics.cost.value).toBeNull()
