@@ -83,7 +83,7 @@ describe('approved observation boundaries', () => {
       'candidate-datalearner-qwen3.8-max-0902',
       'candidate-datalearner-step-5-preview',
     ]))
-    expect(candidates.candidates).toHaveLength(2)
+    expect(candidates.candidates).toHaveLength(6)
     expect(resolvedCandidates.candidates).toHaveLength(9)
     expect(resolvedCandidates.candidates.every((candidate) => !approvedIds.has(candidate.id) && approvedIds.has(candidate.matchedObservationId))).toBe(true)
     expect(resolvedCandidates.candidates.every((candidate) => candidate.resolution.length > 0)).toBe(true)

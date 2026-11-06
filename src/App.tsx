@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { z } from 'zod'
 import { ExplorerChart } from './components/ExplorerChart'
 import { EvidencePanel } from './components/EvidencePanel'
 import { MethodologyPage } from './components/MethodologyPage'
@@ -11,18 +12,12 @@ import { CandidateQueueSchema, DatasetSchema, type Candidate, type Dataset, type
 import { defaultExplorerState, parseExplorerUrl, serializeExplorerUrl, type ExplorerUrlState, type ExplorerView } from './lib/url-state'
 import { resolveXUsage, usageScenarioForObservation } from './lib/usage-scenarios'
 
-interface SourceEntry {
-  id: string
-  publisher: string
-  title: string
-  url: string | null
-  category: string
-  status: string
-  sha256: string | null
-  license?: string
-  accessAndReuse: string
-  notes: string[]
-}
+const SourceRegistrySchema = z.object({ sources: z.array(z.object({
+  id: z.string(), publisher: z.string(), title: z.string(), url: z.string().nullable(),
+  category: z.string(), status: z.string(), sha256: z.string().nullable(),
+  license: z.string().optional(), accessAndReuse: z.string(), notes: z.array(z.string()),
+})) })
+type SourceEntry = z.infer<typeof SourceRegistrySchema>['sources'][number]
 
 const baseUrl = import.meta.env.BASE_URL
 const deployedAt = import.meta.env.VITE_DEPLOYED_AT || null
@@ -47,8 +42,10 @@ function freshness(lastChecked: string): { stale: boolean; label: string } {
 function App() {
   const [state, setState] = useState<ExplorerUrlState>(() => parseExplorerUrl(window.location.search))
   const [dataset, setDataset] = useState<Dataset | null>(null)
-  const [candidates, setCandidates] = useState<Candidate[]>([])
-  const [sources, setSources] = useState<SourceEntry[]>([])
+  const [candidates, setCandidates] = useState<Candidate[] | null>(null)
+  const [sources, setSources] = useState<SourceEntry[] | null>(null)
+  const [candidateError, setCandidateError] = useState(false)
+  const [sourceError, setSourceError] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [activeSeriesId, setActiveSeriesId] = useState<string | null>(null)
   const [connections, setConnections] = useState(state.connections)
@@ -59,22 +56,17 @@ function App() {
 
   useEffect(() => {
     let active = true
-    Promise.all([
-      fetchJson('data/observations.json'),
-      fetchJson('data/candidates.json'),
-      fetchJson('data/source-registry.json'),
-    ]).then(([data, queue, registry]) => {
-      if (!active) return
-      const parsedData = DatasetSchema.parse(data)
-      const parsedQueue = CandidateQueueSchema.parse(queue)
-      setDataset(parsedData)
-      setCandidates(parsedQueue.candidates)
-      if (typeof registry === 'object' && registry !== null && 'sources' in registry && Array.isArray(registry.sources)) {
-        setSources(registry.sources as SourceEntry[])
-      }
+    fetchJson('data/observations.json').then((data) => DatasetSchema.parse(data)).then((data) => {
+      if (active) setDataset(data)
     }).catch((error: unknown) => {
       if (active) setLoadError(error instanceof Error ? error.message : 'Unable to load the approved snapshot.')
     })
+    fetchJson('data/candidates.json').then((data) => CandidateQueueSchema.parse(data)).then((queue) => {
+      if (active) setCandidates(queue.candidates)
+    }).catch(() => { if (active) setCandidateError(true) })
+    fetchJson('data/source-registry.json').then((data) => SourceRegistrySchema.parse(data)).then((registry) => {
+      if (active) setSources(registry.sources)
+    }).catch(() => { if (active) setSourceError(true) })
     return () => { active = false }
   }, [])
 
@@ -352,7 +344,7 @@ function App() {
   if (state.view === 'review') return (
     <div className="app-shell" data-theme={theme}>
       <SiteHeader state={state} onView={(view) => update({ view })} theme={theme} onTheme={() => setTheme(theme === 'light' ? 'dark' : 'light')} />
-      <ReviewQueue candidates={candidates} />
+      <ReviewQueue candidates={candidates} loadError={candidateError} />
       <SiteFooter revisionId={dataset.revisionId} checkedAt={dataset.lastSuccessfulCheckAt} deployedAt={deployedAt} onView={(view) => update({ view })} />
       <div className="sr-only" role="status" aria-live="polite">{announcement}</div>
     </div>
@@ -367,7 +359,7 @@ function App() {
   if (state.view === 'sources') return (
     <div className="app-shell" data-theme={theme}>
       <SiteHeader state={state} onView={(view) => update({ view })} theme={theme} onTheme={() => setTheme(theme === 'light' ? 'dark' : 'light')} />
-      <SourcesPage sources={sources} />
+      <SourcesPage sources={sources} loadError={sourceError} />
       <SiteFooter revisionId={dataset.revisionId} checkedAt={dataset.lastSuccessfulCheckAt} deployedAt={deployedAt} onView={(view) => update({ view })} />
     </div>
   )
@@ -404,7 +396,7 @@ function App() {
           <div className="view-switcher" role="tablist" aria-label="Results view">
             <button type="button" role="tab" aria-selected={state.view === 'official'} className={state.view === 'official' ? 'active-tab' : ''} onClick={() => update({ view: 'official' })}>Official <span>{dataset.sourceRetrieval.rowCount}</span></button>
             <button type="button" role="tab" aria-selected={state.view === 'combined'} className={state.view === 'combined' ? 'active-tab' : ''} onClick={() => update({ view: 'combined' })}>Combined reports <span>{dataset.observations.length}</span></button>
-            <button type="button" role="tab" aria-selected={false} onClick={() => update({ view: 'review' })}>Review queue <span>{candidates.length}</span></button>
+            <button type="button" role="tab" aria-selected={false} onClick={() => update({ view: 'review' })}>Review queue {candidates && <span>{candidates.length}</span>}</button>
               <div className="view-secondary-links"><button type="button" onClick={() => update({ view: 'methodology' })}>Methodology</button><button type="button" onClick={() => update({ view: 'sources' })}>Sources</button></div>
           </div>
 

@@ -22,6 +22,59 @@ async function loadDataset(page: import('@playwright/test').Page) {
   return page.evaluate(async () => await (await fetch('data/observations.json')).json() as ExportedDataset)
 }
 
+test('auxiliary failures leave approved results available and identify the failed view', async ({ page }) => {
+  for (const [asset, view, message, failure] of [
+    ['candidates', 'review', 'Candidate queue could not be loaded', 'http'],
+    ['candidates', 'review', 'Candidate queue could not be loaded', 'network'],
+    ['candidates', 'review', 'Candidate queue could not be loaded', 'invalid'],
+    ['source-registry', 'sources', 'Source register could not be loaded', 'http'],
+    ['source-registry', 'sources', 'Source register could not be loaded', 'network'],
+    ['source-registry', 'sources', 'Source register could not be loaded', 'invalid'],
+  ] as const) {
+    const pattern = `**/data/${asset}.json`
+    await page.route(pattern, (route) => failure === 'network' ? route.abort() : route.fulfill(failure === 'http'
+      ? { status: 503, body: 'Unavailable' }
+      : { status: 200, contentType: 'application/json', body: JSON.stringify(asset === 'candidates' ? { candidates: 'bad' } : { sources: [{}] }) }))
+    await page.goto('?view=official')
+    await expect(page.locator('.plot-point').first()).toBeVisible()
+    await expect(page.locator('.results-table tbody tr')).toHaveCount(70)
+    await page.goto(`?view=${view}`)
+    await expect(page.getByRole('alert')).toContainText(message)
+    await page.goto(`?view=${view === 'review' ? 'sources' : 'review'}`)
+    if (view === 'review') await expect(page.locator('.source-register-row').first()).toBeVisible()
+    else await expect(page.locator('.candidate-card').first()).toBeVisible()
+    await page.unroute(pattern)
+  }
+})
+
+test('pending auxiliary requests do not block approved results or imply empty views', async ({ page }) => {
+  let release!: () => void
+  const pending = new Promise<void>((resolve) => { release = resolve })
+  await page.route('**/data/{candidates,source-registry}.json', async (route) => {
+    await pending
+    await route.continue().catch(() => {})
+  })
+  await page.goto('?view=official', { waitUntil: 'domcontentloaded' })
+  try {
+    await expect(page.locator('.plot-point').first()).toBeVisible()
+    await expect(page.getByRole('tab', { name: /Review queue/ })).not.toContainText('0')
+    await page.getByRole('tab', { name: /Review queue/ }).click()
+    await expect(page.getByRole('status').filter({ hasText: 'Loading candidate queue' })).toBeVisible()
+    await page.getByRole('button', { name: 'Sources', exact: true }).first().click()
+    await expect(page.getByRole('status').filter({ hasText: 'Loading source register' })).toBeVisible()
+    await expect(page.locator('.source-summary')).toHaveCount(0)
+  } finally {
+    release()
+  }
+})
+
+test('invalid approved data remains fatal', async ({ page }) => {
+  await page.route('**/data/observations.json', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }))
+  await page.goto('./')
+  await expect(page.getByRole('alert')).toContainText('APPROVED SNAPSHOT UNAVAILABLE')
+  await expect(page.locator('.results-table')).toHaveCount(0)
+})
+
 async function noDataSymbolOverlaps(page: Page) {
   return page.locator('.no-data-point').evaluateAll((groups) => {
     const bounds = groups.map((group) => {
@@ -709,7 +762,7 @@ test('SVG export, submission draft, methodology/source pages, and mobile layout 
   expect(svg).toContain('66.6%')
 
   await page.getByRole('tab', { name: /Review queue/ }).click()
-  await expect(page.locator('.candidate-card')).toHaveCount(2)
+  await expect(page.locator('.candidate-card')).toHaveCount(6)
   await page.getByLabel('Model name as source reports it').fill('Browser Test Model')
   await page.getByLabel('Publisher / evaluator').fill('Test Publisher')
   await page.getByLabel('Source document title').fill('Test evidence')

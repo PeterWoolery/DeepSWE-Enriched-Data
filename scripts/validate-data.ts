@@ -149,7 +149,7 @@ export function validateUsageResearch(dataset: ReturnType<typeof DatasetSchema.p
     if (fact.evidence.approvedDatasetRevision !== null) throw new Error(`Unapproved source fact ${fact.id} must not claim an approved dataset revision.`)
   }
 
-  if (config.approvedDatasetRevision !== dataset.revisionId) throw new Error(`Usage scenario configuration is pinned to ${config.approvedDatasetRevision}, not the approved ${dataset.revisionId}.`)
+  if (config.approvedDatasetRevision !== dataset.revisionId) throw new Error(`Usage scenario revision mismatch: pinned ${config.approvedDatasetRevision}; approved dataset revision ${dataset.revisionId}. Review and update scenarioConfig.approvedDatasetRevision in data/research/usage-proxy-cross-platform-20260927.json as described in CONTRIBUTING.md#reviewing-the-shared-usage-scenario-revision-pin.`)
   const targetIds = new Set<string>()
   const calibratedReferenceIds = new Set([
     ...extension.references.map((reference) => reference.id),

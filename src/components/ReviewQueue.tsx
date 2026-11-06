@@ -3,7 +3,8 @@ import type { Candidate } from '../lib/schema'
 import { durationToSeconds } from '../lib/units'
 
 interface ReviewQueueProps {
-  candidates: Candidate[]
+  candidates: Candidate[] | null
+  loadError: boolean
 }
 
 interface DraftFields {
@@ -123,7 +124,7 @@ function downloadCandidate(fields: DraftFields) {
   URL.revokeObjectURL(href)
 }
 
-export function ReviewQueue({ candidates }: ReviewQueueProps) {
+export function ReviewQueue({ candidates, loadError }: ReviewQueueProps) {
   const [fields, setFields] = useState(emptyDraft)
   const [message, setMessage] = useState('')
   const update = <K extends keyof DraftFields>(key: K, value: DraftFields[K]) => setFields((previous) => ({ ...previous, [key]: value }))
@@ -140,6 +141,7 @@ export function ReviewQueue({ candidates }: ReviewQueueProps) {
         <h1>Review queue</h1>
         <p>Discovery leads and community submissions stay separate from approved numeric observations. Values here are claims to investigate, not leaderboard entries.</p>
       </header>
+      {loadError ? <p role="alert">Candidate queue could not be loaded. Approved results are still available.</p> : !candidates ? <p role="status">Loading candidate queue…</p> : <>
       <div className="review-notice" role="note">
         <strong>{candidates.length} pending leads</strong>
         <span>No candidate scores appear in comparison charts, approved tables, or all-observation exports.</span>
@@ -161,6 +163,7 @@ export function ReviewQueue({ candidates }: ReviewQueueProps) {
           </article>
         ))}
       </section>
+      </>}
 
       <section className="submission-section" aria-labelledby="submission-title">
         <div className="submission-intro">

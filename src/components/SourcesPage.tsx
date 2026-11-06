@@ -11,7 +11,7 @@ interface SourceEntry {
   notes: string[]
 }
 
-interface SourcesPageProps { sources: SourceEntry[] }
+interface SourcesPageProps { sources: SourceEntry[] | null; loadError: boolean }
 
 const categoryName: Record<string, string> = {
   organizer: 'Benchmark organizer',
@@ -22,7 +22,7 @@ const categoryName: Record<string, string> = {
   'methodology-reference': 'Effort-setting reference',
 }
 
-export function SourcesPage({ sources }: SourcesPageProps) {
+export function SourcesPage({ sources, loadError }: SourcesPageProps) {
   return (
     <main className="page-wrap content-page">
       <header className="page-heading">
@@ -30,6 +30,7 @@ export function SourcesPage({ sources }: SourcesPageProps) {
         <h1>Source register</h1>
         <p>Source category, document-review status, and independent replication status are separate. Every published observation links to a specific source locator.</p>
       </header>
+      {loadError ? <p role="alert">Source register could not be loaded. Approved results are still available.</p> : !sources ? <p role="status">Loading source register…</p> : <>
       <div className="source-summary">
         <div><strong>{sources.filter((source) => source.status === 'source-reviewed').length}</strong><span>source-reviewed records</span></div>
         <div><strong>{sources.filter((source) => source.status === 'pending-review').length}</strong><span>pending discovery sources</span></div>
@@ -50,6 +51,7 @@ export function SourcesPage({ sources }: SourcesPageProps) {
           </article>
         ))}
       </section>
+      </>}
     </main>
   )
 }

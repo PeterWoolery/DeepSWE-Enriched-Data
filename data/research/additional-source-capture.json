@@ -398,6 +398,97 @@
         "ae55276c22ce8e35c6b51431900586c98a0c496b46045f5c88a2eba2eadc7081"
       ],
       "evidenceLocator": "Coding section, DeepSWE v1.1 paragraph; current page re-retrieved via Grounded Docs"
+    },
+    {
+      "id": "deepseek-v4.1-flash-1017-card-20261106",
+      "publisher": "DeepSeek",
+      "title": "DeepSeek-V4.1-Flash-1017 model card",
+      "url": "https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017",
+      "publicationDate": null,
+      "retrievedOn": "2026-11-06",
+      "httpStatus": 200,
+      "contentType": "text/html; charset=utf-8",
+      "responseBytes": 308578,
+      "sha256": "37406d8bca4bff0720c27a70d204b8fe3ece5b342c8f30cac4ba2d8c191f452b",
+      "evidenceLocator": "Introduction benchmark table, DeepSWE v1.1 row: 77.0; footnote: Mini-SWE-V2. Unit, statistic, denominator and effort unspecified."
+    },
+    {
+      "id": "deepseek-1017-changelog-20261106",
+      "publisher": "DeepSeek",
+      "title": "Change Log",
+      "url": "https://api-docs.deepseek.com/updates",
+      "publicationDate": "2026-10-17",
+      "retrievedOn": "2026-11-06",
+      "httpStatus": 200,
+      "contentType": "text/html",
+      "responseBytes": 54140,
+      "sha256": "87d5db6ef89f2d4e0e193954cb70bf027525c06f20d54d9a29aa0a61d99e6efa",
+      "evidenceLocator": "Date 2026-10-17, DeepSeek-V4.1-Flash-1017 Update, performance list and harness note: 77.0, Mini-SWE-V2."
+    },
+    {
+      "id": "minimax-m3.1-flash-blog-20261106",
+      "publisher": "MiniMax",
+      "title": "MiniMax M3.1 Flash announcement",
+      "url": "https://www.minimax.io/blog/minimax-m31f",
+      "publicationDate": null,
+      "retrievedOn": "2026-11-06",
+      "httpStatus": 200,
+      "contentType": "text/html; charset=utf-8",
+      "responseBytes": 79980,
+      "sha256": "9caf12d2c1ce9b5c9fbe11da3214cd1c1b50192b3eb7ba5b1dd2b47ce25b2c31",
+      "evidenceLocator": "Stronger Capabilities Across the Board, Coding and Software Engineering: 73.7% on DeepSWE v1.1. Statistic and denominator unspecified."
+    },
+    {
+      "id": "minimax-m3.1-flash-card-20261106",
+      "publisher": "MiniMax",
+      "title": "MiniMax-M3.1-Flash model card",
+      "url": "https://huggingface.co/MiniMaxAI/MiniMax-M3.1-Flash",
+      "publicationDate": null,
+      "retrievedOn": "2026-11-06",
+      "httpStatus": 200,
+      "contentType": "text/html; charset=utf-8",
+      "responseBytes": 339688,
+      "sha256": "45fd7c21c6e5b80339e44a6a19903c4d208981e7991b1bce118bb14ceebd1534",
+      "evidenceLocator": "Highlights and Benchmarks table, DeepSWE v1.1: 73.7%; Evaluation Notes: mini-SWE-agent 2.4.5, 512K context. Statistic, denominator and effort unspecified."
+    },
+    {
+      "id": "kimi-k3.1-pro-card-20261106",
+      "publisher": "Moonshot AI",
+      "title": "Kimi K3.1 Pro model card",
+      "url": "https://huggingface.co/moonshotai/Kimi-K3.1-Pro",
+      "publicationDate": null,
+      "retrievedOn": "2026-11-06",
+      "httpStatus": 200,
+      "contentType": "text/html; charset=utf-8",
+      "responseBytes": 352214,
+      "sha256": "1a80d5554372c7537b9924f097d83f8a0f5d9f2b88ed266d386bb6926bdfe0f9",
+      "evidenceLocator": "Section 3 Evaluation Results, DeepSWE v1.1 row: 75.5; general settings: max effort, temperature 1.0, top-p 0.95; Coding benchmarks footnote 5: Claude Code. Unit, statistic and denominator unspecified."
+    },
+    {
+      "id": "kimi-k3.1-pro-blog-20261106",
+      "publisher": "Moonshot AI",
+      "title": "Introducing Kimi K3.1 Pro",
+      "url": "https://www.kimi.ai/blog/kimi-k3-1-pro",
+      "publicationDate": null,
+      "retrievedOn": "2026-11-06",
+      "httpStatus": 200,
+      "contentType": "text/html; charset=utf-8",
+      "responseBytes": 389108,
+      "sha256": "3edf6769cc10df3867aad6ea1a72c457392bc1af23de325ca8f35b810067036f",
+      "evidenceLocator": "Benchmarks Footnotes, general settings and Coding benchmarks footnote 3: max effort and Claude Code for DeepSWE v1.1."
+    },
+    {
+      "id": "fireworks-ember-1-blog-20261106",
+      "publisher": "Fireworks AI",
+      "title": "Introducing Ember-1",
+      "url": "https://fireworks.ai/blog/ember-1",
+      "publicationDate": "2026-09-23",
+      "retrievedOn": "2026-11-06",
+      "httpStatus": 200,
+      "contentType": "text/html; charset=utf-8",
+      "responseBytes": 323667,
+      "sha256": "d4260d5e3ecaa5eeb47f7b8568ead1dca0ae0297982e3d7b23e4703d7f9f3f37",
+      "evidenceLocator": "Evaluating Pareto across more industry benchmarks, pass-rate description and Industry Benchmarks table: DeepSWE 1.1, N=113, Ember-1 75.2%. Pass-rate aggregation, attempt denominator and harness unspecified; not the separate SII avg@3 result."
     }
   ]
 }
